@@ -3,6 +3,7 @@ import random
 import socket
 import struct
 import threading
+import urllib.request
 from time import time as now
  
 from dnslib import QTYPE, RCODE, EDNS0, DNSRecord
@@ -48,7 +49,16 @@ class DNSCore:
  
     def __init__(self):
         # Bilgiler https://www.iana.org/domains/root/servers adresinden alınmıştır.
-        self.up_servers = ["9.9.9.9", "1.1.1.1", "8.8.8.8"]
+        # DoH (DNS-over-HTTPS) uç noktaları: port 53 yerine 443 üzerinden,
+        # normal HTTPS trafiğine karışarak gider -> DPI ile ayırt edip
+        # engellemek port-53 trafiğine göre çok daha zor.
+        # Not: 9.9.9.9 (Quad9) bu listede yok; bare-IP DoH ucu HTTP/2
+        # zorunlu kılıyor ve urllib (HTTP/1.1) ile "505 HTTP Version Not
+        # Supported" veriyor.
+        self.doh_endpoints = [
+            "https://1.1.1.1/dns-query",
+            "https://8.8.8.8/dns-query",
+        ]
         self.root_servers = {
             "a.root-servers.net": ("198.41.0.4", "2001:503:ba3e::2:30", "Verisign, Inc."),
             "b.root-servers.net": ("170.247.170.2", "2801:1b8:10::b", "University of Southern California, ISI"),
@@ -156,13 +166,42 @@ class DNSCore:
                 return resp
         return None
 
+    def _query_doh(self, domain, qtype, endpoint, timeout=QUERY_TIMEOUT):
+        """RFC 8484: DNS sorgusunu ham wire-format olarak HTTPS body'sinde POST eder."""
+        q = DNSRecord.question(domain, qtype)
+        qid = q.header.id
+        req = urllib.request.Request(
+            endpoint,
+            data=q.pack(),
+            method="POST",
+            headers={
+                "Content-Type": "application/dns-message",
+                "Accept": "application/dns-message",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                resp_data = r.read()
+            resp = DNSRecord.parse(resp_data)
+            if resp.header.id != qid:
+                return None
+            return resp
+        except Exception:
+            return None
+
     def _query_upstream(self, domain, qtype):
         """
         Recursive yol (root/TLD/authoritative) timeout veriyorsa (muhtemelen
-        DPI engeli) genel amaçlı, tam recursive çözüm yapan üst sunuculara
-        (up_servers) direkt sor.
+        DPI engeli) DoH (DNS-over-HTTPS) ile üst sunuculara direkt sor —
+        port 443 üzerinden gittiği için port-53 odaklı engellemeyi atlatır.
         """
-        return self._query_any(domain, qtype, self.up_servers)
+        endpoints = list(self.doh_endpoints)
+        random.shuffle(endpoints)
+        for endpoint in endpoints:
+            resp = self._query_doh(domain, qtype, endpoint)
+            if resp is not None:
+                return resp
+        return None
  
     # --- Asıl çözümleme ------------------------------------------------------
     def resolve(self, domain, qtype, depth=0):
