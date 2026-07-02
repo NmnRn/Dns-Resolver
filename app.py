@@ -3,6 +3,8 @@ import random
 import socket
 import struct
 import threading
+import asyncio
+import signal
 import urllib.request
 from time import time as now
  
@@ -11,6 +13,7 @@ from dnslib.server import BaseResolver, DNSServer
 from dotenv import load_dotenv
  
 import settings
+import cache_loop
 
 settings.control_env_file()
 load_dotenv(settings.PROJECT_DIRECTORY / ".env")
@@ -77,7 +80,7 @@ class DNSCore:
             "m.root-servers.net": ("202.12.27.33", "2001:dc3::35", "WIDE Project"),
         }
         # cache: (domain, qtype) -> (expiry, rcode, [rr, ...])
-        self._cache = {}
+        self._cache = {} # {"domain.com", "A"}: (expiry_timestamp, rcode, [rr1, rr2, ...])
         self._lock = threading.Lock()  # DNSServer çok-thread'li; cache'i kilitliyoruz
  
     # --- Cache ---------------------------------------------------------------
@@ -370,7 +373,8 @@ class DNSResolver(BaseResolver):
  
     def __init__(self):
         self.core = DNSCore()
- 
+        self.dns_ttl_cache = self.core._cache
+
     def resolve(self, request, handler):
         qname = str(request.q.qname)
         if not qname.endswith("."):
@@ -398,9 +402,23 @@ def main():
     bind = os.getenv("BIND_ADDRESS", "127.0.0.1")
     server = DNSServer(DNSResolver(), port=port, address=bind)
     print(f"DNS sunucusu başlatıldı: {bind}:{port}")
-    server.start()
+
+    # Cache temizleme döngüsünü başlat
+    cache_cleaner = cache_loop.CLEAR_CACHE(cache = server.server.resolver.dns_ttl_cache, _lock = server.server.resolver.core._lock)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.create_task(cache_cleaner.clear_cache_loop())
+    loop.run_in_executor(None, server.start)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, shutdown, server, loop, cache_cleaner)
+    loop.run_forever()
  
- 
+def shutdown(server, loop, cleaner):
+    print("Shutting down DNS server...")
+    cleaner.all_clear_cache()
+    server.stop()
+    loop.stop()
+
 if __name__ == "__main__":
     main()
 
