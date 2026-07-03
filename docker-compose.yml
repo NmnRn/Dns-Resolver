@@ -11,6 +11,8 @@ services:
       - ALLOWED_HOST=${ALLOWED_HOST:-dns.example.com}
       - ENABLE_UDP_SERVER=${ENABLE_UDP_SERVER:-true}
       - ENABLE_HTTPS_SERVER=${ENABLE_HTTPS_SERVER:-false}
+      - ENABLE_DOT_SERVER=${ENABLE_DOT_SERVER:-false}
+      - CONTAINER_DOT_PORT=${CONTAINER_DOT_PORT:-8853}
       - CERT_FILE=${CERT_FILE:-/app/certificates/fullchain.pem}
       - KEY_FILE=${KEY_FILE:-/app/certificates/privkey.pem}
     # Varsayılan: host'a hiç port açılmıyor, container sadece dns-net

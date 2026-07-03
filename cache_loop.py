@@ -23,3 +23,10 @@ class CLEAR_CACHE:
     def all_clear_cache(self):
         with self._lock:
             self.cache.clear()
+
+    async def control_cache_length(self):
+        while True:
+            with self._lock:
+                if len(self.cache.keys()) > 50000:
+                    self.cache.clear()
+            await asyncio.sleep(60)  # Check cache length every 60 seconds

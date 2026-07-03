@@ -5,3 +5,4 @@ __pycache__/
 certificates/*.pem
 certificates/*.key
 certificates/*.crt
+.claude/

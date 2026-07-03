@@ -8,8 +8,7 @@ def control_env_file():
     global env_file
     fwd = PROJECT_DIRECTORY / ".env"
     if not fwd.exists():
-        file = PROJECT_DIRECTORY.touch()
-        with open(file, "w") as f:
+        with open(fwd, "w") as f:
             f.write(
                 "UDP_PORT=53\n"
                 "HTTPS_PORT=443\n"
@@ -28,6 +27,7 @@ def control_env_file():
                 "ALLOWED_HOST=dns.example.com\n"
                 "ENABLE_UDP_SERVER=true\n"
                 "ENABLE_HTTPS_SERVER=false\n"
+                "ENABLE_DOT_SERVER=false\n"
                 "CERT_FILE=no\n"
                 "KEY_FILE=no\n"
                 )

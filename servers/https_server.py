@@ -92,6 +92,12 @@ def build_server(core, bind="0.0.0.0", port=44300, certfile=None, keyfile=None):
         server.socket = ctx.wrap_socket(server.socket, server_side=True)
 
     scheme = "https" if has_certs else "http"
+    if not has_certs:
+        logger.warning(
+            "DoH sunucusu sertifikasız başlatılıyor: trafik DÜZ HTTP (şifresiz)! "
+            "Yalnızca önünde TLS sonlandıran bir proxy (ör. Cloudflare Tunnel) varsa güvenli."
+        )
+        print("UYARI: DoH sertifikasız - düz HTTP olarak başlatılıyor (şifresiz).")
     print(f"DoH sunucusu başlatıldı: {scheme}://{bind}:{port}{DNS_QUERY_PATH}")
     logger.info("DoH sunucusu başlatıldı: %s://%s:%d%s", scheme, bind, port, DNS_QUERY_PATH)
     return server
