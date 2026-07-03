@@ -8,6 +8,22 @@ services:
       - CONTAINER_UDP_PORT=${CONTAINER_UDP_PORT:-5300}
       - CONTAINER_HTTPS_PORT=${CONTAINER_HTTPS_PORT:-44300}
       - CONTAINER_QUIC_PORT=${CONTAINER_QUIC_PORT:-85300}
+      - ALLOWED_HOST=${ALLOWED_HOST:-dns.example.com}
+      - ENABLE_UDP_SERVER=${ENABLE_UDP_SERVER:-true}
+      - ENABLE_HTTPS_SERVER=${ENABLE_HTTPS_SERVER:-false}
+      - CERT_FILE=${CERT_FILE:-/app/certificates/fullchain.pem}
+      - KEY_FILE=${KEY_FILE:-/app/certificates/privkey.pem}
+    # Varsayılan: host'a hiç port açılmıyor, container sadece dns-net
+    # üzerinden diğer container'lara (AdGuard, Cloudflare Tunnel) erişilebilir.
+    # Dışarıya (host'un public IP'sine) de açmak istersen bu bloğu yorumdan
+    # çıkar (ya da ./setup.sh çalıştırıp soruyu "e" ile cevapla - script bu
+    # bloğu kendisi bulup düzenler, elle uğraşmana gerek kalmaz).
+    # --- BEGIN-EXTERNAL-PORTS ---
+    # ports:
+    #   - "${EXTERNAL_UDP_PORT:-53}:${CONTAINER_UDP_PORT:-5300}/udp"
+    #   - "${EXTERNAL_UDP_PORT:-53}:${CONTAINER_UDP_PORT:-5300}/tcp"
+    #   - "${EXTERNAL_HTTPS_PORT:-443}:${CONTAINER_HTTPS_PORT:-44300}/tcp"
+    # --- END-EXTERNAL-PORTS ---
     networks:
       dns-net:
         ipv4_address: 172.27.17.2

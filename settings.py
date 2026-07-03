@@ -23,5 +23,12 @@ def control_env_file():
                 "DB_USER=root\n"
                 "DB_PASSWORD=password\n"
                 "DB_NAME=dns_db\n"
+                "DOMAIN=example.com\n"
+                "SUB_DOMAIN=dns\n"
+                "ALLOWED_HOST=dns.example.com\n"
+                "ENABLE_UDP_SERVER=true\n"
+                "ENABLE_HTTPS_SERVER=false\n"
+                "CERT_FILE=no\n"
+                "KEY_FILE=no\n"
                 )
             f.close()

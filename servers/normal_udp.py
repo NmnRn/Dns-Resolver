@@ -371,8 +371,8 @@ class DNSCore:
 class DNSResolver(BaseResolver):
     """dnslib köprüsü: gelen UDP isteğini DNSCore'a bağlar."""
  
-    def __init__(self):
-        self.core = DNSCore()
+    def __init__(self, core=None):
+        self.core = core or DNSCore()
         self.dns_ttl_cache = self.core._cache
 
     def resolve(self, request, handler):
