@@ -7,11 +7,12 @@ services:
       - BIND_ADDRESS=0.0.0.0
       - CONTAINER_UDP_PORT=${CONTAINER_UDP_PORT:-5300}
       - CONTAINER_HTTPS_PORT=${CONTAINER_HTTPS_PORT:-44300}
-      - CONTAINER_QUIC_PORT=${CONTAINER_QUIC_PORT:-85300}
+      - CONTAINER_DOQ_PORT=${CONTAINER_DOQ_PORT:-8530}
       - ALLOWED_HOST=${ALLOWED_HOST:-dns.example.com}
       - ENABLE_UDP_SERVER=${ENABLE_UDP_SERVER:-true}
       - ENABLE_HTTPS_SERVER=${ENABLE_HTTPS_SERVER:-false}
       - ENABLE_DOT_SERVER=${ENABLE_DOT_SERVER:-false}
+      - ENABLE_DOQ_SERVER=${ENABLE_DOQ_SERVER:-false}
       - CONTAINER_DOT_PORT=${CONTAINER_DOT_PORT:-8853}
       - CERT_FILE=${CERT_FILE:-/app/certificates/fullchain.pem}
       - KEY_FILE=${KEY_FILE:-/app/certificates/privkey.pem}
@@ -25,6 +26,8 @@ services:
     #   - "${EXTERNAL_UDP_PORT:-53}:${CONTAINER_UDP_PORT:-5300}/udp"
     #   - "${EXTERNAL_UDP_PORT:-53}:${CONTAINER_UDP_PORT:-5300}/tcp"
     #   - "${EXTERNAL_HTTPS_PORT:-443}:${CONTAINER_HTTPS_PORT:-44300}/tcp"
+    #   - "${EXTERNAL_DOT_PORT:-853}:${CONTAINER_DOT_PORT:-8853}/tcp"
+    #   - "${EXTERNAL_DOQ_PORT:-853}:${CONTAINER_DOQ_PORT:-8530}/udp"
     # --- END-EXTERNAL-PORTS ---
     networks:
       dns-net:

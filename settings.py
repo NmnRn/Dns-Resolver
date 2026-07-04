@@ -12,11 +12,11 @@ def control_env_file():
             f.write(
                 "UDP_PORT=53\n"
                 "HTTPS_PORT=443\n"
-                "QUIC_PORT=853\n"
+                "EXTERNAL_DOQ_PORT=853\n"
                 "LOG_DAYS=90\n"
                 "CONTAINER_UDP_PORT=5300\n"
                 "CONTAINER_HTTPS_PORT=44300\n"
-                "CONTAINER_QUIC_PORT=85300\n"
+                "CONTAINER_DOQ_PORT=8530\n"
                 "DB_HOST=localhost\n"
                 "DB_PORT=3306\n"
                 "DB_USER=root\n"
@@ -28,6 +28,7 @@ def control_env_file():
                 "ENABLE_UDP_SERVER=true\n"
                 "ENABLE_HTTPS_SERVER=false\n"
                 "ENABLE_DOT_SERVER=false\n"
+                "ENABLE_DOQ_SERVER=false\n"
                 "CERT_FILE=no\n"
                 "KEY_FILE=no\n"
                 )

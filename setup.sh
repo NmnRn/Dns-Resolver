@@ -82,15 +82,30 @@ fi
 echo
 echo "-- Temel ayarlar --"
 bind_address=$(ask "Sunucunun dinleyecegi IP (Docker'da hep 0.0.0.0 kalmali)" "$(get_existing BIND_ADDRESS 0.0.0.0)")
-container_udp_port=$(ask "UDP/TCP DNS sunucusunun container ici portu" "$(get_existing CONTAINER_UDP_PORT 5300)")
+container_udp_port=$(ask "Duz DNS (Do53, UDP/TCP) sunucusunun container ici portu" "$(get_existing CONTAINER_UDP_PORT 5300)")
+
+echo
+echo "-- TLS sertifikasi (DoH, DoT ve DoQ ORTAK kullanir) --"
+echo "Sifreli protokoller sertifika ister. Hazir degilse 'no' birak:"
+echo "DoT/DoQ sertifikasiz baslamaz, DoH duz HTTP'ye duser."
+cert_file=$(ask "TLS sertifika dosyasi yolu (container ici)" "$(get_existing CERT_FILE /app/certificates/fullchain.pem)")
+key_file=$(ask "TLS ozel anahtar dosyasi yolu (container ici)" "$(get_existing KEY_FILE /app/certificates/privkey.pem)")
 
 echo
 echo "-- DoH (DNS-over-HTTPS) --"
-enable_https=$(ask_bool "DoH sunucusu acik olsun mu (sertifikan hazir degilse hayir de)" "$(get_existing ENABLE_HTTPS_SERVER false)")
+enable_https=$(ask_bool "DoH sunucusu acik olsun mu" "$(get_existing ENABLE_HTTPS_SERVER false)")
 container_https_port=$(ask "DoH sunucusunun container ici portu" "$(get_existing CONTAINER_HTTPS_PORT 44300)")
 allowed_host=$(ask "DoH icin izin verilecek domain (Host header kontrolu)" "$(get_existing ALLOWED_HOST dns.example.com)")
-cert_file=$(ask "TLS sertifika dosyasi yolu (container ici)" "$(get_existing CERT_FILE /app/certificates/fullchain.pem)")
-key_file=$(ask "TLS ozel anahtar dosyasi yolu (container ici)" "$(get_existing KEY_FILE /app/certificates/privkey.pem)")
+
+echo
+echo "-- DoT (DNS-over-TLS) --"
+enable_dot=$(ask_bool "DoT sunucusu acik olsun mu (TLS/TCP, sertifika sart)" "$(get_existing ENABLE_DOT_SERVER false)")
+container_dot_port=$(ask "DoT sunucusunun container ici portu" "$(get_existing CONTAINER_DOT_PORT 8853)")
+
+echo
+echo "-- DoQ (DNS-over-QUIC) --"
+enable_doq=$(ask_bool "DoQ sunucusu acik olsun mu (QUIC/UDP, sertifika sart)" "$(get_existing ENABLE_DOQ_SERVER false)")
+container_doq_port=$(ask "DoQ sunucusunun container ici portu" "$(get_existing CONTAINER_DOQ_PORT 8530)")
 
 echo
 echo "-- Disariya (host'a) port acma --"
@@ -99,9 +114,13 @@ echo "haline getirir (DDoS amplification riski). Emin degilsen hayir de."
 open_external=$(ask_bool "Host'a disariya port acilsin mi" "false")
 external_udp_port="$(get_existing EXTERNAL_UDP_PORT 53)"
 external_https_port="$(get_existing EXTERNAL_HTTPS_PORT 443)"
+external_dot_port="$(get_existing EXTERNAL_DOT_PORT 853)"
+external_doq_port="$(get_existing EXTERNAL_DOQ_PORT 853)"
 if [ "$open_external" = "true" ]; then
-    external_udp_port=$(ask "Disariya acilacak UDP/TCP DNS portu" "$external_udp_port")
-    external_https_port=$(ask "Disariya acilacak HTTPS portu" "$external_https_port")
+    external_udp_port=$(ask "Disariya acilacak Do53 (UDP/TCP) portu" "$external_udp_port")
+    external_https_port=$(ask "Disariya acilacak DoH (HTTPS) portu" "$external_https_port")
+    external_dot_port=$(ask "Disariya acilacak DoT (TLS/TCP) portu" "$external_dot_port")
+    external_doq_port=$(ask "Disariya acilacak DoQ (QUIC/UDP) portu" "$external_doq_port")
 fi
 
 log_days="$(get_existing LOG_DAYS 90)"
@@ -110,13 +129,19 @@ cat > "$ENV_PATH" <<EOF
 BIND_ADDRESS=$bind_address
 CONTAINER_UDP_PORT=$container_udp_port
 CONTAINER_HTTPS_PORT=$container_https_port
+CONTAINER_DOT_PORT=$container_dot_port
+CONTAINER_DOQ_PORT=$container_doq_port
 ENABLE_UDP_SERVER=true
 ENABLE_HTTPS_SERVER=$enable_https
+ENABLE_DOT_SERVER=$enable_dot
+ENABLE_DOQ_SERVER=$enable_doq
 ALLOWED_HOST=$allowed_host
 CERT_FILE=$cert_file
 KEY_FILE=$key_file
 EXTERNAL_UDP_PORT=$external_udp_port
 EXTERNAL_HTTPS_PORT=$external_https_port
+EXTERNAL_DOT_PORT=$external_dot_port
+EXTERNAL_DOQ_PORT=$external_doq_port
 LOG_DAYS=$log_days
 EOF
 
@@ -130,9 +155,10 @@ else
     echo "docker-compose.yml'deki 'ports:' blogu kapali (disariya port acilmiyor)."
 fi
 
-if [ "$enable_https" = "true" ]; then
+if [ "$enable_https" = "true" ] || [ "$enable_dot" = "true" ] || [ "$enable_doq" = "true" ]; then
     echo
-    echo "DoH'u actin - sertifika dosyalarinin (CERT_FILE/KEY_FILE) container"
-    echo "icinde gercekten var oldugundan (docker-compose.yml'de bir volume ile"
-    echo "mount edildiginden) emin ol."
+    echo "Sifreli bir sunucu (DoH/DoT/DoQ) actin - sertifika dosyalarinin"
+    echo "(CERT_FILE/KEY_FILE) container icinde gercekten var oldugundan"
+    echo "(docker-compose.yml'de bir volume ile mount edildiginden) emin ol."
+    echo "DoT/DoQ sertifika yoksa baslamaz; DoH duz HTTP'ye duser."
 fi
