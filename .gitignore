@@ -6,3 +6,4 @@ certificates/*.pem
 certificates/*.key
 certificates/*.crt
 .claude/
+.pytest_cache/

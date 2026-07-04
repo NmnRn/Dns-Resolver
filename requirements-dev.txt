@@ -1,0 +1,4 @@
+# Geliştirme/test bağımlılıkları (çalıştırma için gerekmez):
+#   ./.venv/bin/pip install -r requirements-dev.txt
+#   ./.venv/bin/pytest
+pytest==9.1.1

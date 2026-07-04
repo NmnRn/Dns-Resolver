@@ -108,8 +108,11 @@ class DNSCore:
         """Negatif cache için SOA tabanlı TTL üret."""
         for a in authority:
             if QTYPE[a.rtype] == "SOA":
-                # SOA.minimum ve kaydın kendi TTL'inden küçük olanı al
-                soa_min = getattr(a.rdata, "minimum", NEG_TTL_CAP)
+                # SOA minimum'u ile kaydın kendi TTL'inden küçük olanı al.
+                # dnslib'de minimum ayrı bir alan değil; SOA.times tuple'ının
+                # 5. elemanında durur: (serial, refresh, retry, expire, minimum).
+                times = getattr(a.rdata, "times", None)
+                soa_min = times[4] if times and len(times) >= 5 else NEG_TTL_CAP
                 return max(0, min(a.ttl, soa_min, NEG_TTL_CAP))
         return NEG_TTL_CAP
  
