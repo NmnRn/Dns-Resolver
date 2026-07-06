@@ -1,14 +1,15 @@
-# Dns-
+# Dns-Resolver
 
-![python](https://img.shields.io/badge/python-3.13%2B-blue)
+![python](https://img.shields.io/badge/python-3.14%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 Python ile sıfırdan yazılmış, gerçek bir **recursive DNS resolver**.
 
 Bir üst DNS'e (8.8.8.8 gibi) yönlendirme yapan basit bir forwarder değil;
 gelen sorguyu root sunuculardan başlatıp TLD ve authoritative sunucuları
-sırayla takip ederek kendisi çözer. Hem ham UDP/TCP DNS hem de
-DNS-over-HTTPS (DoH) olarak sunulabilir.
+sırayla takip ederek kendisi çözer. Ham UDP/TCP DNS'in yanında
+DNS-over-HTTPS (DoH), DNS-over-TLS (DoT) ve DNS-over-QUIC (DoQ) olarak
+da sunulabilir; sorgu geçmişi MariaDB'ye loglanır.
 
 ## Özellikler
 
@@ -41,9 +42,17 @@ DNS-over-HTTPS (DoH) olarak sunulabilir.
 - **DNS-over-HTTPS (DoH) sunucusu** (RFC 8484) — aynı çözümleme
   çekirdeğini HTTP(S) üzerinden de sunar, `POST /dns-query` ile ham
   wire-format DNS mesajı taşır.
-- **Çoklu sunucu mimarisi** — UDP/TCP ve DoH sunucuları bağımsız açılıp
-  kapatılabilir (`.env`), ikisi de aynı çözümleme çekirdeğini ve cache'i
-  paylaşır.
+- **DNS-over-TLS (DoT) sunucusu** (RFC 7858) — TLS ile sarılmış TCP
+  üzerinden, 2 baytlık uzunluk önekli klasik DNS taşıması.
+- **DNS-over-QUIC (DoQ) sunucusu** (RFC 9250, `aioquic` ile) — her sorgu
+  kendi QUIC stream'inde, TLS 1.3 gömülü.
+- **Sorgu loglama (MariaDB)** — her sorgu (domain, tip, istemci IP,
+  zaman, protokol) bellekte tamponlanır ve arka planda toplu olarak
+  `dns_cache` tablosuna yazılır; kapanışta tampon boşaltılır, DB
+  erişilemezse olaylar sınırlı bir kuyrukta bekletilir.
+- **Çoklu sunucu mimarisi** — UDP/TCP, DoH, DoT ve DoQ sunucuları
+  bağımsız açılıp kapatılabilir (`.env`), hepsi aynı çözümleme
+  çekirdeğini ve cache'i paylaşır.
 - **Güvenli varsayılanlar** — container host'a hiçbir port açmadan
   çalışır (açık resolver / amplification riskine karşı); dışa açmak
   istersen bunu bilerek, `docker-compose.yml`'de ilgili satırları
@@ -55,23 +64,34 @@ DNS-over-HTTPS (DoH) olarak sunulabilir.
 ## Mimari
 
 ```
-app.py                  Giriş noktası: aktif sunucuları kurar, asyncio
-                         event loop'unu yönetir, sinyal (SIGINT/SIGTERM)
-                         ile hepsini birlikte kapatır.
+app.py                  Giriş noktası: aktif sunucuları kurar, DB havuzunu
+                         açar/şemayı garanti eder, asyncio event loop'unu
+                         yönetir, sinyal (SIGINT/SIGTERM) ile hepsini
+                         birlikte kapatır (kapanışta son DB flush'ı dahil).
 servers/
   normal_udp.py          DNSCore (asıl recursive çözümleme mantığı) +
                          DNSResolver (dnslib köprüsü, UDP/TCP sunucu).
   https_server.py        DoH sunucusu (RFC 8484) - aynı DNSCore'u
                          kullanır, kendi HTTP(S) katmanını sarar.
+  dot_server.py          DoT sunucusu (RFC 7858) - TLS ile sarılmış
+                         dnslib TCP sunucusu; sertifika yoksa açılmaz.
+  doq_server.py          DoQ sunucusu (RFC 9250) - aioquic tabanlı;
+                         sertifika yoksa açılmaz.
 cache_loop.py            Süresi dolmuş cache kayıtlarını periyodik
                          olarak (arka planda, async) temizler.
 logs/dns_logs.py         Her sorguyu (client IP, domain, tip, sonuç)
                          stdout'a loglar - `docker logs` ile takip edilir.
-db_ops/                  (Geliştirme aşamasında) MariaDB bağlantı havuzu
-                         - henüz sorgu kayıtlarını tutan bir özellik
-                         olarak bağlanmadı.
+db_ops/                  MariaDB katmanı: aiomysql bağlantı havuzu
+                         (DB_CON) + sorgu olaylarını tamponlayıp toplu
+                         yazan DBManager. Tüm sunucular her sorguyu
+                         buraya bırakır; 60 sn'de bir DB'ye flush edilir.
+healthcheck.py           Docker HEALTHCHECK - aktif sunuculara gerçek
+                         sorgu atarak sağlık kontrolü yapar.
 settings.py              .env dosyasının konumunu ve ilk oluşturmasını
                          yönetir.
+install.sh               Sunucuya tek komutla kurulum (aşağıya bak).
+setup.sh                 .env ayarlarını soru-cevapla yazan sihirbaz.
+upgrade.sh               Kurulu sürümü git üzerinden günceller.
 ```
 
 Tüm sunucular (`servers/`) tek bir `DNSCore` instance'ını paylaşır — yani
@@ -80,19 +100,52 @@ tam tersi).
 
 ## Kurulum
 
-### Yerel (venv ile)
+### Sunucuya kurulum — `install.sh` (önerilen)
+
+Debian/Ubuntu tabanlı bir sunucuda tek komut (root ister):
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python app.py
+curl -fsSL https://raw.githubusercontent.com/NmnRn/Dns-Resolver/main/install.sh | sudo bash
 ```
 
-### Docker ile
+Script sırasıyla şunları yapar ve **idempotenttir** (tekrar çalıştırmak
+güvenlidir; üretilen DB parolası korunur, mevcut ayar bozulmaz):
+
+1. Eksikse gerekli paketleri kurar (`git`; MariaDB yoksa onu da kurar).
+   Docker'ın kurulu olmasını bekler, değilse anlaşılır bir hatayla durur.
+2. Depoyu `/opt/DNS_RESOLVER` altına klonlar (zaten varsa `git pull`).
+3. `dns-net` Docker ağını (`172.27.17.0/24`) oluşturur — container bu
+   ağda sabit `172.27.17.2` IP'sini alır.
+4. Host'taki MariaDB'yi container'lardan erişilebilir yapar:
+   - `bind-address = 127.0.0.1,172.27.17.1` (yalnızca loopback + dns-net
+     gateway'i; public arayüz **dinlenmez**. MariaDB 10.11 öncesinde
+     çoklu adres desteklenmediği için 0.0.0.0'a düşer — erişim yine de
+     kullanıcı bazında kısıtlıdır).
+   - `dns_db` veritabanı + `dns_user@'172.27.17.%'` kullanıcısı
+     (parola otomatik üretilir; yalnızca dns-net'teki container'lar
+     bağlanabilir).
+   - MariaDB'nin reboot'ta Docker'dan **sonra** başlaması için systemd
+     drop-in'i (172.27.17.1 ancak Docker köprüyü kurunca var olur).
+5. DB ayarlarını `.env` dosyasına yazar (`chmod 600`) ve `SELECT 1` ile
+   bağlantıyı uçtan uca test eder.
+
+Kurulum bittikten sonra:
 
 ```bash
-docker network create dns-net   # yoksa
+cd /opt/DNS_RESOLVER
+sudo ./setup.sh                     # sunucu ayarlarını (.env) soru-cevapla yaz
+sudo docker compose up -d --build   # çözümleyiciyi başlat
+```
+
+`docker compose`, `.env`'deki `DB_*` değerlerini container'a kendisi
+geçirir — imajın içindeki `.env` bilerek boştur.
+
+### Elle Docker kurulumu
+
+`install.sh` kullanmak istemiyorsan:
+
+```bash
+docker network create --subnet=172.27.17.0/24 dns-net   # yoksa
 docker compose up -d --build
 ```
 
@@ -102,6 +155,30 @@ gibi başka bir DNS servisiyle aynı network üzerinden (isimle ya da sabit
 IP'yle) konuşabilmesi için. Böyle bir servisin yoksa ya da farklı bir
 kurulum istiyorsan `docker-compose.yml`'deki `networks:` bölümünü
 ihtiyacına göre düzenle.
+
+Bu yolda MariaDB'yi kendin kurup `.env`'e `DB_*` değerlerini yazman
+gerekir (install.sh'ın 4-5. adımlarının elle karşılığı) — uygulama
+açılışta veritabanına bağlanamazsa net bir hatayla durur.
+
+### Yerel geliştirme (venv ile)
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+Sorgu loglama açılışta bir MariaDB'ye bağlanmak ister; yerelde en hızlı
+yol geçici bir container'dır (kodun varsayılanlarıyla eşleşir):
+
+```bash
+docker run --rm -d --name dev-mariadb \
+  -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=dns_db \
+  -p 127.0.0.1:3306:3306 mariadb:11
+```
+
+Testler DB gerektirmez: `python -m pytest`.
 
 ## Yapılandırma
 
@@ -126,12 +203,20 @@ dosyasını ona göre yazar.
 | `ENABLE_UDP_SERVER` | `true` | UDP/TCP DNS sunucusu açık mı |
 | `ENABLE_HTTPS_SERVER` | `false` | DoH sunucusu açık mı (sertifika hazır olmadan `true` yapma) |
 | `ALLOWED_HOST` | `dns.example.com` | DoH sunucusunun kabul edeceği `Host` header'ı — bu domain dışındaki isteklere `404` döner |
-| `CERT_FILE` | `/app/certificates/fullchain.pem` | DoH için TLS sertifikası (yoksa sunucu düz HTTP'ye düşer) |
-| `KEY_FILE` | `/app/certificates/privkey.pem` | DoH için TLS özel anahtarı |
+| `ENABLE_DOT_SERVER` | `false` | DoT sunucusu açık mı (sertifika şart; yoksa açılmaz) |
+| `ENABLE_DOQ_SERVER` | `false` | DoQ sunucusu açık mı (sertifika şart; yoksa açılmaz) |
+| `CONTAINER_DOT_PORT` | `8853` | DoT sunucusunun **container içi** portu |
+| `CONTAINER_DOQ_PORT` | `8530` | DoQ sunucusunun **container içi** portu |
+| `CERT_FILE` | `/app/certificates/fullchain.pem` | DoH/DoT/DoQ için TLS sertifikası (DoH sertifikasız düz HTTP'ye düşer, DoT/DoQ açılmaz) |
+| `KEY_FILE` | `/app/certificates/privkey.pem` | TLS özel anahtarı |
 | `EXTERNAL_UDP_PORT` | `53` | (Opsiyonel, sadece dışarı port açılırsa) host'un dışarıya açtığı UDP/TCP portu |
 | `EXTERNAL_HTTPS_PORT` | `443` | (Opsiyonel, sadece dışarı port açılırsa) host'un dışarıya açtığı HTTPS portu |
+| `EXTERNAL_DOT_PORT` / `EXTERNAL_DOQ_PORT` | `853` | (Opsiyonel, sadece dışarı port açılırsa) DoT (tcp) / DoQ (udp) dış portları |
 | `LOG_DAYS` | `90` | (Şu an aktif kullanılmıyor - loglar stdout'a gidiyor, `docker logs` üzerinden takip edilir) |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | - | (Geliştirme aşamasında, henüz bağlanmadı) MariaDB bağlantı bilgileri |
+| `DB_HOST` | `172.27.17.1` (compose) / `localhost` (yerel) | MariaDB adresi — install.sh `.env`'e yazar |
+| `DB_PORT` | `3306` | MariaDB portu |
+| `DB_USER` / `DB_PASSWORD` | `dns_user` / install.sh üretir | Sorgu loglarını yazan DB kullanıcısı |
+| `DB_NAME` | `dns_db` | Sorgu loglarının tutulduğu veritabanı |
 
 ## DoH sunucusunu dış erişime (Cloudflare Tunnel vb.) açmak
 
@@ -166,11 +251,12 @@ ve gerekli önlemleri (rate limiting, IP kısıtlaması vb.) aldıktan sonra aç
 
 ## Bilinen eksikler / yol haritası
 
-- DoT (DNS-over-TLS, port 853) ve DoQ (DNS-over-QUIC) henüz yazılmadı.
-- `db_ops/` (MariaDB) sorgu geçmişi/istatistik tutmak için hazırlanıyor,
-  henüz hiçbir sunucuya bağlanmadı.
-- `ttl_cache`'de proaktif eviction yok, sadece okuma sırasında ve
-  periyodik temizlikte kontrol ediliyor.
+- **Blocklist / whitelist filtreleme** — sorgu, çözümlemeye girmeden
+  DB'den beslenen listelerle karşılaştırılacak (DNS sinkhole); planlandı.
+- **Web yönetim paneli (Django)** — sorgu istatistikleri ve liste
+  yönetimi için; DNS tarafı bitince başlanacak.
+- Cache'te proaktif eviction yok, okuma sırasında ve periyodik
+  temizlikte kontrol ediliyor.
 
 ## Lisans
 
