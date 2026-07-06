@@ -5,6 +5,9 @@
 # Kullanım (root olarak):
 #   curl -fsSL https://raw.githubusercontent.com/NmnRn/Dns-Resolver/main/install.sh | sudo bash
 #
+# MariaDB'yi betik yönetmesin, kendim yapılandıracağım dersen:
+#   curl -fsSL .../install.sh | sudo SKIP_MARIADB=1 bash
+#
 # Yaptıkları:
 #   1. Gerekli paketleri kurar (git — eksikse)
 #   2. Depoyu /opt/DNS_RESOLVER altına klonlar (zaten varsa günceller)
@@ -75,6 +78,15 @@ else
 fi
 
 # --- 4) MariaDB: kur + konteyner erişimine aç ---------------------------------
+# SKIP_MARIADB=1 verilirse bu bölümün tamamı atlanır (harici/mevcut MariaDB'yi
+# kendin yönetmek için). Aşağıdaki gövde girintisiz bırakıldı, blok sonu: "fi".
+if [ "${SKIP_MARIADB:-0}" = "1" ]; then
+info "SKIP_MARIADB=1: MariaDB adımları atlandı. Elle yapman gerekenler:"
+echo "    1) MariaDB'nin $DB_HOST_IP adresini dinlemesi (bind-address = 127.0.0.1,$DB_HOST_IP)"
+echo "    2) '$DB_NAME' veritabanı + '$DB_USER'@'$DB_ALLOWED_FROM' kullanıcısı ve GRANT"
+echo "    3) $INSTALL_DIR/.env içine DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME değerleri"
+else
+
 if ! command -v mariadb >/dev/null && ! command -v mysql >/dev/null; then
     info "MariaDB host'a kuruluyor..."
     if [ "$PKG" = apt ]; then
@@ -116,13 +128,17 @@ fi
 # en son okunur.
 CNF_FILE="$CNF_DIR/zz-dns-resolver.cnf"
 rm -f "$CNF_DIR/99-dns-resolver.cnf"   # eski script sürümünün dosyası kalmasın
-if [ ! -f "$CNF_FILE" ] || ! grep -q "^bind-address = $BIND_VALUE\$" "$CNF_FILE"; then
+if [ ! -f "$CNF_FILE" ] || ! grep -q "^bind-address = $BIND_VALUE\$" "$CNF_FILE" \
+        || ! grep -q "^skip-name-resolve\$" "$CNF_FILE"; then
     info "MariaDB bind-address ayarlanıyor ($CNF_FILE -> $BIND_VALUE)..."
     cat > "$CNF_FILE" <<CNF
 # DNS Resolver: dns-net konteynerlerinin host'taki MariaDB'ye erişimi için.
 # Erişim izni install.sh tarafından yalnızca $DB_USER@$DB_ALLOWED_FROM kullanıcısına verilir.
+# skip-name-resolve: istemciler rDNS ile değil IP ile eşleştirilir — izinlerimiz
+# IP bazlı olduğundan hostname çözümlemesi yalnızca sürpriz üretir.
 [mysqld]
 bind-address = $BIND_VALUE
+skip-name-resolve
 CNF
     systemctl restart mariadb
 fi
@@ -160,6 +176,10 @@ CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
 CREATE USER IF NOT EXISTS '$DB_USER'@'$DB_ALLOWED_FROM' IDENTIFIED BY '$DB_PASSWORD';
 ALTER USER '$DB_USER'@'$DB_ALLOWED_FROM' IDENTIFIED BY '$DB_PASSWORD';
 GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'$DB_ALLOWED_FROM';
+-- 127.0.0.1 izni yalnızca aşağıdaki bağlantı testi için (konteynerler %'den gelir)
+CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASSWORD';
+ALTER USER '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASSWORD';
+GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'127.0.0.1';
 FLUSH PRIVILEGES;
 SQL
 
@@ -179,15 +199,24 @@ chmod 600 "$ENV_FILE"
 info ".env dosyasına DB ayarları yazıldı."
 
 # --- 6) Bağlantı testi -----------------------------------------------------------
-# 172.27.17.1'e bağlanınca kaynak IP de 172.27.17.1 olur; % izni onu da kapsar.
-# Böylece hem bind-address hem kullanıcı/izin tek testte doğrulanır.
-info "Veritabanı bağlantısı test ediliyor ($DB_HOST_IP:$DB_PORT)..."
-if "$MARIADB_CLI" -h "$DB_HOST_IP" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" \
-        "$DB_NAME" -e "SELECT 1;" >/dev/null 2>&1; then
-    info "Veritabanı bağlantısı BAŞARILI."
-else
-    hata "Veritabanı bağlantı testi başarısız. Loglar: journalctl -u mariadb"
+# Not: host'tan 172.27.17.1'e bağlanmak yanıltıcıdır — Docker'ın MASQUERADE
+# kuralı kaynak IP'yi (dns-net bloğunda olduğu için) dış IP'ye çevirir ve
+# % izni eşleşmez. Konteynerler bu kurala takılmaz. Bu yüzden:
+#   a) dinleyici kontrolü: MariaDB gerçekten 172.27.17.1:3306'da mı?
+#   b) kimlik/parola/db testi: 127.0.0.1 üzerinden.
+info "Veritabanı test ediliyor..."
+if ! ss -ltn | grep -q "$DB_HOST_IP:$DB_PORT"; then
+    hata "MariaDB $DB_HOST_IP:$DB_PORT dinlemiyor - $CNF_FILE okunuyor mu? Loglar: journalctl -u mariadb"
 fi
+info "Dinleyici doğrulandı: $DB_HOST_IP:$DB_PORT"
+
+TEST_HATA=$("$MARIADB_CLI" -h 127.0.0.1 -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" \
+        "$DB_NAME" -e "SELECT 1;" 2>&1 >/dev/null) || {
+    hata "Veritabanı bağlantı testi başarısız: $TEST_HATA"
+}
+info "Veritabanı bağlantısı BAŞARILI."
+
+fi  # SKIP_MARIADB bloğu sonu
 
 echo
 info "Kurulum tamamlandı. Sonraki adımlar:"
