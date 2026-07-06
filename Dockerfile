@@ -17,7 +17,9 @@ USER resolver
 ENV BIND_ADDRESS=0.0.0.0 \
     UDP_PORT=5300
 
-HEALTHCHECK --interval=30s --timeout=6s --start-period=10s --retries=3 \
+# interval 15m: healthcheck sorgusu (example.com) DB'ye loglandigi icin
+# sik aralik tabloyu gurultuye boguyordu (30s = gunde 2880 satir).
+HEALTHCHECK --interval=15m --timeout=6s --start-period=10s --retries=3 \
     CMD python healthcheck.py || exit 1
 
 CMD ["python", "app.py"]
