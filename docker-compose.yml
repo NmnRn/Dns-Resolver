@@ -16,6 +16,13 @@ services:
       - CONTAINER_DOT_PORT=${CONTAINER_DOT_PORT:-8853}
       - CERT_FILE=${CERT_FILE:-/app/certificates/fullchain.pem}
       - KEY_FILE=${KEY_FILE:-/app/certificates/privkey.pem}
+      # DB ayarları host'taki .env'den okunur (install.sh yazar); imajın
+      # içindeki .env bilerek boştur (.dockerignore) - değerler buradan geçer.
+      - DB_HOST=${DB_HOST:-172.27.17.1}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-dns_user}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+      - DB_NAME=${DB_NAME:-dns_db}
     # Varsayılan: host'a hiç port açılmıyor, container sadece dns-net
     # üzerinden diğer container'lara (AdGuard, Cloudflare Tunnel) erişilebilir.
     # Dışarıya (host'un public IP'sine) de açmak istersen bu bloğu yorumdan
