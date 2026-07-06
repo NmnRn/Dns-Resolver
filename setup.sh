@@ -125,6 +125,13 @@ fi
 
 log_days="$(get_existing LOG_DAYS 90)"
 
+# install.sh'in yazdigi DB_ ayarlarini uzerine yazarken KAYBETME:
+# mevcut dosyadan al, yeni dosyanin sonuna geri koy.
+db_lines=""
+if [ -f "$ENV_PATH" ]; then
+    db_lines=$(grep '^DB_' "$ENV_PATH" || true)
+fi
+
 cat > "$ENV_PATH" <<EOF
 BIND_ADDRESS=$bind_address
 CONTAINER_UDP_PORT=$container_udp_port
@@ -144,6 +151,11 @@ EXTERNAL_DOT_PORT=$external_dot_port
 EXTERNAL_DOQ_PORT=$external_doq_port
 LOG_DAYS=$log_days
 EOF
+
+if [ -n "$db_lines" ]; then
+    printf '%s\n' "$db_lines" >> "$ENV_PATH"
+    echo "Mevcut DB_ ayarlari korundu."
+fi
 
 echo
 echo ".env dosyasi yazildi: $ENV_PATH"
