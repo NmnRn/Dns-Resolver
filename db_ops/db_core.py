@@ -94,7 +94,7 @@ class DB_CON():
                     domain VARCHAR(255),
                     record_type VARCHAR(10),
                     client_ip VARCHAR(45),
-                    timestamp BIGINT,
+                    queried_at DATETIME,
                     method VARCHAR(16)
                 )
             """)

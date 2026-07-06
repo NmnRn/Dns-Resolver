@@ -1,7 +1,9 @@
 import threading
+import asyncio
+from datetime import datetime, timezone
 
 import db_ops.db_core as dbops
-import asyncio
+
 MAX_BUFFER = 50_000  # DB erişilemezken tamponun büyüyebileceği üst sınır
 
 from logs.dns_logs import logger
@@ -30,7 +32,7 @@ class DBManager(dbops.DB_CON):
         """
         Write pending query events to the database in one batch.
         Called periodically (and once at shutdown).
-        Buffered event shape: (domain, {'record_type', 'client_ip', 'timestamp', 'method'})
+        Buffered event shape: (domain, {'record_type', 'client_ip', 'queried_at', 'method'})
         """
         with self._lock:
             batch, self.flush_cache = self.flush_cache, []
@@ -38,14 +40,14 @@ class DBManager(dbops.DB_CON):
             return
 
         params = [
-            (domain, value['record_type'], value['client_ip'], value['timestamp'], value['method'])
+            (domain, value['record_type'], value['client_ip'], value['queried_at'], value['method'])
             for domain, value in batch
         ]
         try:
             async with self.get_db_cursor() as (cursor, conn):
                 await cursor.executemany(
                     """
-                    INSERT INTO dns_cache (domain, record_type, client_ip, timestamp, method)
+                    INSERT INTO dns_cache (domain, record_type, client_ip, queried_at, method)
                     VALUES (%s, %s, %s, %s, %s)
                     """,
                     params,
@@ -67,7 +69,12 @@ class DBManager(dbops.DB_CON):
         """
         Add a query event to the buffer. Thread-safe and non-blocking;
         safe to call from sync handler threads and async code alike.
+
+        Zaman damgasını çağıran değil BURASI vurur: tek saat, tek format —
+        GMT+0 (UTC), tz-suffix'siz DATETIME olarak DB'ye gider.
         """
+        value = dict(value)  # çağıranın dict'ini değiştirme
+        value["queried_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
         with self._lock:
             self.flush_cache.append((key, value))
 

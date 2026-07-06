@@ -3,7 +3,6 @@ import ssl
 
 from dotenv import load_dotenv
 from dnslib.server import DNSServer
-from time import time as now
 import servers.normal_udp as udp_server
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))  # .env dosyasını yükle

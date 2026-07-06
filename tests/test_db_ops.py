@@ -8,6 +8,7 @@ write_cache_to_db'nin takas deseni şu garantileri vermeli:
 """
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import pytest
 
@@ -46,16 +47,28 @@ def make_manager(fail=False):
 
 
 def _event():
-    return {"record_type": "A", "client_ip": "1.1.1.1",
-            "timestamp": 100, "method": "Normal DNS"}
+    return {"record_type": "A", "client_ip": "1.1.1.1", "method": "Normal DNS"}
+
+
+def test_add_to_cache_stamps_naive_utc_datetime():
+    """Zaman damgasını add_to_cache vurur: tz-suffix'siz (naive) UTC datetime."""
+    manager, _, _ = make_manager()
+    manager.add_to_cache("a.com.", _event())
+
+    stamped = manager.flush_cache[0][1]["queried_at"]
+    assert isinstance(stamped, datetime)
+    assert stamped.tzinfo is None
+    utc_simdi = datetime.now(timezone.utc).replace(tzinfo=None)
+    assert abs((utc_simdi - stamped).total_seconds()) < 5
 
 
 def test_flush_writes_batch_and_commits():
     manager, cursor, conn = make_manager()
     manager.add_to_cache("a.com.", _event())
+    stamped = manager.flush_cache[0][1]["queried_at"]
     asyncio.run(manager.write_cache_to_db())
 
-    assert cursor.received == [("a.com.", "A", "1.1.1.1", 100, "Normal DNS")]
+    assert cursor.received == [("a.com.", "A", "1.1.1.1", stamped, "Normal DNS")]
     assert conn.committed
     assert manager.flush_cache == []
 

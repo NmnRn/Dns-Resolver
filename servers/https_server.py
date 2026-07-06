@@ -6,7 +6,6 @@ from dnslib import QTYPE, RCODE, DNSRecord
 from dotenv import load_dotenv
 
 import settings
-from time import time as now
 settings.control_env_file()
 load_dotenv(settings.PROJECT_DIRECTORY / ".env")
 
@@ -62,7 +61,7 @@ class DoHHandler(BaseHTTPRequestHandler):
         log = logger.warning if rcode == RCODE.SERVFAIL else logger.info
         log("(DoH) %s %s %s -> %s (%d kayıt)", client_ip, qname, qtype, RCODE[rcode], len(records))
 
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "timestamp": int(now()), "method": "DnsOverHTTPS"})
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "method": "DnsOverHTTPS"})
 
         self.send_response(200)
         self.send_header("Content-Type", "application/dns-message")

@@ -396,7 +396,7 @@ class DNSResolver(BaseResolver):
         log = logger.warning if rcode == RCODE.SERVFAIL else logger.info
         log("%s %s %s -> %s (%d kayıt)", client_ip, qname, qtype, RCODE[rcode], len(records))
 
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "timestamp": int(now()), "method": self.method})
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "method": self.method})
         
         return reply
  
