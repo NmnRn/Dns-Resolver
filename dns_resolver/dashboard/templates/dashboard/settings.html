@@ -4,7 +4,7 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/settings.css' %}">{% endblock %}
 {% block content %}
     <h1>Genel Ayarlar</h1>
-    <p class="sub">Geçmiş kaydı ve önbellek davranışı. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok).</p>
+    <p class="sub">Geçmiş, önbellek ve çözümleme davranışı. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok).</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
@@ -12,28 +12,44 @@
         <div class="error">Veritabanına erişilemedi: {{ error }}</div>
     {% else %}
     <div class="setwrap">
-        <form method="post" class="box setcard">
+        <form method="post">
             {% csrf_token %}
-            <div class="setrow">
-                <div class="si">
-                    <div class="t">Sorgu geçmişi</div>
-                    <div class="d">Kapalıyken sorgular veritabanına yazılmaz — Genel Bakış / Sorgu Geçmişi / Analiz beslenmez (çözümleme çalışmaya devam eder).</div>
+            <div class="box setcard">
+                <div class="setrow">
+                    <div class="si">
+                        <div class="t">Sorgu geçmişi</div>
+                        <div class="d">Kapalıyken sorgular veritabanına yazılmaz — Genel Bakış / Sorgu Geçmişi / Analiz beslenmez (çözümleme çalışmaya devam eder).</div>
+                    </div>
+                    <label class="sw"><input type="checkbox" name="log_queries" {% if log_queries %}checked{% endif %}><span></span></label>
                 </div>
-                <label class="sw"><input type="checkbox" name="log_queries" {% if log_queries %}checked{% endif %}><span></span></label>
-            </div>
-            <div class="setrow">
-                <div class="si">
-                    <div class="t">Önbellek</div>
-                    <div class="d">Kapalıyken her sorgu baştan çözülür (yavaş ama taze). Açıkken cevaplar TTL süresince bellekte tutulur.</div>
+                <div class="setrow">
+                    <div class="si">
+                        <div class="t">Önbellek</div>
+                        <div class="d">Kapalıyken her sorgu baştan çözülür (yavaş ama taze). Açıkken cevaplar TTL süresince bellekte tutulur.</div>
+                    </div>
+                    <label class="sw"><input type="checkbox" name="cache_enabled" {% if cache_enabled %}checked{% endif %}><span></span></label>
                 </div>
-                <label class="sw"><input type="checkbox" name="cache_enabled" {% if cache_enabled %}checked{% endif %}><span></span></label>
+                <div class="ttlrow">
+                    <div class="ttlf"><label>Min TTL (sn)</label><input type="number" name="cache_min_ttl" value="{{ cache_min_ttl }}" min="0"></div>
+                    <div class="ttlf"><label>Max TTL (sn)</label><input type="number" name="cache_max_ttl" value="{{ cache_max_ttl }}" min="1"></div>
+                </div>
+                <p class="setnote">Min TTL kısa süreli kayıtları en az bu kadar bellekte tutar (0 = dokunma); Max TTL üst sınırdır.</p>
             </div>
-            <div class="ttlrow">
-                <div class="ttlf"><label>Min TTL (sn)</label><input type="number" name="cache_min_ttl" value="{{ cache_min_ttl }}" min="0"></div>
-                <div class="ttlf"><label>Max TTL (sn)</label><input type="number" name="cache_max_ttl" value="{{ cache_max_ttl }}" min="1"></div>
+
+            <div class="box setcard" style="margin-top:16px;">
+                <div class="setrow">
+                    <div class="si">
+                        <div class="t">Kendi çekirdeğimizi kullan</div>
+                        <div class="d">Açık: recursive çözümleyici (root→TLD→yetkili sunucuları kendi yürür). Kapalı: sorguları aşağıdaki upstream sunuculara iletir (forwarding).</div>
+                    </div>
+                    <label class="sw"><input type="checkbox" name="use_recursion" {% if use_recursion %}checked{% endif %}><span></span></label>
+                </div>
+                <label class="modelbl">Upstream sunucular (satır başına bir tane)</label>
+                <textarea class="upst" name="upstreams" rows="4" spellcheck="false" placeholder="1.1.1.1&#10;8.8.8.8&#10;https://dns.quad9.net/dns-query&#10;tls://dns.google">{{ upstreams }}</textarea>
+                <p class="setnote">Desteklenen: düz IP (UDP/53) · <span class="mono">https://…</span> (DoH) · <span class="mono">tls://host</span> (DoT). Yalnız "Kendi çekirdeğimizi kullan" KAPALIYKEN devreye girer.</p>
             </div>
-            <p class="setnote">Min TTL kısa süreli kayıtları en az bu kadar bellekte tutar (0 = dokunma); Max TTL üst sınırdır.</p>
-            <div class="setfoot"><button class="btn" type="submit">Kaydet</button></div>
+
+            <div style="margin-top:16px;"><button class="btn" type="submit">Kaydet</button></div>
         </form>
 
         <form method="post" class="box setcard" style="margin-top:16px;">

@@ -299,6 +299,9 @@ def main():
                     core.cache_max_ttl = max(1, int(await db_manager.get_setting('cache_max_ttl', str(udp_server.MAX_TTL))))
                 except (TypeError, ValueError):
                     core.cache_max_ttl = udp_server.MAX_TTL
+                core.use_recursion = (str(await db_manager.get_setting('use_recursion', '1')) != '0')
+                ups = await db_manager.get_setting('upstreams', '') or ''
+                core.upstreams = [ln.strip() for ln in ups.replace(',', '\n').splitlines() if ln.strip()]
                 clear_at = await db_manager.get_setting('cache_clear_at', '0')
                 if _seen_clear["at"] is None:
                     _seen_clear["at"] = clear_at            # açılışta boşaltma

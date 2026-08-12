@@ -205,7 +205,7 @@ class DB_CON():
             await cursor.execute(
                 "INSERT IGNORE INTO app_settings (k, v) VALUES "
                 "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),"
-                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
+                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
                 ('cert_file', os.getenv('CERT_FILE', 'certificates/fullchain.pem'),
                  'key_file', os.getenv('KEY_FILE', 'certificates/privkey.pem'),
                  # İç dinleme portları (build_* env'den okur; dış/host yayını ayrı).
@@ -218,7 +218,10 @@ class DB_CON():
                  'cache_enabled', '1',      # önbellek aç/kapa
                  'cache_min_ttl', '0',      # alt sınır (0 = yok)
                  'cache_max_ttl', '86400',  # üst sınır (sn)
-                 'cache_clear_at', '0'),    # panelden "temizle" damgası (değişince resolver boşaltır)
+                 'cache_clear_at', '0',     # panelden "temizle" damgası (değişince resolver boşaltır)
+                 # Çözümleme modu: recursion (kendi çekirdek) vs forwarding.
+                 'use_recursion', '1',      # 1 = recursive, 0 = forwarding
+                 'upstreams', ''),          # forwarding upstream'leri (satır başına bir tane)
             )
             await conn.commit()
 

@@ -278,7 +278,63 @@ class DNSCore:
             if resp is not None:
                 return resp
         return None
- 
+
+    # --- Forwarding (upstream'e iletme) --------------------------------------
+    def _query_dot(self, domain, qtype, host, port=853, timeout=QUERY_TIMEOUT):
+        """DoT istemci: host:port'a TLS ile bağlan, uzunluk-önekli DNS gönder/al."""
+        q = DNSRecord.question(domain, qtype)
+        q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE))
+        qid = q.header.id
+        sock = None
+        try:
+            ctx = ssl.create_default_context()
+            raw = socket.create_connection((host, port), timeout=timeout)
+            sock = ctx.wrap_socket(raw, server_hostname=host)
+            sock.settimeout(timeout)
+            data = q.pack()
+            sock.sendall(struct.pack("!H", len(data)) + data)
+            length = struct.unpack("!H", _recv_exact(sock, 2))[0]
+            resp = DNSRecord.parse(_recv_exact(sock, length))
+            return resp if resp.header.id == qid else None
+        except Exception:
+            return None
+        finally:
+            if sock is not None:
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+
+    def _query_forward_one(self, domain, qtype, upstream):
+        """Tek bir upstream'e ilet — protokolü ön eke göre seç (https/tls/udp/düz IP)."""
+        u = upstream.strip()
+        if not u:
+            return None
+        low = u.lower()
+        try:
+            if low.startswith("https://"):
+                return self._query_doh(domain, qtype, u)
+            if low.startswith("tls://"):
+                host, _, port = u[6:].partition(":")
+                return self._query_dot(domain, qtype, host, int(port) if port else 853)
+            if low.startswith("quic://"):
+                logger.warning("DoQ upstream henuz desteklenmiyor, atlaniyor.")
+                return None
+            if low.startswith("udp://"):
+                u = u[6:]
+            host = u.split(":")[0]          # düz IP / host (port 53 varsayılır)
+            return self._query(domain, qtype, host)
+        except Exception:
+            return None
+
+    def _forward(self, domain, qtype):
+        """Forwarding modu: upstream'leri sırayla dene, ilk cevabı dön."""
+        for up in self.upstreams:
+            resp = self._query_forward_one(domain, qtype, up)
+            if resp is not None:
+                return resp
+        return None
+
     # --- Asıl çözümleme ------------------------------------------------------
     def resolve(self, domain, qtype, depth=0):
         """
@@ -300,7 +356,23 @@ class DNSCore:
             logger.debug("Cache hit for **** (%s)", qtype)
             return cached
         logger.debug("Cache miss for **** (%s)", qtype)
- 
+
+        # Forwarding modu: kendi çekirdeğimiz kapalıysa upstream'lere ilet (recursion yok).
+        if not self.use_recursion and self.upstreams:
+            resp = self._forward(domain, qtype)
+            if resp is None:
+                return RCODE.SERVFAIL, []
+            rcode = resp.header.rcode
+            if rcode == RCODE.NXDOMAIN:
+                self._cache_put(domain, qtype, RCODE.NXDOMAIN, [], self._soa_ttl(resp.auth))
+                return RCODE.NXDOMAIN, []
+            if resp.rr:
+                self._cache_put(domain, qtype, rcode, list(resp.rr), _min_ttl(resp.rr))
+                return rcode, list(resp.rr)
+            if any(QTYPE[a.rtype] == "SOA" for a in resp.auth):
+                self._cache_put(domain, qtype, RCODE.NOERROR, [], self._soa_ttl(resp.auth))
+            return rcode, []
+
         # QNAME Minimisation (RFC 7816 / RFC 9156): her hop'ta tam ismi değil,
         # o an gereken kadar etiketi gönderiyoruz. Böylece root/TLD gibi asıl
         # kaydı hiç bilmeyen sunucular, kullanıcının tam olarak hangi ismi

@@ -595,6 +595,8 @@ async def settings_page(request):
                     await db.set_setting('cache_enabled', '1' if request.POST.get('cache_enabled') else '0')
                     await db.set_setting('cache_min_ttl', str(int(mn)))
                     await db.set_setting('cache_max_ttl', str(int(mx)))
+                    await db.set_setting('use_recursion', '1' if request.POST.get('use_recursion') else '0')
+                    await db.set_setting('upstreams', request.POST.get('upstreams', '').strip())
                     msg = ('ok', 'Ayarlar kaydedildi — resolver ~10 sn içinde uygular.')
         except Exception as exc:
             msg = ('error', f'{type(exc).__name__}: {exc}')
@@ -611,5 +613,7 @@ async def settings_page(request):
         cache_enabled=s.get('cache_enabled', '1') != '0',
         cache_min_ttl=s.get('cache_min_ttl', '0'),
         cache_max_ttl=s.get('cache_max_ttl', '86400'),
+        use_recursion=s.get('use_recursion', '1') != '0',
+        upstreams=s.get('upstreams', ''),
     )
     return render(request, 'dashboard/settings.html', context)
