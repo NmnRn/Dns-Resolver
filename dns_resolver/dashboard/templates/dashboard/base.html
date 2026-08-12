@@ -1,0 +1,38 @@
+{% load static %}<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}DNS Panel{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}">
+    {% block extra_css %}{% endblock %}
+    <script src="{% static 'dashboard/js/localtime.js' %}" defer></script>
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-in">
+            <div class="brand"><span class="dot"></span>dns.panel</div>
+            <nav>
+                <a href="{% url 'dashboard:logs' %}" class="{% if active == 'logs' %}active{% endif %}">Genel Bakış</a>
+                <a href="{% url 'dashboard:queries' %}" class="{% if active == 'queries' %}active{% endif %}">Sorgu Geçmişi</a>
+                <a href="{% url 'dashboard:analytics' %}" class="{% if active == 'analytics' %}active{% endif %}">Analiz</a>
+                <div class="navdd">
+                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'servers' or active == 'filters' or active == 'certificate' %}active{% endif %}">DNS Ayarları ▾</button>
+                    <div class="ddmenu">
+                        <a href="{% url 'dashboard:settings' %}">Genel</a>
+                        <a href="{% url 'dashboard:servers' %}">Sunucular</a>
+                        <a href="{% url 'dashboard:filters' %}">Filtreler</a>
+                        <a href="{% url 'dashboard:certificate' %}">Sertifika</a>
+                    </div>
+                </div>
+                <a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">Kullanıcılar</a>
+                <a href="{% url 'dashboard:guide' %}" class="{% if active == 'guide' %}active{% endif %}">Kurulum</a>
+            </nav>
+            <div class="user">{{ panel_username }} · <a href="{% url 'dashboard:logout' %}">Çıkış</a></div>
+        </div>
+    </header>
+    <main class="wrap">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from dnslib import QTYPE, RCODE, DNSRecord
 from dotenv import load_dotenv
 
-import settings
+from project_control import settings
 settings.control_env_file()
 load_dotenv(settings.PROJECT_DIRECTORY / ".env")
 
@@ -60,9 +60,11 @@ class DoHHandler(BaseHTTPRequestHandler):
         reply_bytes = reply.pack()
 
         log = logger.warning if rcode == RCODE.SERVFAIL else logger.info
-        log("(DoH) %s %s %s -> %s (%d kayıt)", client_ip, qname, qtype, RCODE[rcode], len(records))
+        # Mahremiyet: istemci IP + sorgulanan ad loglanmaz (DB'de gerçek tutulur).
+        log("(DoH) **** **** %s -> %s (%d kayıt)", qtype, RCODE[rcode], len(records))
 
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "DnsOverHTTPS"})
+        blocked_by = self.core.is_blocked(qname)
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doh", "blocked": bool(blocked_by), "blocked_by": blocked_by})
 
         self.send_response(200)
         self.send_header("Content-Type", "application/dns-message")
@@ -88,10 +90,13 @@ def build_server(core, bind="0.0.0.0", port=44300, certfile=None, keyfile=None):
     server = ThreadingHTTPServer((bind, port), _make_handler(core))
 
     has_certs = certfile and keyfile and os.path.exists(certfile) and os.path.exists(keyfile)
+    
     if has_certs:
+        logger.info("DoH sunucusu sertifikaları kontrol ediliyor: {certfile=%s, keyfile=%s}", certfile, keyfile)
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ctx.load_cert_chain(certfile=certfile, keyfile=keyfile)
         server.socket = ctx.wrap_socket(server.socket, server_side=True)
+        logger.info("DoH sunucusu sertifikaları başarıyla yüklendi.")
 
     scheme = "https" if has_certs else "http"
     if not has_certs:

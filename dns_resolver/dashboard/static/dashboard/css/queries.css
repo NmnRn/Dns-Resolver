@@ -1,0 +1,8 @@
+tr.pending{background:rgba(76,130,240,.05)}
+.livedot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:7px;vertical-align:middle;box-shadow:0 0 0 3px var(--accent-soft);animation:lp 1.6s ease-in-out infinite}
+@keyframes lp{0%,100%{opacity:1}50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.livedot{animation:none}}
+/* engellenen sorgu = kırmızı satır + hangi liste rozeti */
+tr.blocked{background:rgba(248,81,73,.06)}
+tr.blocked>td:first-child{color:var(--err);font-weight:500}
+.bblk{display:inline-block;margin-left:8px;font:600 10.5px var(--mono);color:var(--err);background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.32);border-radius:5px;padding:1px 7px;vertical-align:middle}

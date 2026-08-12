@@ -1,0 +1,171 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Kurulum · DNS Panel{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/guide.css' %}">{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:6px">
+    <h1>Kurulum &amp; Bağlantı Adresleri</h1>
+    <p class="sub">Cihazlarını bu çözümleyiciye bağlamak için kullanılabilir adresler (çalıştığın ortama göre taranır) + alan adını (ör. <code>dns.example.com</code>) bağlama ve DNS sağlayıcı (Cloudflare proxy) ayarları.</p>
+</div>
+
+<div class="callout note"><span class="ic">ℹ️</span><p>Sunucunun sıfırdan kurulumu (Docker, MariaDB, <code>install.sh</code>) proje <b>README</b>'sindedir. Bu sayfa <b>bağlantı adresleri + domain</b> tarafını anlatır.</p></div>
+
+<section id="adresler" class="conncard">
+    <h2>Bağlantı adresleri</h2>
+    <p>Panele şu an <b>{{ req_host }}</b> üzerinden eriştin{% if server_ips %} · sunucu IP: <b>{{ server_ips|join:", " }}</b>{% endif %}. Açık yöntemlere göre cihaz/uygulamalarda kullanabileceğin uç noktalar (kopyalanabilir):</p>
+    {% if conn %}
+        {% for c in conn %}
+        <div class="cendp">
+            <div class="cm"><span class="cbadge b-{{ c.m|lower }}">{{ c.m }}</span> {{ c.label }}{% if c.cert %} <span class="cnote">· sertifika {% if domain %}{{ domain }}{% else %}domain{% endif %} için geçerli olmalı</span>{% endif %}</div>
+            {% for it in c.items %}
+            <div class="code"><button class="copy">Kopyala</button><pre>{{ it }}</pre></div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        <div class="callout note" style="margin-bottom:0;"><span class="ic">ℹ️</span><p>Portlar konteynerin <b>iç dinleme portlarıdır</b> (<b>Sunucular</b>'dan ayarlanır). Dış eşlemede standart porta aldıysan (DoT/DoQ&nbsp;853, DoH&nbsp;443) domainde portu kaldır. Şifreli yöntemde IP ile bağlanırsan sertifika adı uyuşmayabilir — mümkünse domaini kullan.</p></div>
+    {% else %}
+        <p class="muted" style="margin:0;">Şu an açık yöntem yok — <b>Sunucular</b> sayfasından bir yöntem aç, adresler burada belirsin.</p>
+    {% endif %}
+</section>
+
+<div class="guide">
+    <nav class="gtoc">
+        <p class="lbl">İçindekiler</p>
+        <a href="#adresler">Bağlantı adresleri</a>
+        <a href="#roller">İki alan adı rolü</a>
+        <a href="#kayitlar">DNS kayıtları &amp; proxy</a>
+        <a href="#sertifika">Domain sertifikası</a>
+        <a href="#dogrula">Bağla &amp; doğrula</a>
+        <a href="#istemci">İstemciyi yönlendir</a>
+        <a href="#tunnel">Cloudflare Tunnel</a>
+        <a href="#hatalar">Sık hatalar</a>
+    </nav>
+
+    <div class="gc">
+        <!-- 1 -->
+        <section id="roller">
+            <h2><span class="n">1</span> İki alan adı rolü</h2>
+            <p>Domain'i iki ayrı iş için kullanırsın; ikisini karıştırma:</p>
+            <div class="kv">
+                <span class="k">DNS servisi</span><span class="v">dns.example.com → istemcilerin şifreli DNS için bağlandığı ad (DoT/DoH/DoQ). Sertifika bu ada göre.</span>
+                <span class="k">Panel (opsiyonel)</span><span class="v">panel.example.com → bu yönetim arayüzü (HTTP/HTTPS).</span>
+            </div>
+            <p>Aynı domaini ikisi için de kullanabilirsin ama <b>ayrı alt alan</b> daha temiz ve güvenli (paneli DNS'ten bağımsız koruyabilirsin).</p>
+            <div class="callout tip"><span class="ic">✓</span><p>Bir <b>A kaydı</b> için sunucunun public IP'si gerekir. Public IP/port açmak istemiyorsan <a href="#tunnel" style="color:var(--accent)">Cloudflare Tunnel</a> bölümüne bak.</p></div>
+        </section>
+
+        <!-- 2 -->
+        <section id="kayitlar">
+            <h2><span class="n">2</span> DNS kayıtları &amp; Cloudflare proxy</h2>
+            <p>Domain sağlayıcında (ör. Cloudflare) her kaydın <b>proxy</b> durumu kritik: <span class="cloud grey">DNS only · gri</span> mi yoksa <span class="cloud orange">Proxied · turuncu</span> mu. Cloudflare proxy'si <b>yalnız HTTP(S)</b> taşır.</p>
+
+            <h3>DoT &amp; DoQ (port 853) — proxy KAPALI</h3>
+            <p>DoT/DoQ ham TLS/QUIC'tir, HTTP değil → proxy bunları <b>taşıyamaz</b>. Doğrudan A kaydı + açık 853 şart:</p>
+            <div class="kv">
+                <span class="k">Kayıt</span><span class="v">dns.example.com&nbsp;&nbsp;A&nbsp;&nbsp;&lt;sunucu-ip&gt;</span>
+                <span class="k">Proxy</span><span class="v"><span class="cloud grey">DNS only · gri bulut</span></span>
+                <span class="k">Açık port</span><span class="v">853/tcp (DoT) + 853/udp (DoQ)</span>
+            </div>
+            <div class="callout warn"><span class="ic">⚠️</span><p>Bu kaydı <span class="cloud orange">turuncu</span> bırakırsan DoT/DoQ istemcileri <b>bağlanamaz</b>. Bulut <b>gri</b> olmalı.</p></div>
+
+            <h3>DoH (port 443) — proxy AÇIK olabilir</h3>
+            <p>DoH, HTTPS üzerindedir; tek istisna budur. Proxy açık ya da tünel ile çalışır:</p>
+            <div class="kv">
+                <span class="k">Kayıt</span><span class="v">dns.example.com&nbsp;&nbsp;A&nbsp;&nbsp;&lt;sunucu-ip&gt;</span>
+                <span class="k">Proxy</span><span class="v"><span class="cloud orange">Proxied · turuncu</span> ya da tünel</span>
+                <span class="k">Adres</span><span class="v">https://dns.example.com/dns-query</span>
+            </div>
+
+            <h3>Panel (443) — proxy AÇIK</h3>
+            <div class="kv">
+                <span class="k">Kayıt</span><span class="v">panel.example.com&nbsp;&nbsp;A/CNAME → sunucu / tünel</span>
+                <span class="k">Proxy</span><span class="v"><span class="cloud orange">Proxied · turuncu</span> (TLS + IP gizleme)</span>
+            </div>
+            <div class="callout tip"><span class="ic">✓</span><p>Paneli Cloudflare <b>Access</b> (SSO / e-posta doğrulama) arkasına al — panel login'inin önüne ikinci kapı.</p></div>
+
+            <h3>Özet</h3>
+            <div class="code"><pre>Yöntem   Std. port   Cloudflare proxy      Kayıt
+DoT      853         ✗ KAPALI (gri bulut)   A → sunucu IP, 853 açık
+DoQ      853/udp     ✗ KAPALI (gri bulut)   A → sunucu IP, 853/udp açık
+DoH      443         ✓ AÇIK / tünel         A → sunucu IP ya da tünel
+Panel    443         ✓ AÇIK / tünel         A/CNAME + Access
+UDP      53          ✗ (proxy yok)          genelde public açılmaz</pre></div>
+            <div class="callout note"><span class="ic">ℹ️</span><p>Kısa kural: <b>DoT/DoQ = gri bulut</b>, <b>DoH/panel = turuncu ya da tünel</b>.</p></div>
+        </section>
+
+        <!-- 3 -->
+        <section id="sertifika">
+            <h2><span class="n">3</span> Domain sertifikası</h2>
+            <p>Şifreli yöntemler, <b>bağladığın domaine ait</b> geçerli bir TLS sertifikası ister. Sertifikanın adı (CN/SAN) istemcinin bağlandığı adla <b>birebir</b> aynı olmalı — yoksa istemci doğrulaması başarısız olur.</p>
+            <div class="code"><button class="copy">Kopyala</button><pre>sudo certbot certonly --standalone -d dns.example.com
+# çıktı: /etc/letsencrypt/live/dns.example.com/{fullchain,privkey}.pem
+# bu dosyaları projedeki certificates/ altına koy</pre></div>
+            <p>Ardından panelden bağla: <b>DNS Ayarları → Sertifika</b> → yolları gir → <b>Doğrulama</b> kartında <b>GEÇERLİ</b> + <b>Özne (CN)</b> = <code>dns.example.com</code> gör.</p>
+            <div class="callout warn"><span class="ic">⚠️</span><p>Sertifika <code>dns.example.com</code> için ama istemci <code>baska.example.com</code>'a bağlanırsa TLS doğrulaması patlar. Cert adı = bağlanılan ad.</p></div>
+        </section>
+
+        <!-- 4 -->
+        <section id="dogrula">
+            <h2><span class="n">4</span> Bağla &amp; doğrula</h2>
+            <p>Kaydı + sertifikayı ayarladıktan sonra <b>Sunucular</b>'dan ilgili yöntemi aç, sonra domain üzerinden test et. İstemciler <b>standart portları</b> (DoT/DoQ 853, DoH 443) kullanır:</p>
+            <div class="code"><button class="copy">Kopyala</button><pre># DoT
+kdig +tls @dns.example.com +tls-hostname=dns.example.com example.com
+
+# DoQ
+kdig +quic @dns.example.com example.com
+
+# DoH
+kdig +https @dns.example.com example.com</pre></div>
+            <div class="callout note"><span class="ic">ℹ️</span><p>Dış (host) port eşlemen bu standart portları konteynerin <b>iç dinleme portlarına</b> yönlendirmeli: DoT 853→<code>{{ ports.dot }}</code>, DoH 443→<code>{{ ports.doh }}</code>, DoQ 853→<code>{{ ports.doq }}</code>. Eşleme <code>compose.override.yml</code>'dedir; iç portlar <b>Sunucular</b> sayfasından ayarlanır.</p></div>
+        </section>
+
+        <!-- 5 -->
+        <section id="istemci">
+            <h2><span class="n">5</span> İstemciyi domaine yönlendir</h2>
+            <p>Artık cihaz/uygulamalarda çözümleyici adresi olarak domaini gir:</p>
+            <div class="kv">
+                <span class="k">Android</span><span class="v">Ayarlar → Özel DNS (Private DNS) → dns.example.com  (DoT)</span>
+                <span class="k">Firefox</span><span class="v">Ayarlar → DoH → Özel → https://dns.example.com/dns-query</span>
+                <span class="k">iOS/macOS</span><span class="v">DoH/DoT .mobileconfig profili (dns.example.com)</span>
+                <span class="k">AdGuard/Router</span><span class="v">upstream: tls://dns.example.com  ·  https://dns.example.com/dns-query</span>
+            </div>
+            <div class="callout tip"><span class="ic">✓</span><p>Bir engelleyicinin (AdGuard Home / Pi-hole) arkasına recursive upstream olarak koyacaksan, dns-net içinde <code>{{ container_ip }}:{{ ports.udp }}</code> de kullanılabilir (domain gerekmez).</p></div>
+        </section>
+
+        <!-- 6 -->
+        <section id="tunnel">
+            <h2><span class="n">6</span> Cloudflare Tunnel (public IP/port yoksa)</h2>
+            <p>Sunucuya doğrudan port açamıyorsan <code>cloudflared</code> tüneli DoH ve paneli yayınlayabilir; A kaydı/açık port gerekmez.</p>
+            <div class="callout warn"><span class="ic">⚠️</span><p>Tünel <b>HTTP-only</b>'dir → yalnız <b>DoH + panel</b> çalışır. <b>DoT/DoQ tünelden geçmez</b>; onlar için doğrudan A kaydı (<span class="cloud grey">gri</span>) + açık 853 şarttır.</p></div>
+        </section>
+
+        <!-- 7 -->
+        <section id="hatalar">
+            <h2><span class="n">7</span> Sık yapılan hatalar</h2>
+            <ul>
+                <li><b>DoT/DoQ kaydı turuncu (proxied):</b> istemci bağlanamaz — <span class="cloud grey">gri bulut</span> yap.</li>
+                <li><b>Sertifika adı ≠ bağlanılan ad:</b> TLS doğrulama hatası — cert'i doğru domaine al.</li>
+                <li><b>Yalnız tünel + DoT beklemek:</b> tünel DoT/DoQ taşımaz; doğrudan port aç.</li>
+                <li><b>853 güvenlik duvarında kapalı:</b> DoT/DoQ dışarıdan erişilemez — 853/tcp+udp aç.</li>
+                <li><b>Panel public + auth'suz:</b> paneli tünel/proxy + Access ile koru, yalnız domain arkasına al.</li>
+            </ul>
+        </section>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.code .copy').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var pre = btn.parentElement.querySelector('pre');
+            var text = pre ? pre.innerText : '';
+            navigator.clipboard.writeText(text).then(function () {
+                var old = btn.textContent;
+                btn.textContent = 'Kopyalandı ✓';
+                btn.classList.add('ok');
+                setTimeout(function () { btn.textContent = old; btn.classList.remove('ok'); }, 1400);
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Sunucular · DNS Panel{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/servers.css' %}">{% endblock %}
+{% block content %}
+    <h1>Sunucular</h1>
+    <p class="sub">DNS yöntemlerini canlı aç/kapat — değişiklik ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık.</p>
+
+    {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
+
+    {% if error %}
+        <div class="error">Ayarlar veritabanına erişilemedi: {{ error }}</div>
+    {% else %}
+        <div class="srv-cards">
+            {% for m in methods %}
+            <form method="post" class="srv">
+                {% csrf_token %}
+                <input type="hidden" name="method" value="{{ m.key }}">
+                <div class="top">
+                    <span class="name"><span class="dotc b-{{ m.key }}"></span> {{ m.label }}</span>
+                    <button type="submit" name="enabled" value="{% if m.enabled %}0{% else %}1{% endif %}"
+                            class="toggle" aria-checked="{{ m.enabled|yesno:'true,false' }}"
+                            aria-label="{{ m.label }} aç/kapat"
+                            {% if m.key == 'udp' %}disabled title="UDP kapatılamaz (temel çözümleme)"{% endif %}></button>
+                </div>
+                <div class="meta">
+                    <span>İç port</span>
+                    <span class="portedit">
+                        <input type="number" name="port" value="{{ m.port }}" min="1" max="65535" class="mono pin" aria-label="{{ m.label }} iç dinleme portu">
+                        <button type="submit" name="save_port" value="1" class="pbtn">Kaydet</button>
+                    </span>
+                    <span>Durum</span><b style="color:{% if m.enabled %}var(--ok){% else %}var(--muted){% endif %}">{% if m.enabled %}açık{% else %}kapalı{% endif %}</b>
+                    {% if m.needs_cert %}<span>Sertifika</span><b>gerekli</b>{% endif %}
+                </div>
+            </form>
+            {% endfor %}
+        </div>
+        <p class="sub" style="margin-top:18px;">DoT/DoH/DoQ için geçerli sertifika yoksa açık istenip başlatılamaz (resolver güvenli şekilde atlar).</p>
+        <p class="sub" style="margin-top:6px;">“İç port” konteyner içindeki dinleme portudur; uygulanması için metodu kapatıp açın (UDP için resolver'ı yeniden başlatın). Dış/host port eşlemesi (<span class="mono">compose.override.yml</span>) ayrıdır — değiştirirseniz tünel/AdGuard upstream'ini ve host eşlemesini de güncelleyin.</p>
+    {% endif %}
+{% endblock %}

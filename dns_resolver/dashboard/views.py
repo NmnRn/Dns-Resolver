@@ -1,0 +1,615 @@
+"""
+DNS paneli view'ları.
+
+Salt-okuma sayfaları (logs) + canlı sunucu kontrolü (servers) asenkron çalışır
+ve DNS verisine aiomysql ile erişir (dashboard/db.py). Kimlik doğrulama
+Django'nun kendi auth'u (SQLite) ile yapılır; async view'lar ORM'e dokunmadan
+oturumu KONTROL eder (SESSION_ENGINE=signed_cookies olduğu için request.session
+erişimi async'te güvenlidir).
+"""
+import asyncio
+import os
+import re
+import socket
+from datetime import datetime, timezone
+
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth.models import User
+from django.shortcuts import redirect, render
+from django.urls import reverse
+
+from . import db
+from .catalog import catalog_grouped
+
+# Filtre menüsü + kontrol sayfası için desteklenen yöntemler.
+METHODS = ['udp', 'doh', 'dot', 'doq']
+METHOD_LABELS = {'udp': 'UDP · düz DNS', 'doh': 'DoH · HTTPS', 'dot': 'DoT · TLS', 'doq': 'DoQ · QUIC'}
+METHOD_PORTS = {'udp': 5300, 'doh': 44300, 'dot': 8853, 'doq': 8530}
+NEEDS_CERT = {'doh', 'dot', 'doq'}
+# Metot -> app_settings anahtarı (panelden ayarlanan iç dinleme portu).
+PORT_KEY = {'udp': 'udp_port', 'doh': 'https_port', 'dot': 'dot_port', 'doq': 'doq_port'}
+
+
+def _valid_port(s):
+    """1–65535 aralığında geçerli bir port değeri mi?"""
+    try:
+        p = int(str(s).strip())
+    except (TypeError, ValueError):
+        return False
+    return 1 <= p <= 65535
+
+
+# --------------------------------------------------------------------------- #
+# Kimlik doğrulama
+# --------------------------------------------------------------------------- #
+def setup(request):
+    """İlk açılış: hiç kullanıcı yoksa panel sahibini (superuser) oluşturur."""
+    if User.objects.exists():
+        return redirect('dashboard:login')
+    error, username = None, ''
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        if not username or len(password) < 8:
+            error = 'Kullanıcı adı gerekli ve parola en az 8 karakter olmalı.'
+        else:
+            user = User.objects.create_superuser(username=username, password=password)
+            auth_login(request, user)
+            request.session['panel_username'] = user.username
+            return redirect('dashboard:logs')
+    return render(request, 'dashboard/login.html', {
+        'mode_title': 'Kurulum', 'submit': 'Sahip hesabını oluştur',
+        'hint': 'İlk açılış — panel sahibi hesabını oluştur.',
+        'pw_autocomplete': 'new-password', 'error': error, 'username': username,
+    })
+
+
+def login_view(request):
+    if not User.objects.exists():
+        return redirect('dashboard:setup')
+    error, username = None, ''
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        user = authenticate(request, username=username, password=request.POST.get('password', ''))
+        if user is not None:
+            auth_login(request, user)
+            request.session['panel_username'] = user.username
+            return redirect(request.GET.get('next') or 'dashboard:logs')
+        error = 'Kullanıcı adı veya parola hatalı.'
+    return render(request, 'dashboard/login.html', {
+        'mode_title': 'Giriş', 'submit': 'Giriş yap', 'hint': 'Panele erişmek için giriş yap.',
+        'pw_autocomplete': 'current-password', 'error': error, 'username': username,
+    })
+
+
+def logout_view(request):
+    auth_logout(request)
+    return redirect('dashboard:login')
+
+
+def _gate(request):
+    """Async view'lar için ORM'siz oturum kontrolü; yoksa girişe yönlendirir."""
+    if not request.session.get('_auth_user_id'):
+        return redirect(f"{reverse('dashboard:login')}?next={request.path}")
+    return None
+
+
+def _base_ctx(request, active):
+    return {'active': active, 'panel_username': request.session.get('panel_username', '')}
+
+
+def _sparkline(values, w=280, h=54, pad=6):
+    """Değer listesinden mini grafik için SVG polyline noktaları + alan yolu üretir."""
+    if not values:
+        return None
+    mx = max(values) or 1
+    n = len(values)
+    step = w / (n - 1) if n > 1 else 0
+    pts = [(round(i * step, 1), round(h - pad - (v / mx) * (h - 2 * pad), 1)) for i, v in enumerate(values)]
+    line = ' '.join(f'{x},{y}' for x, y in pts)
+    area = f'M{pts[0][0]},{h} ' + ' '.join(f'L{x},{y}' for x, y in pts) + f' L{pts[-1][0]},{h} Z'
+    return {'line': line, 'area': area, 'w': w, 'h': h, 'dx': pts[-1][0], 'dy': pts[-1][1]}
+
+
+def _with_pct(rows, key='cnt'):
+    """Her satıra en büyük değere göre yüzde ('pct') ekler — bar genişliği için."""
+    mx = max((r[key] for r in rows), default=0) or 1
+    return [{**r, 'pct': round(r[key] / mx * 100)} for r in rows]
+
+
+# --------------------------------------------------------------------------- #
+# Sayfalar
+# --------------------------------------------------------------------------- #
+async def logs(request):
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    context = _base_ctx(request, 'logs')
+
+    try:
+        stats, top_domains, top_clients, method_breakdown, hourly = await asyncio.gather(
+            db.get_stats(),
+            db.get_top_domains(),
+            db.get_top_clients(),
+            db.get_method_breakdown(),
+            db.get_hourly_series(),
+        )
+    except Exception as exc:  # DB erişilemezse 500 yerine anlaşılır mesaj.
+        context['error'] = f'{type(exc).__name__}: {exc}'
+        return render(request, 'dashboard/logs.html', context)
+
+    context.update(stats=stats, top_domains=top_domains, top_clients=top_clients,
+                   method_breakdown=method_breakdown, spark=_sparkline(hourly),
+                   peak=max(hourly) if hourly else 0)
+    return render(request, 'dashboard/logs.html', context)
+
+
+QUERIES_CHUNK = 25  # her "+25 daha"da DB'den çekilen satır sayısı
+
+
+async def queries(request):
+    """
+    Sorgu geçmişi. İlk yük 25 satır (tam sayfa). "+25 daha" AJAX ile SONRAKİ 25'i
+    OFFSET ile çeker (partial=1 → yalnız <tr> parçası döner); önceki satırlar
+    tarayıcıda (RAM) kalır, tekrar sorgulanmaz. İstek sınırı JS'te (aynı anda tek
+    istek) → hızlı tıklama DB'yi spam'lemez.
+    """
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    domain = request.GET.get('q', '').strip()
+    method = request.GET.get('method', '').strip()
+    try:
+        offset = int(request.GET.get('offset', 0))
+    except (TypeError, ValueError):
+        offset = 0
+    offset = max(0, min(offset, 200000))  # üst sınır (aşırı derin sayfalama engeli)
+    partial = request.GET.get('partial') == '1'
+
+    try:
+        db_rows = await db.get_recent_queries(domain=domain, method=method, limit=QUERIES_CHUNK, offset=offset)
+    except Exception as exc:
+        if partial:
+            return render(request, 'dashboard/_query_rows.html', {'rows': [], 'first': False})
+        context = _base_ctx(request, 'queries')
+        context.update(q=domain, method=method, methods=METHODS, error=f'{type(exc).__name__}: {exc}')
+        return render(request, 'dashboard/queries.html', context)
+
+    if partial:
+        # "+25 daha" DB'den devam eder; cache (flush bekleyen) yalnız ilk sayfada üstte.
+        return render(request, 'dashboard/_query_rows.html', {'rows': db_rows, 'first': False})
+
+    # İlk sayfa = cache (resolver'ın flush bekleyen tamponu, en üstte) + DB satırları.
+    pending = db.read_pending(domain, method)
+    rows = pending + db_rows
+
+    context = _base_ctx(request, 'queries')
+    context.update(
+        q=domain, method=method, methods=METHODS, rows=rows,
+        next_offset=offset + len(db_rows), has_more=len(db_rows) == QUERIES_CHUNK,
+        pending_count=len(pending),
+    )
+    return render(request, 'dashboard/queries.html', context)
+
+
+async def servers(request):
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    context = _base_ctx(request, 'servers')
+    msg = None
+
+    if request.method == 'POST':
+        method = request.POST.get('method', '')
+        if method not in METHODS:
+            msg = ('error', 'Geçersiz yöntem.')
+        elif 'save_port' in request.POST:
+            port = request.POST.get('port', '').strip()
+            if not _valid_port(port):
+                msg = ('error', 'Geçersiz port (1–65535 arası bir sayı olmalı).')
+            else:
+                try:
+                    await db.set_setting(PORT_KEY[method], port)
+                    uygula = ('resolver yeniden başlatılınca' if method == 'udp'
+                              else 'metodu kapatıp açınca')
+                    msg = ('ok', f'{METHOD_LABELS[method]} iç portu {port} olarak kaydedildi — {uygula} uygulanır.')
+                except Exception as exc:
+                    msg = ('error', f'{type(exc).__name__}: {exc}')
+        else:
+            enabled = request.POST.get('enabled') == '1'
+            if method == 'udp' and not enabled:
+                msg = ('error', 'UDP kapatılamaz (temel çözümleme).')
+            else:
+                try:
+                    await db.set_method_enabled(method, enabled)
+                    durum = 'açıldı' if enabled else 'kapatıldı'
+                    msg = ('ok', f'{METHOD_LABELS[method]} {durum} — resolver ~5 sn içinde uygular.')
+                except Exception as exc:
+                    msg = ('error', f'{type(exc).__name__}: {exc}')
+
+    try:
+        cfg = await db.get_resolver_config()
+        app_settings = await db.get_settings()
+    except Exception as exc:
+        context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
+        return render(request, 'dashboard/servers.html', context)
+
+    context['methods'] = [{
+        'key': m, 'label': METHOD_LABELS[m],
+        'port': app_settings.get(PORT_KEY[m], str(METHOD_PORTS[m])),
+        'enabled': cfg.get(m, False), 'needs_cert': m in NEEDS_CERT,
+    } for m in METHODS]
+    context['msg'] = msg
+    return render(request, 'dashboard/servers.html', context)
+
+
+# --------------------------------------------------------------------------- #
+# Filtreler (blocklist / allowlist) — resolver bu tabloları ~30 sn'de yeniler.
+# --------------------------------------------------------------------------- #
+_DOMAIN_RE = re.compile(r'^(?=.{1,253}$)([a-z0-9](-?[a-z0-9])*\.)+[a-z]{2,}$')
+
+
+def _norm_domain(s: str) -> str:
+    return s.strip().rstrip('.').lower()
+
+
+def _valid_domain(d: str) -> bool:
+    return bool(_DOMAIN_RE.match(d))
+
+
+async def filters(request):
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    context = _base_ctx(request, 'filters')
+    msg = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        try:
+            # --- Hazır liste (kaynak) işlemleri ---
+            if action == 'source_add':
+                name = request.POST.get('name', '').strip()
+                url = request.POST.get('url', '').strip()
+                if not url.startswith(('http://', 'https://')):
+                    msg = ('error', 'Geçersiz URL — http:// veya https:// ile başlamalı.')
+                else:
+                    await db.add_source(name or url, url)
+                    msg = ('ok', f'"{name or url}" listesi eklendi — resolver birazdan indirir.')
+            elif action == 'source_del':
+                await db.remove_source(int(request.POST.get('source_id', 0)))
+                msg = ('ok', 'Liste kaldırıldı.')
+            elif action == 'source_toggle':
+                await db.toggle_source(int(request.POST.get('source_id', 0)),
+                                       request.POST.get('enabled') == '1')
+                msg = ('ok', 'Liste durumu değişti.')
+            elif action == 'source_refresh':
+                await db.refresh_source(int(request.POST.get('source_id', 0)))
+                msg = ('ok', 'Liste yenileniyor — resolver birazdan yeniden indirir.')
+            else:
+                # --- Elle domain işlemleri ---
+                domain = _norm_domain(request.POST.get('domain', ''))
+                if action in ('block_add', 'allow_add') and not _valid_domain(domain):
+                    msg = ('error', f'Geçersiz alan adı: {domain or "(boş)"}')
+                elif action == 'block_add':
+                    await db.add_block(domain)
+                    msg = ('ok', f'{domain} engellendi.')
+                elif action == 'block_del':
+                    await db.remove_block(domain)
+                    msg = ('ok', f'{domain} engel listesinden çıkarıldı.')
+                elif action == 'allow_add':
+                    await db.add_allow(domain)
+                    msg = ('ok', f'{domain} izin listesine eklendi.')
+                elif action == 'allow_del':
+                    await db.remove_allow(domain)
+                    msg = ('ok', f'{domain} izin listesinden çıkarıldı.')
+        except Exception as exc:
+            msg = ('error', f'{type(exc).__name__}: {exc}')
+
+    try:
+        blocklist, allowlist, sources = await asyncio.gather(
+            db.get_blocklist(), db.get_allowlist(), db.get_sources())
+    except Exception as exc:
+        context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
+        return render(request, 'dashboard/filters.html', context)
+
+    context.update(
+        blocklist=blocklist, allowlist=allowlist, sources=sources,
+        catalog=catalog_grouped(), added_urls=[s['url'] for s in sources], msg=msg,
+        block_count=len(blocklist), allow_count=len(allowlist),
+        source_count=len(sources), total_list_domains=sum(s['count'] for s in sources),
+    )
+    return render(request, 'dashboard/filters.html', context)
+
+
+async def analytics(request):
+    """Analiz — zaman serisi + method/kayıt-tipi dağılımı + top domain/istemci."""
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    context = _base_ctx(request, 'analytics')
+    try:
+        stats, hourly, methods, rtypes, tdomains, tclients, blocks = await asyncio.gather(
+            db.get_stats(),
+            db.get_hourly_series(),
+            db.get_method_breakdown(),
+            db.get_record_type_breakdown(),
+            db.get_top_domains(15),
+            db.get_top_clients(10),
+            db.get_block_breakdown(),
+        )
+    except Exception as exc:
+        context['error'] = f'{type(exc).__name__}: {exc}'
+        return render(request, 'dashboard/analytics.html', context)
+
+    context.update(
+        stats=stats, spark=_sparkline(hourly, w=680, h=120, pad=12),
+        peak=max(hourly) if hourly else 0,
+        methods=_with_pct(methods), rtypes=_with_pct(rtypes),
+        tdomains=_with_pct(tdomains), tclients=_with_pct(tclients),
+        blocks=_with_pct(blocks), block_total=stats.get('blocked', 0),
+    )
+    return render(request, 'dashboard/analytics.html', context)
+
+
+def users(request):
+    """Panel kullanıcıları (Django auth). Sync view — ORM kullanır, oturumu session'dan kontrol eder."""
+    if not request.session.get('_auth_user_id'):
+        return redirect(f"{reverse('dashboard:login')}?next={request.path}")
+
+    msg = None
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        if action == 'add':
+            username = request.POST.get('username', '').strip()
+            password = request.POST.get('password', '')
+            is_admin = request.POST.get('is_admin') == '1'
+            if not username or len(password) < 8:
+                msg = ('error', 'Kullanıcı adı gerekli ve parola en az 8 karakter olmalı.')
+            elif User.objects.filter(username=username).exists():
+                msg = ('error', f'"{username}" zaten var.')
+            else:
+                User.objects.create_user(username=username, password=password,
+                                         is_staff=is_admin, is_superuser=is_admin)
+                msg = ('ok', f'"{username}" eklendi.')
+        elif action == 'del':
+            uid = request.POST.get('user_id', '')
+            if str(request.session.get('_auth_user_id')) == str(uid):
+                msg = ('error', 'Kendi hesabını silemezsin.')
+            else:
+                target = User.objects.filter(id=uid).first()
+                if target and target.is_superuser and User.objects.filter(is_superuser=True).count() <= 1:
+                    msg = ('error', 'Son yöneticiyi silemezsin.')
+                else:
+                    User.objects.filter(id=uid).delete()
+                    msg = ('ok', 'Kullanıcı silindi.')
+
+    ulist = list(User.objects.order_by('-is_superuser', 'username')
+                 .values('id', 'username', 'is_superuser', 'last_login', 'date_joined'))
+    context = _base_ctx(request, 'users')
+    context.update(users=ulist, msg=msg, me=str(request.session.get('_auth_user_id')))
+    return render(request, 'dashboard/users.html', context)
+
+
+# --------------------------------------------------------------------------- #
+# Sertifika (DoT/DoH/DoQ) — yol panelden ayarlanır + doğrulama gösterilir
+# --------------------------------------------------------------------------- #
+def _cert_path(p):
+    """Göreli cert yolunu /app köküne göre çöz (panel cwd'si /app/dns_resolver)."""
+    if not p:
+        return ''
+    return p if os.path.isabs(p) else os.path.join('/app', p)
+
+
+def check_cert(path):
+    """Sertifikayı oku + doğrula (cryptography). subject/issuer/valid_until/status/days döner."""
+    real = _cert_path(path)
+    if not real:
+        return {'error': 'Yol boş'}
+    try:
+        from cryptography import x509
+        from cryptography.x509.oid import NameOID
+        with open(real, 'rb') as f:
+            cert = x509.load_pem_x509_certificate(f.read())
+    except FileNotFoundError:
+        return {'error': f'Dosya bulunamadı: {real}'}
+    except Exception as exc:
+        return {'error': f'{type(exc).__name__}: {exc}'}
+    try:
+        na = cert.not_valid_after_utc
+    except AttributeError:
+        na = cert.not_valid_after.replace(tzinfo=timezone.utc)
+    days = (na - datetime.now(timezone.utc)).days
+
+    def _cn(name):
+        try:
+            return name.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+        except Exception:
+            return name.rfc4514_string()
+
+    status = 'EXPIRED' if days < 0 else ('EXPIRING' if days < 30 else 'VALID')
+    return {'subject': _cn(cert.subject), 'issuer': _cn(cert.issuer),
+            'valid_until': na.strftime('%Y-%m-%d %H:%M UTC'),
+            'valid_until_iso': na.strftime('%Y-%m-%d %H:%M:%S'), 'days': days, 'status': status}
+
+
+async def certificate(request):
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    context = _base_ctx(request, 'certificate')
+    msg = None
+    if request.method == 'POST':
+        cert_file = request.POST.get('cert_file', '').strip()
+        key_file = request.POST.get('key_file', '').strip()
+        try:
+            if cert_file:
+                await db.set_setting('cert_file', cert_file)
+            if key_file:
+                await db.set_setting('key_file', key_file)
+            msg = ('ok', "Sertifika yolları kaydedildi — Sunucular'dan DoT/DoH/DoQ'yu kapatıp açınca yeni sertifika yüklenir.")
+        except Exception as exc:
+            msg = ('error', f'{type(exc).__name__}: {exc}')
+
+    try:
+        settings = await db.get_settings()
+    except Exception as exc:
+        context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
+        return render(request, 'dashboard/certificate.html', context)
+
+    cert_file = settings.get('cert_file', '')
+    key_file = settings.get('key_file', '')
+    context.update(
+        msg=msg, cert_file=cert_file, key_file=key_file,
+        cert=check_cert(cert_file),
+        key_exists=bool(key_file) and os.path.exists(_cert_path(key_file)),
+    )
+    return render(request, 'dashboard/certificate.html', context)
+
+
+# --------------------------------------------------------------------------- #
+# Kurulum / Domain rehberi — bağlantı adresleri (nerede çalışıyorsa ona göre)
+# --------------------------------------------------------------------------- #
+def _server_ips():
+    """Sunucunun loopback olmayan IPv4 adresleri (dns-net'te tipik: 172.27.17.2)."""
+    ips, seen = [], set()
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))            # paket gönderilmez, sadece rota seçilir
+        ip = s.getsockname()[0]
+        s.close()
+        if not ip.startswith('127.'):
+            seen.add(ip); ips.append(ip)
+    except Exception:
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ip = info[4][0]
+            if ip not in seen and not ip.startswith('127.'):
+                seen.add(ip); ips.append(ip)
+    except Exception:
+        pass
+    return ips
+
+
+def _connection_endpoints(cfg, ports, domain, addrs):
+    """Açık yöntemlere göre kullanılabilir bağlantı uç noktalarını üretir."""
+    conn = []
+    if cfg.get('udp'):
+        items = [a + ':' + ports['udp'] for a in addrs] or ['<sunucu-ip>:' + ports['udp']]
+        conn.append({'m': 'UDP', 'label': 'Düz DNS (UDP/TCP)', 'cert': False, 'items': items})
+    enc = [
+        ('doh', 'DoH', 'DNS-over-HTTPS', 'https://', ':{p}/dns-query'),
+        ('dot', 'DoT', 'DNS-over-TLS', 'tls://', ':{p}'),
+        ('doq', 'DoQ', 'DNS-over-QUIC', 'quic://', ':{p}'),
+    ]
+    for key, m, label, scheme, tail in enc:
+        if not cfg.get(key):
+            continue
+        p = ports[key]
+        items = []
+        if domain:
+            items.append(scheme + domain + tail.format(p=p))
+        items += [scheme + a + tail.format(p=p) for a in addrs]
+        if not items:
+            items = [scheme + '<sunucu-ip>' + tail.format(p=p)]
+        conn.append({'m': m, 'label': label, 'cert': True, 'items': items})
+    return conn
+
+
+async def guide(request):
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    context = _base_ctx(request, 'guide')
+    # Canlı iç portlar (Sunucular'dan ayarlanır); DB yoksa varsayılan.
+    ports = {m: str(p) for m, p in METHOD_PORTS.items()}
+    cfg = {'udp': True, 'doh': False, 'dot': False, 'doq': False}
+    try:
+        app_settings = await db.get_settings()
+        for m, key in PORT_KEY.items():
+            if app_settings.get(key):
+                ports[m] = app_settings[key]
+    except Exception:
+        pass
+    try:
+        cfg = await db.get_resolver_config()
+    except Exception:
+        pass
+
+    # "Nerede çalışıyorsa ona göre": panele eriştiğin host + sunucunun IP'leri.
+    try:
+        req_host = request.get_host()
+    except Exception:
+        req_host = ''
+    req_addr = req_host.split(':')[0]
+    ips = _server_ips()
+    addrs = list(ips)
+    if req_addr and req_addr not in addrs and req_addr != 'localhost' and not req_addr.startswith('127.'):
+        addrs.insert(0, req_addr)          # domain/LAN ile eriştiysen onu öne al
+
+    domain = os.getenv('ALLOWED_HOST', '').strip()
+    if domain in ('localhost', '127.0.0.1'):
+        domain = ''
+
+    context.update(
+        ports=ports,
+        conn=_connection_endpoints(cfg, ports, domain, addrs),
+        req_host=req_host, server_ips=ips, domain=domain,
+        subnet='172.27.17.0/24', host_ip='172.27.17.1', container_ip='172.27.17.2',
+        install_dir='/opt/DNS_RESOLVER', db_name='dns_db', db_user='dns_user',
+    )
+    return render(request, 'dashboard/guide.html', context)
+
+
+# --------------------------------------------------------------------------- #
+# Genel Ayarlar — geçmiş aç/kapa + önbellek (resolver ~10 sn'de uygular)
+# --------------------------------------------------------------------------- #
+async def settings_page(request):
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    context = _base_ctx(request, 'settings')
+    msg = None
+    if request.method == 'POST':
+        try:
+            if 'clear_cache' in request.POST:
+                stamp = str(int(datetime.now(timezone.utc).timestamp()))
+                await db.set_setting('cache_clear_at', stamp)
+                msg = ('ok', 'Önbellek temizleme istendi — resolver ~10 sn içinde uygular.')
+            else:
+                mn = request.POST.get('cache_min_ttl', '0').strip()
+                mx = request.POST.get('cache_max_ttl', '86400').strip()
+                if not (mn.isdigit() and mx.isdigit() and int(mx) >= 1 and int(mn) <= int(mx)):
+                    msg = ('error', 'TTL değerleri geçersiz (0 ≤ min ≤ max, max ≥ 1).')
+                else:
+                    await db.set_setting('log_queries', '1' if request.POST.get('log_queries') else '0')
+                    await db.set_setting('cache_enabled', '1' if request.POST.get('cache_enabled') else '0')
+                    await db.set_setting('cache_min_ttl', str(int(mn)))
+                    await db.set_setting('cache_max_ttl', str(int(mx)))
+                    msg = ('ok', 'Ayarlar kaydedildi — resolver ~10 sn içinde uygular.')
+        except Exception as exc:
+            msg = ('error', f'{type(exc).__name__}: {exc}')
+
+    try:
+        s = await db.get_settings()
+    except Exception as exc:
+        context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
+        return render(request, 'dashboard/settings.html', context)
+
+    context.update(
+        msg=msg,
+        log_queries=s.get('log_queries', '1') != '0',
+        cache_enabled=s.get('cache_enabled', '1') != '0',
+        cache_min_ttl=s.get('cache_min_ttl', '0'),
+        cache_max_ttl=s.get('cache_max_ttl', '86400'),
+    )
+    return render(request, 'dashboard/settings.html', context)

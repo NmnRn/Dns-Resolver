@@ -24,14 +24,19 @@ def build_server(core, bind="0.0.0.0", port=853, certfile=None, keyfile=None):
 
     has_certs = certfile and keyfile and os.path.exists(certfile) and os.path.exists(keyfile)
     if not has_certs:
-        logger.warning("DoT sunucusu için sertifika bulunamadı (%s / %s) - başlatılmıyor.", certfile, keyfile)
+        logger.error("DoT sunucusu için sertifika bulunamadı {certfile=%s, keyfile=%s} - başlatılmıyor.", certfile, keyfile)
         print("DoT sunucusu için sertifika bulunamadı, başlatılmıyor.")
         return None
 
-    server = DNSServer(udp_server.DNSResolver(core, method="DnsOverTLS"), port=port, address=bind, tcp=True)
+    logger.info("DoT sunucusu sertifikaları kontrol ediliyor: {certfile=%s, keyfile=%s}", certfile, keyfile)
+    
+    server = DNSServer(udp_server.DNSResolver(core, method="dot"), port=port, address=bind, tcp=True,
+                       logger=udp_server.QuietDNSLogger())
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.load_cert_chain(certfile=certfile, keyfile=keyfile)
     server.server.socket = ctx.wrap_socket(server.server.socket, server_side=True)
+    
+    logger.info("DoT sunucusu sertifikaları başarıyla yüklendi.")
     print(f"DoT sunucusu başlatıldı: {bind}:{port}")
     logger.info("DoT sunucusu başlatıldı: %s:%d", bind, port)
     return server

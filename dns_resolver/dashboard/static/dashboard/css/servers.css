@@ -1,0 +1,5 @@
+.portedit{display:inline-flex;gap:6px;align-items:center}
+.portedit .pin{width:78px;padding:4px 7px;font-size:12.5px;background:var(--panel-2);border:1px solid var(--border-strong);border-radius:5px;color:var(--text)}
+.portedit .pin:focus{outline:none;border-color:var(--accent)}
+.portedit .pbtn{font:600 11px var(--sans);padding:5px 10px;border-radius:5px;border:1px solid var(--border-strong);background:var(--panel-2);color:var(--muted);cursor:pointer}
+.portedit .pbtn:hover{color:var(--text);border-color:var(--accent)}

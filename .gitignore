@@ -3,8 +3,14 @@ __pycache__/
 .vscode/
 .env
 docker-compose.override.yml
+compose.override.yml
+compose.override.yml.disabled
 certificates/*.pem
 certificates/*.key
 certificates/*.crt
 .claude/
 .pytest_cache/
+# Uretilen / yerel dosyalar
+dns_resolver/staticfiles/
+*.sqlite3
+secret_key.txt

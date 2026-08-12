@@ -3,7 +3,7 @@ import asyncio
 import threading
 from time import time as now
 
-from cache_loop import CLEAR_CACHE
+from project_control.cache_loop import CLEAR_CACHE
 
 
 def test_clear_cache_removes_only_expired():

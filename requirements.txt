@@ -2,3 +2,6 @@ dnslib==0.9.26
 python-dotenv==1.2.2
 aioquic
 aiomysql
+django
+uvicorn
+whitenoise

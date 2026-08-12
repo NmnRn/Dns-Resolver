@@ -3,6 +3,8 @@ services:
     build: .
     container_name: dns-python
     restart: unless-stopped
+    # PID 1'i tini yapar: zombi toplama + sinyalleri run_all.py'ye iletir.
+    init: true
     environment:
       - BIND_ADDRESS=0.0.0.0
       - CONTAINER_UDP_PORT=${CONTAINER_UDP_PORT:-5300}
@@ -23,11 +25,27 @@ services:
       - DB_USER=${DB_USER:-dns_user}
       - DB_PASSWORD=${DB_PASSWORD:-}
       - DB_NAME=${DB_NAME:-dns_db}
-    # Varsayılan: host'a hiç port açılmıyor, container sadece dns-net üzerinden
-    # diğer container'lara (AdGuard, Cloudflare Tunnel) erişilebilir. Dışarıya
-    # (host'un public IP'sine) port açmak için: ./setup.sh çalıştırıp ilgili
-    # soruya "e" de — script docker-compose.override.yml üretir. O dosya .env'e
-    # göre portları publish eder, git ile izlenmez ve güncellemelerden etkilenmez.
+      # --- Web sitesi (Django, aiomysql ile aynı dns_db'yi OKUR) ---
+      - SITE_PORT=${SITE_PORT:-8444}
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-False}
+      # DEBUG=False iken zorunlu. Site 127.0.0.1'e/ tünele bağlı olduğundan "*"
+      # kabul edilebilir; herkese açık yayınlanacaksa gerçek domain'e daralt.
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-*}
+      # Prod'da MUTLAKA .env'de kendi rastgele anahtarını ver.
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-}
+    # DNS portları host'a açılmaz (sadece dns-net; setup.sh override üretir).
+    # Web sitesi ayrı bir portta: auth henüz YOK, o yüzden yalnızca host'un
+    # 127.0.0.1'ine publish edilir (SSH tünel / yereldeki reverse proxy ile
+    # erişilir, public DEĞİL). Container ayrıca dns-net'te 172.27.17.2:${SITE_PORT}
+    # üzerinden Cloudflare Tunnel'a da açıktır. Port env'den ayarlanır (varsayılan 8444).
+    ports:
+      - "127.0.0.1:${SITE_PORT:-8444}:${SITE_PORT:-8444}"
+    volumes:
+      # Django'nun SQLite'ı (auth/session) recreate'lerde kaybolmasın.
+      - django-data:/app/data
+      # TLS sertifikaları: imaja gömülmez (.dockerignore), host'tan salt-okunur bağlanır.
+      # Böylece yenilenen sertifikalar rebuild gerektirmeden yansır.
+      - ./certificates:/app/certificates:ro
     networks:
       dns-net:
         ipv4_address: 172.27.17.2
@@ -35,3 +53,6 @@ services:
 networks:
   dns-net:
     external: true
+
+volumes:
+  django-data:

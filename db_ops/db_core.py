@@ -7,16 +7,21 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))  # .env dosyasını yükle
 
 from logs.dns_logs import logger
-
+import db_ops.db_control_users as dbusers
 # Şema sürümü: uyumsuz her şema değişikliğinde 1 artır ve MIGRATIONS'a
 # eski sürümü yeni sürüme taşıyan adımı ekle. Açılışta migrate_scheme()
 # kayıtlı sürümden güncel sürüme sırayla yürür.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 MIGRATIONS = {
     # 1 -> 2: timestamp BIGINT yerine queried_at DATETIME (UTC). Log verisi
     # beta döneminde feda edilebilir; tablo düşürülür, control_scheme yeniden kurar.
     1: ("DROP TABLE IF EXISTS dns_cache",),
+    # 2 -> 3: engelleme izleme — sorgu engellendi mi + hangi liste eşleşti.
+    2: (
+        "ALTER TABLE dns_cache ADD COLUMN blocked BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE dns_cache ADD COLUMN blocked_by VARCHAR(255) DEFAULT NULL",
+    ),
 }
 
 
@@ -24,7 +29,8 @@ class DB_CON():
     
     def __init__(self):
         self.db_pool = None
-    
+        self.user_manager = dbusers.USER_MANAGER(self)  # USER_MANAGER sınıfını başlat ve db_con olarak self'i geçir
+
     async def create_pool(self):
         if self.db_pool is not None:
             return self.db_pool
@@ -140,9 +146,132 @@ class DB_CON():
                     record_type VARCHAR(10),
                     client_ip VARCHAR(45),
                     queried_at DATETIME,
-                    method VARCHAR(16)
+                    method VARCHAR(16),
+                    user_id INT,
+                    blocked BOOLEAN NOT NULL DEFAULT FALSE,
+                    blocked_by VARCHAR(255) DEFAULT NULL
+                );
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(255) UNIQUE,
+                    password_hash VARCHAR(255),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    log_dns BOOLEAN DEFAULT FALSE,
+                    random_key VARCHAR(255) DEFAULT NULL
+                );
+            """)
+            # Hangi DNS metotlarının açık olduğu — web panelinden yönetilir,
+            # resolver çalışırken okuyup sunucuları başlatıp durdurur.
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS resolver_config (
+                    method VARCHAR(16) PRIMARY KEY,
+                    enabled BOOLEAN NOT NULL DEFAULT FALSE
                 )
             """)
+            # GÜVENLİ VARSAYILAN: sadece düz UDP açık; DoH/DoT/DoQ kapalı.
+            # INSERT IGNORE => mevcut satırlar (kullanıcının seçimleri) korunur.
+            await cursor.execute("""
+                INSERT IGNORE INTO resolver_config (method, enabled) VALUES
+                ('udp', TRUE), ('doh', FALSE), ('dot', FALSE), ('doq', FALSE)
+            """)
+            # Engelleme listeleri (AdGuard tarzı): blocklist + allowlist.
+            # Yeni tablolar → migrasyon gerekmez (IF NOT EXISTS yeter).
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS blocklist (
+                    domain VARCHAR(255) PRIMARY KEY,
+                    enabled BOOLEAN NOT NULL DEFAULT TRUE
+                )
+            """)
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS allowlist (
+                    domain VARCHAR(255) PRIMARY KEY
+                )
+            """)
+            # Hazır engelleme listeleri (URL abonelikleri) — resolver indirir, RAM'e katar.
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS blocklist_sources (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255),
+                    url VARCHAR(512) UNIQUE,
+                    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                    count INT NOT NULL DEFAULT 0,
+                    updated_at DATETIME NULL
+                )
+            """)
+            # Panelden ayarlanabilir anahtar-değer ayarları (ör. sertifika yolları).
+            await cursor.execute(
+                "CREATE TABLE IF NOT EXISTS app_settings (k VARCHAR(64) PRIMARY KEY, v VARCHAR(512))"
+            )
+            await cursor.execute(
+                "INSERT IGNORE INTO app_settings (k, v) VALUES "
+                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),"
+                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
+                ('cert_file', os.getenv('CERT_FILE', 'certificates/fullchain.pem'),
+                 'key_file', os.getenv('KEY_FILE', 'certificates/privkey.pem'),
+                 # İç dinleme portları (build_* env'den okur; dış/host yayını ayrı).
+                 'udp_port', os.getenv('CONTAINER_UDP_PORT', '5300'),
+                 'https_port', os.getenv('CONTAINER_HTTPS_PORT', '44300'),
+                 'dot_port', os.getenv('CONTAINER_DOT_PORT', '8853'),
+                 'doq_port', os.getenv('CONTAINER_DOQ_PORT', '8530'),
+                 # Genel ayarlar (panelden; resolver periyodik uygular).
+                 'log_queries', '1',        # sorgu geçmişi aç/kapa
+                 'cache_enabled', '1',      # önbellek aç/kapa
+                 'cache_min_ttl', '0',      # alt sınır (0 = yok)
+                 'cache_max_ttl', '86400',  # üst sınır (sn)
+                 'cache_clear_at', '0'),    # panelden "temizle" damgası (değişince resolver boşaltır)
+            )
+            await conn.commit()
+
+    async def get_resolver_config(self):
+        """Metot -> bool sözlüğü ('udp'/'doh'/'dot'/'doq' hangileri açık)."""
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute("SELECT method, enabled FROM resolver_config")
+            rows = await cursor.fetchall()
+        return {r['method']: bool(r['enabled']) for r in rows}
+
+    async def get_filter_lists(self):
+        """
+        (blockset, allowset) döndürür — engelli (enabled) + izinli domain kümeleri,
+        karşılaştırma için normalize (küçük harf, baş/son boşluk ve son nokta atılmış).
+        resolver bellekte tutar; sorgu başına DB'ye gidilmez.
+        """
+        def norm(d):
+            return d.strip().rstrip(".").lower()
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute("SELECT domain FROM blocklist WHERE enabled = TRUE")
+            block = {norm(r["domain"]) for r in await cursor.fetchall()}
+            await cursor.execute("SELECT domain FROM allowlist")
+            allow = {norm(r["domain"]) for r in await cursor.fetchall()}
+        return block, allow
+
+    async def get_blocklist_sources(self):
+        """
+        Enabled hazır listeler: [{id, url, force}]. force=True ise resolver yeniden
+        indirir (yeni eklenmiş = updated_at NULL, ya da 24 saatten eski = bayat).
+        """
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute(
+                "SELECT id, name, url, "
+                "(updated_at IS NULL OR updated_at < UTC_TIMESTAMP() - INTERVAL 24 HOUR) AS force_dl "
+                "FROM blocklist_sources WHERE enabled = TRUE"
+            )
+            rows = await cursor.fetchall()
+        return [{"id": r["id"], "name": r["name"], "url": r["url"], "force": bool(r["force_dl"])} for r in rows]
+
+    async def get_setting(self, key, default=None):
+        """app_settings'ten tek bir ayar değeri (panelden değiştirilebilir)."""
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute("SELECT v FROM app_settings WHERE k = %s", (key,))
+            row = await cursor.fetchone()
+        return row["v"] if row else default
+
+    async def set_source_stats(self, source_id, count):
+        """Bir listenin domain sayısını ve son güncelleme zamanını yazar."""
+        async with self.get_db_cursor() as (cursor, conn):
+            await cursor.execute(
+                "UPDATE blocklist_sources SET count = %s, updated_at = UTC_TIMESTAMP() WHERE id = %s",
+                (count, source_id),
+            )
             await conn.commit()
 
     async def open_project(self):

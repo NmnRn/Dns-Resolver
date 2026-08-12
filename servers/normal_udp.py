@@ -1,15 +1,16 @@
 import random
 import socket
+import ssl
 import struct
 import threading
 import urllib.request
 from time import time as now
 
 from dnslib import QTYPE, RCODE, EDNS0, DNSRecord
-from dnslib.server import BaseResolver
+from dnslib.server import BaseResolver, DNSLogger
 from dotenv import load_dotenv
 
-import settings
+from project_control import settings
 
 settings.control_env_file()
 load_dotenv(settings.PROJECT_DIRECTORY / ".env")
@@ -24,8 +25,24 @@ MAX_DEPTH = 16           # CNAME / NS-çözme özyineleme derinliği
 EDNS_UDP_SIZE = 4096     # EDNS0 ile ilan ettiğimiz UDP tampon boyutu
 MAX_TTL = 86400          # cache'te bir kaydı en fazla tutma süresi (sn)
 NEG_TTL_CAP = 900        # negatif (NXDOMAIN/NODATA) cache üst sınırı (sn)
- 
- 
+
+
+class QuietDNSLogger(DNSLogger):
+    """dnslib DNSServer'ın açık Request/Reply loglarını susturur.
+
+    Mahremiyet: istemci IP + sorgulanan ad stdout'a (docker logs) YAZILMAZ;
+    gerçek değerler yalnız DB'de tutulur. Kendi maskeli özet satırımız
+    (DNSResolver.resolve içindeki '**** **** ...') zaten yazılıyor.
+    """
+    def log_request(self, *a, **k): pass
+    def log_reply(self, *a, **k): pass
+    def log_recv(self, *a, **k): pass
+    def log_send(self, *a, **k): pass
+    def log_truncated(self, *a, **k): pass
+    def log_data(self, *a, **k): pass
+    def log_error(self, *a, **k): pass
+
+
 def _recv_exact(sock, n):
     """TCP'de tam n bayt oku (kısa okumalara karşı)."""
     buf = b""
@@ -79,9 +96,24 @@ class DNSCore:
         # cache: (domain, qtype) -> (expiry, rcode, [rr, ...])
         self._cache = {} # {"domain.com", "A"}: (expiry_timestamp, rcode, [rr1, rr2, ...])
         self._lock = threading.Lock()  # DNSServer çok-thread'li; cache'i kilitliyoruz
- 
+        # Engelleme (AdGuard tarzı): bellekte set, DB'den periyodik yenilenir.
+        # is_blocked hot-path'te → sorgu başına DB'ye GİTMEYİZ. Değişim atomiktir
+        # (yeni frozenset referansı atanır; kilit gerekmez).
+        self.manual_block = frozenset()   # elle eklenen engeller (blocklist tablosu)
+        self.allowset = frozenset()
+        self.list_sets = {}               # {liste_adı: frozenset} — hangi liste eşleşti izlenir
+        # Önbellek ayarları (panelden, app.py periyodik uygular).
+        self.cache_enabled = True
+        self.cache_min_ttl = 0            # 0 = alt sınır yok (kısa TTL'leri yukarı çekmez)
+        self.cache_max_ttl = MAX_TTL      # üst sınır
+        # Çözümleme modu: recursion (kendi çekirdeğimiz) vs forwarding (upstream'lere ilet).
+        self.use_recursion = True
+        self.upstreams = []               # ['1.1.1.1', 'https://…/dns-query', 'tls://…'] (forwarding)
+
     # --- Cache ---------------------------------------------------------------
     def _cache_get(self, domain, qtype):
+        if not self.cache_enabled:
+            return None
         key = (domain, qtype)
         with self._lock:
             entry = self._cache.get(key)
@@ -92,13 +124,24 @@ class DNSCore:
                 del self._cache[key]
                 return None
             return rcode, records
- 
+
     def _cache_put(self, domain, qtype, rcode, records, ttl):
-        ttl = max(0, min(ttl, MAX_TTL))
+        if not self.cache_enabled:
+            return
+        ttl = min(max(0, int(ttl)), self.cache_max_ttl)
+        if ttl > 0 and self.cache_min_ttl > 0:          # kısa TTL'i alt sınıra çek
+            ttl = min(max(ttl, self.cache_min_ttl), self.cache_max_ttl)
         if ttl == 0:
             return
         with self._lock:
             self._cache[(domain, qtype)] = (now() + ttl, rcode, records)
+
+    def clear_cache(self):
+        """Bellekteki çözümleme önbelleğini boşalt (panelden tetiklenir). Boşalan sayı."""
+        with self._lock:
+            n = len(self._cache)
+            self._cache.clear()
+        return n
  
     @staticmethod
     def _soa_ttl(authority):
@@ -113,6 +156,34 @@ class DNSCore:
                 return max(0, min(a.ttl, soa_min, NEG_TTL_CAP))
         return NEG_TTL_CAP
  
+    # --- Engelleme (blocklist / allowlist) -----------------------------------
+    def update_filter_lists(self, manual_block, allowset, list_sets=None):
+        """Elle engeller + izinliler + liste-bazlı kümeleri atomik olarak değiştirir."""
+        self.manual_block = frozenset(manual_block)
+        self.allowset = frozenset(allowset)
+        self.list_sets = dict(list_sets or {})
+
+    def is_blocked(self, domain):
+        """
+        Engelliyse eşleşen liste ADINI (str) döner, engelli değilse None. allowlist
+        ÖNCELİKLİDİR. 'ads.doubleclick.net' -> ['ads.doubleclick.net','doubleclick.net',
+        'net'] adaylarından biri manuel listede ya da bir abonelik listesinde varsa
+        (ve allowset'te yoksa) engellenir; önce eşleşen listenin adı döner.
+        """
+        name = domain.rstrip(".").lower()
+        if not name:
+            return None
+        labels = name.split(".")
+        candidates = [".".join(labels[i:]) for i in range(len(labels))]
+        if any(c in self.allowset for c in candidates):
+            return None
+        if any(c in self.manual_block for c in candidates):
+            return "Elle eklenen"
+        for src_name, s in self.list_sets.items():
+            if any(c in s for c in candidates):
+                return src_name
+        return None
+
     # --- Tel üzerinde sorgu --------------------------------------------------
     def _query(self, domain, qtype, server_ip, tcp=False, timeout=QUERY_TIMEOUT):
         """Tek bir sunucuya sorgu at. TC (truncated) gelirse TCP'ye düş."""
@@ -218,12 +289,17 @@ class DNSCore:
         """
         if depth > MAX_DEPTH:
             return RCODE.SERVFAIL, []
- 
+
+        # Engelleme: blocklist'teki (ya da üst alanı engelli) domain çözülmez.
+        if self.is_blocked(domain):
+            logger.info("ENGELLENDİ **** (%s)", qtype)
+            return RCODE.NXDOMAIN, []
+
         cached = self._cache_get(domain, qtype)
         if cached is not None:
-            logger.debug("Cache hit for %s (%s)", domain, qtype)
+            logger.debug("Cache hit for **** (%s)", qtype)
             return cached
-        logger.debug("Cache miss for %s (%s)", domain, qtype)
+        logger.debug("Cache miss for **** (%s)", qtype)
  
         # QNAME Minimisation (RFC 7816 / RFC 9156): her hop'ta tam ismi değil,
         # o an gereken kadar etiketi gönderiyoruz. Böylece root/TLD gibi asıl
@@ -371,7 +447,7 @@ class DNSCore:
 class DNSResolver(BaseResolver):
     """dnslib köprüsü: gelen UDP isteğini DNSCore'a bağlar."""
  
-    def __init__(self, core, method="Normal DNS"):
+    def __init__(self, core, method="udp"):
         self.core = core
         self.dns_ttl_cache = self.core._cache
         self.method = method
@@ -395,9 +471,11 @@ class DNSResolver(BaseResolver):
             reply.rr = list(records)
 
         log = logger.warning if rcode == RCODE.SERVFAIL else logger.info
-        log("%s %s %s -> %s (%d kayıt)", client_ip, qname, qtype, RCODE[rcode], len(records))
+        # Mahremiyet: istemci IP + sorgulanan ad loglanmaz (DB'de gerçek tutulur).
+        log("**** **** %s -> %s (%d kayıt)", qtype, RCODE[rcode], len(records))
 
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method})
+        blocked_by = self.core.is_blocked(qname)  # None ya da eşleşen liste adı
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method, "blocked": bool(blocked_by), "blocked_by": blocked_by})
         
         return reply
  

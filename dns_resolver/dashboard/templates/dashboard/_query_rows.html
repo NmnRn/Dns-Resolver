@@ -1,0 +1,10 @@
+{% for r in rows %}
+<tr class="{% if r.pending %}pending {% endif %}{% if r.blocked %}blocked{% endif %}">
+    <td>{% if r.pending %}<span class="livedot" title="Flush bekliyor — canlı, henüz DB'de değil"></span>{% endif %}{{ r.domain }}{% if r.blocked %}<span class="bblk" title="{{ r.blocked_by }} listesinden engellendi">⛔ {{ r.blocked_by }}</span>{% endif %}</td>
+    <td><span class="tag t-{{ r.record_type }}">{{ r.record_type }}</span></td>
+    <td class="muted mono">{{ r.client_ip }}</td>
+    <td class="m-{{ r.method }}">{{ r.method|upper }}</td>
+    <td class="muted">{% if r.user_id %}#{{ r.user_id }}{% else %}—{% endif %}</td>
+    <td class="muted num"><span class="lt" data-utc="{{ r.queried_at }}">{{ r.queried_at }}</span></td>
+</tr>
+{% empty %}{% if first %}<tr><td colspan="6" class="empty">Kayıt bulunamadı.</td></tr>{% endif %}{% endfor %}

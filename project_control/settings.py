@@ -1,6 +1,7 @@
 import pathlib, os
 
-PROJECT_DIRECTORY = pathlib.Path(__file__).parent.resolve()
+# settings.py project_control/ klasöründe olduğu için, ana proje dizinine çıkmalı
+PROJECT_DIRECTORY = pathlib.Path(__file__).parent.parent.resolve()
 
 env_file = False
 

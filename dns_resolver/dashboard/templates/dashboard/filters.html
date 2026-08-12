@@ -1,0 +1,131 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Filtreler · DNS Panel{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/filters.css' %}">{% endblock %}
+{% block content %}
+    <h1>Filtreler</h1>
+    <p class="sub">Engelleme ve izin listelerini yönet — değişiklikleri resolver ~30 sn içinde uygular. İzin listesi engel listesinden önceliklidir; bir alanı engellemek alt alanlarını da engeller (ör. <span class="mono">doubleclick.net</span> → <span class="mono">ads.doubleclick.net</span>).</p>
+
+    {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
+
+    {% if error %}
+        <div class="error">Veritabanına erişilemedi: {{ error }}</div>
+    {% else %}
+        <!-- Hazır liste kataloğu (kategoriye göre, tıkla-ekle) -->
+        <div class="box" style="margin-bottom:16px;">
+            <h2>Hazır Engelleme Listeleri</h2>
+            <div class="catwrap">
+                {% for cat, items in catalog %}
+                <div>
+                    <div class="cathead">{{ cat }}</div>
+                    <div class="chips">
+                        {% for name, url in items %}
+                            {% if url in added_urls %}
+                            <span class="lchip added" title="Zaten ekli">{{ name }} <span class="ok">✓</span></span>
+                            {% else %}
+                            <form method="post" style="margin:0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="source_add">
+                                <input type="hidden" name="name" value="{{ name }}">
+                                <input type="hidden" name="url" value="{{ url }}">
+                                <button type="submit" class="lchip"><span class="plus">+</span> {{ name }}</button>
+                            </form>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="custom">
+                <form method="post" style="display:flex;gap:8px;flex:1;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="source_add">
+                    <input type="hidden" name="name" value="">
+                    <input type="text" name="url" placeholder="…veya özel liste URL'si yapıştır (https://…)" style="flex:1;min-width:200px;" autocomplete="off" spellcheck="false">
+                    <button class="btn" type="submit">Ekle</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Eklenen listeler -->
+        <div class="box" style="margin-bottom:16px;">
+            <h2>Eklenen Listeler — {{ source_count }} liste · {{ total_list_domains }} domain</h2>
+            <div class="tablescroll">
+                <table>
+                    <thead><tr><th>Liste</th><th>Domain</th><th>Güncellendi <span class="muted" style="font-weight:400;">(yerel)</span></th><th>Açık</th><th></th></tr></thead>
+                    <tbody>
+                        {% for s in sources %}
+                        <tr>
+                            <td><b>{{ s.name }}</b><br><span class="muted mono" style="font-size:11px;">{{ s.url|truncatechars:64 }}</span></td>
+                            <td class="num">{{ s.count }}</td>
+                            <td class="muted num"><span class="lt" data-utc="{{ s.updated_at|date:'Y-m-d H:i:s' }}">{{ s.updated_at|date:"Y-m-d H:i:s"|default:"—" }}</span></td>
+                            <td>
+                                <form method="post" style="margin:0;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="source_toggle">
+                                    <input type="hidden" name="source_id" value="{{ s.id }}">
+                                    <button type="submit" name="enabled" value="{% if s.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ s.enabled|yesno:'true,false' }}" aria-label="aç/kapat"></button>
+                                </form>
+                            </td>
+                            <td style="text-align:right;white-space:nowrap;">
+                                <form method="post" style="margin:0;display:inline;">{% csrf_token %}<input type="hidden" name="action" value="source_refresh"><input type="hidden" name="source_id" value="{{ s.id }}"><button class="xbtn" style="color:var(--accent);" type="submit">Yenile</button></form>
+                                <form method="post" style="margin:0;display:inline;">{% csrf_token %}<input type="hidden" name="action" value="source_del"><input type="hidden" name="source_id" value="{{ s.id }}"><button class="xbtn danger" type="submit">Sil</button></form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="empty">Henüz liste eklenmedi — yukarıdaki katalogdan tıklayarak ekle.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid2">
+            <div class="box">
+                <h2>Engellenenler ({{ block_count }})</h2>
+                <form method="post" class="addf">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="block_add">
+                    <input type="text" name="domain" placeholder="ör. ads.example.com" autocomplete="off" spellcheck="false">
+                    <button class="btn" type="submit">Engelle</button>
+                </form>
+                <ul class="flist">
+                    {% for b in blocklist %}
+                    <li>
+                        <span class="mono">{{ b.domain }}</span>
+                        <form method="post" style="margin:0">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="block_del">
+                            <input type="hidden" name="domain" value="{{ b.domain }}">
+                            <button class="xbtn danger" type="submit">Sil</button>
+                        </form>
+                    </li>
+                    {% empty %}<li class="muted">Liste boş</li>{% endfor %}
+                </ul>
+            </div>
+
+            <div class="box">
+                <h2>İzin Verilenler ({{ allow_count }})</h2>
+                <form method="post" class="addf">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="allow_add">
+                    <input type="text" name="domain" placeholder="ör. safe.example.com" autocomplete="off" spellcheck="false">
+                    <button class="btn" type="submit">İzin ver</button>
+                </form>
+                <ul class="flist">
+                    {% for a in allowlist %}
+                    <li>
+                        <span class="mono">{{ a.domain }}</span>
+                        <form method="post" style="margin:0">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="allow_del">
+                            <input type="hidden" name="domain" value="{{ a.domain }}">
+                            <button class="xbtn danger" type="submit">Sil</button>
+                        </form>
+                    </li>
+                    {% empty %}<li class="muted">Liste boş</li>{% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

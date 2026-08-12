@@ -28,15 +28,20 @@ class StubDBManager:
 class StubCore:
     """Ağ yok: sabit bir (rcode, records) döndüren sahte DNSCore."""
 
-    def __init__(self, rcode, records):
+    def __init__(self, rcode, records, blocked_by=None):
         self._rcode = rcode
         self._records = records
+        self._blocked_by = blocked_by
         self._cache = {}
         self._lock = threading.Lock()
         self.db_manager = StubDBManager()
 
     def resolve(self, domain, qtype, depth=0):
         return self._rcode, self._records
+
+    def is_blocked(self, domain):
+        # Handler her çözümlemeden sonra bunu çağırır (blocked/blocked_by için).
+        return self._blocked_by
 
 
 class FakeHandler:
@@ -83,3 +88,26 @@ def test_query_event_logged_with_method():
     # İstek anı damgası, çözümleme öncesinde handler girişinde yakalanır
     from datetime import datetime
     assert isinstance(value["queried_at"], datetime)
+
+
+def test_blocked_query_flags_event():
+    """Engellenen sorgu: core NXDOMAIN döner + olay blocked/blocked_by taşır."""
+    core = StubCore(RCODE.NXDOMAIN, [], blocked_by="Elle eklenen")
+    resolver = DNSResolver(core=core, method="udp")
+    reply = resolver.resolve(_request("reklam.com."), FakeHandler())
+
+    assert reply.header.rcode == RCODE.NXDOMAIN
+    _, value = core.db_manager.events[0]
+    assert value["blocked"] is True
+    assert value["blocked_by"] == "Elle eklenen"
+
+
+def test_clean_query_not_flagged():
+    """Engellenmemiş sorgu: blocked False, blocked_by None."""
+    core = StubCore(RCODE.NOERROR, RR.fromZone("example.com. 300 A 1.2.3.4"))
+    resolver = DNSResolver(core=core, method="udp")
+    resolver.resolve(_request(), FakeHandler())
+
+    _, value = core.db_manager.events[0]
+    assert value["blocked"] is False
+    assert value["blocked_by"] is None

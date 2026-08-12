@@ -4,7 +4,7 @@ from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import StreamDataReceived
 from dotenv import load_dotenv
 import asyncio
-import settings
+from project_control import settings
 
 from dnslib import QTYPE, RCODE, DNSRecord
 from logs.dns_logs import logger
@@ -72,7 +72,8 @@ class DoQProtocol(QuicConnectionProtocol):
             client_ip = self._quic._network_paths[0].addr[0]
         except (AttributeError, IndexError):
             client_ip = "unknown"
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "DnsOverQUIC"})
+        blocked_by = self.core.is_blocked(qname)
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by})
         reply.header.id = 0
         reply_bytes = reply.pack()
         
@@ -86,12 +87,18 @@ async def build_server(core, bind="127.0.0.1", port=853, certfile=None, keyfile=
     certfile = certfile or os.getenv("CERT_FILE", "/app/certificates/fullchain.pem")
     keyfile = keyfile or os.getenv("KEY_FILE", "/app/certificates/privkey.pem")
     has_certs = certfile and keyfile and os.path.exists(certfile) and os.path.exists(keyfile)
+    
     if not has_certs:
+        logger.error("DoQ sunucusu için sertifika bulunamadı {certfile=%s, keyfile=%s}, başlatılmıyor.", certfile, keyfile)
         print("DoQ sunucusu için sertifika bulunamadı, başlatılmıyor.")
         return None
 
+    logger.info("DoQ sunucusu sertifikaları kontrol ediliyor: {certfile=%s, keyfile=%s}", certfile, keyfile)
+    
     config = QuicConfiguration(is_client=False, alpn_protocols=["doq"])
     config.load_cert_chain(certfile, keyfile)   # DoT/DoH ile aynı sertifika
+    
+    logger.info("DoQ sunucusu sertifikaları başarıyla yüklendi.")
 
     aioquic_server = serve(
         host=bind,

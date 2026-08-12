@@ -1,0 +1,9 @@
+# Django'nun kendi iç veritabanı (auth/session/admin) — dev'de yerel, commit'lenmez.
+db.sqlite3
+*.sqlite3
+
+# Yerel geliştirme ortam dosyası (varsa)
+.env.local
+
+# Kuruluma özel üretilen gizli anahtar (asla commit'lenmez)
+secret_key.txt

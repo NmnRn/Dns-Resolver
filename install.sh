@@ -166,6 +166,7 @@ CURRENT_BIND=$("$MARIADB_CLI" -N -B -e "SELECT @@bind_address;" 2>/dev/null || t
 if [ "$CURRENT_BIND" = "0.0.0.0" ] \
         || printf '%s' "$CURRENT_BIND" | tr ',' '\n' | grep -qx "$DB_HOST_IP"; then
     info "MariaDB $DB_HOST_IP adresini zaten dinliyor (bind: ${CURRENT_BIND:-127.0.0.1}); değişiklik gerekmez."
+    EFFECTIVE_BIND="${CURRENT_BIND:-127.0.0.1}"
 else
     # 10.11+ virgülle çoklu adres destekler; eski sürümde tek çare 0.0.0.0
     # (erişim yine kullanıcı bazında $DB_ALLOWED_FROM ile kısıtlı).
@@ -193,16 +194,18 @@ else
         fi
         systemctl restart mariadb
         info "Yeni bind-address: $("$MARIADB_CLI" -N -B -e "SELECT @@bind_address;" 2>/dev/null)"
+        EFFECTIVE_BIND="$NEW_BIND"
     else
         info "bind-address değiştirilmedi. $DB_HOST_IP dinlenmezse konteyner bağlanamaz."
         [ -n "$BIND_CNF" ] && echo "    Elle eklemek için: $BIND_CNF içindeki bind-address satırına ',$DB_HOST_IP' ekle."
+        EFFECTIVE_BIND="${CURRENT_BIND:-127.0.0.1}"
     fi
 fi
 
 # 172.27.17.1 (dns-net köprüsü) ancak Docker başladıktan sonra var olur.
 # MariaDB reboot'ta o adrese bağlanacağı için Docker'dan sonra başlamalı;
 # yine de erken kalkarsa Restart=on-failure ile toparlar.
-if [ "$BIND_VALUE" != "0.0.0.0" ]; then
+if [ "$EFFECTIVE_BIND" != "0.0.0.0" ]; then
     mkdir -p /etc/systemd/system/mariadb.service.d
     cat > /etc/systemd/system/mariadb.service.d/dns-resolver.conf <<UNIT
 [Unit]

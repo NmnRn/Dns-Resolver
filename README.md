@@ -220,7 +220,7 @@ dosyasını ona göre yazar.
 
 ## DoH sunucusunu dış erişime (Cloudflare Tunnel vb.) açmak
 
-1. `dns.numaneren.me` gibi bir domain'i sunucunun IP'sine yönlendir.
+1. `dns.example.com` gibi bir domain'i sunucunun IP'sine yönlendir.
 2. Domain için Let's Encrypt sertifikası al (DNS-01 doğrulamasıyla,
    `certbot-dns-cloudflare` gibi bir eklentiyle otomatik yenilenebilir).
 3. Sertifika dosyalarını `docker-compose.yml`'de bir volume ile

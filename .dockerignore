@@ -6,3 +6,8 @@ __pycache__
 certificates
 README.md
 LICENSE
+# Django dev artefaktları — imajda build sırasında yeniden üretilir.
+*.sqlite3
+dns_resolver/db.sqlite3
+dns_resolver/staticfiles
+dns_resolver/secret_key.txt

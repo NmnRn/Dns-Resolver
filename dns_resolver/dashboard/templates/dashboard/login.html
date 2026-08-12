@@ -1,0 +1,22 @@
+{% load static %}<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ mode_title }} · DNS Panel</title>
+    <link rel="stylesheet" href="{% static 'dashboard/css/login.css' %}">
+</head>
+<body>
+    <form class="card" method="post">
+        {% csrf_token %}
+        <div class="brand"><span class="dot"></span>dns.panel</div>
+        <p class="hint">{{ hint }}</p>
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+        <label for="username">Kullanıcı adı</label>
+        <input id="username" name="username" autocomplete="username" autofocus value="{{ username }}">
+        <label for="password">Parola</label>
+        <input id="password" name="password" type="password" autocomplete="{{ pw_autocomplete }}">
+        <button type="submit">{{ submit }}</button>
+    </form>
+</body>
+</html>

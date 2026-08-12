@@ -1,0 +1,11 @@
+.u-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+@media(max-width:820px){.u-grid{grid-template-columns:1fr}}
+.role{font:11px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:2px 9px;border-radius:6px}
+.role.admin{color:var(--accent);background:var(--accent-soft);border:1px solid rgba(230,162,60,.3)}
+.role.user{color:var(--muted);background:var(--panel-2);border:1px solid var(--border)}
+.ufield{display:grid;gap:6px}
+.ufield label{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.chk{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--muted)}
+.xbtn{background:transparent;border:1px solid var(--border-strong);color:var(--muted);border-radius:6px;padding:3px 10px;cursor:pointer;font:600 12px var(--sans);transition:all .14s ease}
+.xbtn.danger{color:var(--err);border-color:rgba(211,112,92,.4)}
+.xbtn.danger:hover{color:#fff;background:var(--err);border-color:var(--err);box-shadow:0 6px 16px -6px rgba(211,112,92,.55)}
