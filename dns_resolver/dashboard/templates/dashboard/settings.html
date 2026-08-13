@@ -3,15 +3,17 @@
 {% block title %}Genel Ayarlar · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/settings.css' %}">{% endblock %}
 {% block content %}
-    <h1>Genel Ayarlar</h1>
-    <p class="sub">Geçmiş, önbellek ve çözümleme davranışı. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok).</p>
+    <div class="sethead">
+        <h1>Genel Ayarlar</h1>
+        <p class="sub">Geçmiş, önbellek ve çözümleme davranışı. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok).</p>
+    </div>
 
-    {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
-
-    {% if error %}
-        <div class="error">Veritabanına erişilemedi: {{ error }}</div>
-    {% else %}
     <div class="setwrap">
+        {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
+
+        {% if error %}
+            <div class="error">Veritabanına erişilemedi: {{ error }}</div>
+        {% else %}
         <form method="post">
             {% csrf_token %}
             <div class="box setcard">
@@ -47,6 +49,22 @@
                 <label class="modelbl">Upstream sunucular (satır başına bir tane)</label>
                 <textarea class="upst" name="upstreams" rows="4" spellcheck="false" placeholder="1.1.1.1&#10;8.8.8.8&#10;https://dns.quad9.net/dns-query&#10;tls://dns.google">{{ upstreams }}</textarea>
                 <p class="setnote">Desteklenen: düz IP (UDP/53) · <span class="mono">https://…</span> (DoH) · <span class="mono">tls://host</span> (DoT). Yalnız "Kendi çekirdeğimizi kullan" KAPALIYKEN devreye girer.</p>
+
+                <label class="modelbl">Sorgu stratejisi (forwarding)</label>
+                <div class="strat">
+                    <label class="stratopt"><input type="radio" name="upstream_strategy" value="sequential" {% if upstream_strategy == 'sequential' %}checked{% endif %}><span><b>Sıra sıra</b> — listedeki ilk yanıtlayanı kullan (en az trafik)</span></label>
+                    <label class="stratopt"><input type="radio" name="upstream_strategy" value="parallel" {% if upstream_strategy == 'parallel' %}checked{% endif %}><span><b>Paralel</b> — hepsine aynı anda sor, ilk gelen cevabı al (en düşük gecikme)</span></label>
+                    <label class="stratopt"><input type="radio" name="upstream_strategy" value="fastest" {% if upstream_strategy == 'fastest' %}checked{% endif %}><span><b>En hızlı</b> — ölçülen ortalamaya göre en hızlı upstream'i önce dene</span></label>
+                </div>
+
+                {% if upstream_rows %}
+                <label class="modelbl">Upstream tepki süreleri (ort.)</label>
+                <div class="upstats">
+                    {% for r in upstream_rows %}
+                    <div class="upstat"><span class="u">{{ r.up }}</span><span>{% if r.avg %}{{ r.avg }} ms · {{ r.count }} sorgu{% else %}— ölçüm yok{% endif %}</span></div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
 
             <div style="margin-top:16px;"><button class="btn" type="submit">Kaydet</button></div>
@@ -61,7 +79,14 @@
                 </div>
                 <button class="btn ghost" type="submit" name="clear_cache" value="1">Temizle</button>
             </div>
+            <div class="setrow">
+                <div class="si">
+                    <div class="t">Geçmişi temizle</div>
+                    <div class="d">Veritabanındaki tüm sorgu geçmişini siler — <b>geri alınamaz</b>.</div>
+                </div>
+                <button class="btn ghost" type="submit" name="clear_history" value="1" onclick="return confirm('Tüm sorgu geçmişi silinsin mi? Bu işlem geri alınamaz.')">Geçmişi sil</button>
+            </div>
         </form>
+        {% endif %}
     </div>
-    {% endif %}
 {% endblock %}

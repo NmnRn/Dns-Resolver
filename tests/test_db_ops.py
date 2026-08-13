@@ -68,7 +68,7 @@ def test_flush_writes_batch_and_commits():
     stamped = manager.flush_cache[0][1]["queried_at"]
     asyncio.run(manager.write_cache_to_db())
 
-    assert cursor.received == [("a.com.", "A", "1.1.1.1", stamped, "Normal DNS", False, None)]
+    assert cursor.received == [("a.com.", "A", "1.1.1.1", stamped, "Normal DNS", False, None, None)]
     assert conn.committed
     assert manager.flush_cache == []
 

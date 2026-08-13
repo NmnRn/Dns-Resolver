@@ -21,3 +21,8 @@
 .lchip.added:hover{transform:none}
 .lchip.added .ok{color:var(--ok);font-weight:700}
 .custom{padding:14px 16px;border-top:1px solid var(--border);display:flex}
+/* Toplu seçerek silme */
+.fchk{display:flex;align-items:center;gap:9px;min-width:0;cursor:pointer}
+.fchk input{width:auto;min-width:0;flex:none;margin:0;accent-color:var(--accent)}
+.fchk span{overflow:hidden;text-overflow:ellipsis}
+.bulkbar{padding:10px 16px;border-top:1px solid var(--border);text-align:right}

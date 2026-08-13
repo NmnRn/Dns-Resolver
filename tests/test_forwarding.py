@@ -46,14 +46,15 @@ def test_forward_first_answer_wins():
     core.upstreams = ['1.1.1.1', '8.8.8.8']
     seq = iter([None, 'ANSWER'])
     core._query_forward_one = lambda d, q, up: next(seq)
-    assert core._forward('x.', 'A') == 'ANSWER'
+    # (cevap, kullanılan_upstream) — ikinci upstream cevap verdi
+    assert core._forward('x.', 'A') == ('ANSWER', '8.8.8.8')
 
 
 def test_forward_none_when_all_fail():
     core = _core()
     core.upstreams = ['1.1.1.1', '8.8.8.8']
     core._query_forward_one = lambda d, q, up: None
-    assert core._forward('x.', 'A') is None
+    assert core._forward('x.', 'A') == (None, None)
 
 
 def test_resolve_forwarding_mode_short_circuits():
@@ -64,18 +65,20 @@ def test_resolve_forwarding_mode_short_circuits():
     from dnslib import DNSRecord
     reply = DNSRecord.question('example.com.', 'A').reply()
     reply.add_answer(*RR.fromZone('example.com. 60 A 1.2.3.4'))
-    core._forward = lambda d, q: reply
+    core._forward = lambda d, q: (reply, '1.1.1.1')
 
-    rcode, records = core.resolve('example.com.', 'A')
+    src = ['—']
+    rcode, records = core.resolve('example.com.', 'A', source=src)
     assert rcode == RCODE.NOERROR
     assert any(str(r.rdata) == '1.2.3.4' for r in records)
+    assert src[0] == '1.1.1.1'          # kaynak = kullanılan upstream
 
 
 def test_resolve_forwarding_servfail_when_no_answer():
     core = _core()
     core.use_recursion = False
     core.upstreams = ['1.1.1.1']
-    core._forward = lambda d, q: None
+    core._forward = lambda d, q: (None, None)
     rcode, records = core.resolve('example.com.', 'A')
     assert rcode == RCODE.SERVFAIL
     assert records == []

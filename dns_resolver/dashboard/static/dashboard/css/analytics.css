@@ -11,3 +11,13 @@
 .bl-top{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:13px}
 .bl-top .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bl-top .v{color:var(--muted);font:12.5px var(--mono)}
+/* ~5 satır göster, gerisi kaydırılabilir */
+.scroll5{max-height:238px;overflow-y:auto}
+/* 24s grafik hover ipucu */
+.sparkwrap{position:relative}
+.sparkwrap svg{display:block;cursor:crosshair}
+.chart-tip{position:absolute;top:4px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--border-strong);border-radius:8px;padding:9px 12px;font-size:12.5px;pointer-events:none;box-shadow:0 12px 32px -14px rgba(0,0,0,.75);white-space:nowrap;z-index:6;min-width:150px}
+.chart-tip .tt-h{font:700 12px var(--mono);color:var(--text);margin-bottom:6px}
+.chart-tip>div:not(.tt-h){display:flex;justify-content:space-between;gap:16px;color:var(--muted);line-height:1.7}
+.chart-tip b{color:var(--text);font-weight:600}
+.chart-tip .tt-b{color:var(--err)}

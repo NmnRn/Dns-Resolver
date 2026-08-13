@@ -1,4 +1,5 @@
 import os
+import json
 import asyncio
 import signal
 from dotenv import load_dotenv
@@ -302,6 +303,17 @@ def main():
                 core.use_recursion = (str(await db_manager.get_setting('use_recursion', '1')) != '0')
                 ups = await db_manager.get_setting('upstreams', '') or ''
                 core.upstreams = [ln.strip() for ln in ups.replace(',', '\n').splitlines() if ln.strip()]
+                core.upstream_strategy = await db_manager.get_setting('upstream_strategy', 'sequential')
+                # Kaynak (çekirdek/önbellek/upstream) işlem süresi ortalamalarını panele aç.
+                try:
+                    _stats = {k: {'avg_ms': round(t / c, 1), 'count': c}
+                              for k, (c, t) in list(core.source_stats.items()) if c}
+                    _sp = os.getenv('SOURCE_STATS_FILE', '/app/data/source_stats.json')
+                    with open(_sp + '.tmp', 'w') as _f:
+                        json.dump(_stats, _f)
+                    os.replace(_sp + '.tmp', _sp)
+                except Exception:
+                    pass
                 clear_at = await db_manager.get_setting('cache_clear_at', '0')
                 if _seen_clear["at"] is None:
                     _seen_clear["at"] = clear_at            # açılışta boşaltma

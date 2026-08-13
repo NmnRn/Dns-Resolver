@@ -23,7 +23,7 @@
             {% endfor %}
         </div>
         {% endfor %}
-        <div class="callout note" style="margin-bottom:0;"><span class="ic">ℹ️</span><p>Portlar konteynerin <b>iç dinleme portlarıdır</b> (<b>Sunucular</b>'dan ayarlanır). Dış eşlemede standart porta aldıysan (DoT/DoQ&nbsp;853, DoH&nbsp;443) domainde portu kaldır. Şifreli yöntemde IP ile bağlanırsan sertifika adı uyuşmayabilir — mümkünse domaini kullan.</p></div>
+        <div class="callout note" style="margin-bottom:0;"><span class="ic">ℹ️</span><p>Domain adresleri <b>standart portu</b> varsayar (DoH&nbsp;443, DoT/DoQ&nbsp;853) — host'ta bu portları konteynerin iç portuna eşlemelisin. <b>dns-net IP</b>'leri konteynerin <b>iç portunu</b> gösterir (doğrudan erişim; iç port <b>Sunucular</b>'dan ayarlanır). Şifreli yöntemde IP ile bağlanırsan sertifika adı uyuşmayabilir — mümkünse domaini kullan.</p></div>
     {% else %}
         <p class="muted" style="margin:0;">Şu an açık yöntem yok — <b>Sunucular</b> sayfasından bir yöntem aç, adresler burada belirsin.</p>
     {% endif %}

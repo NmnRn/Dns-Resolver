@@ -48,7 +48,8 @@ class DoHHandler(BaseHTTPRequestHandler):
         qtype = QTYPE[request.q.qtype]
         client_ip = self.client_address[0]
 
-        rcode, records = self.core.resolve(qname, qtype)
+        src = ["—"]
+        rcode, records = self.core.resolve(qname, qtype, source=src)
 
         reply = request.reply()
         if rcode == RCODE.NXDOMAIN:
@@ -64,7 +65,7 @@ class DoHHandler(BaseHTTPRequestHandler):
         log("(DoH) **** **** %s -> %s (%d kayıt)", qtype, RCODE[rcode], len(records))
 
         blocked_by = self.core.is_blocked(qname)
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doh", "blocked": bool(blocked_by), "blocked_by": blocked_by})
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doh", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
 
         self.send_response(200)
         self.send_header("Content-Type", "application/dns-message")

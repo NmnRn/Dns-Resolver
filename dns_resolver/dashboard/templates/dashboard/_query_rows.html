@@ -4,7 +4,8 @@
     <td><span class="tag t-{{ r.record_type }}">{{ r.record_type }}</span></td>
     <td class="muted mono">{{ r.client_ip }}</td>
     <td class="m-{{ r.method }}">{{ r.method|upper }}</td>
+    <td class="muted mono" style="font-size:12px;">{{ r.resolved_by|default:"—" }}</td>
     <td class="muted">{% if r.user_id %}#{{ r.user_id }}{% else %}—{% endif %}</td>
     <td class="muted num"><span class="lt" data-utc="{{ r.queried_at }}">{{ r.queried_at }}</span></td>
 </tr>
-{% empty %}{% if first %}<tr><td colspan="6" class="empty">Kayıt bulunamadı.</td></tr>{% endif %}{% endfor %}
+{% empty %}{% if first %}<tr><td colspan="7" class="empty">Kayıt bulunamadı.</td></tr>{% endif %}{% endfor %}

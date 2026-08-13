@@ -10,20 +10,40 @@
         <div class="error">Veritabanına erişilemedi: {{ error }}</div>
     {% else %}
         <div class="box" style="margin-bottom:16px;">
-            <h2>Son 24 saat trafiği · toplam {{ stats.last_24h }} · tepe {{ peak }}/saat</h2>
+            <h2>Son 24 saat trafiği · toplam {{ stats.last_24h }} · tepe {{ peak }}/saat <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;">— üzerine gel: saatlik ayrıntı</span></h2>
             <div class="body">
                 {% if spark %}
-                <svg viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" width="100%" height="140" role="img" aria-label="Son 24 saat trafik grafiği">
-                    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stop-color="#4c82f0" stop-opacity=".3"/><stop offset="1" stop-color="#4c82f0" stop-opacity="0"/>
-                    </linearGradient></defs>
-                    <path fill="url(#ag)" d="{{ spark.area }}"/>
-                    <polyline fill="none" stroke="#4c82f0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.line }}"/>
-                    <circle cx="{{ spark.dx }}" cy="{{ spark.dy }}" r="3.5" fill="#4c82f0" stroke="#161b22" stroke-width="2"/>
-                </svg>
+                <div class="sparkwrap">
+                    <svg id="sparksvg" viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" width="100%" height="140" role="img" aria-label="Son 24 saat trafik grafiği (üzerine gelince saatlik ayrıntı)">
+                        <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stop-color="#4c82f0" stop-opacity=".3"/><stop offset="1" stop-color="#4c82f0" stop-opacity="0"/>
+                        </linearGradient></defs>
+                        <path fill="url(#ag)" d="{{ spark.area }}"/>
+                        <polyline fill="none" stroke="#4c82f0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.line }}"/>
+                        <line id="sparkguide" y1="0" y2="{{ spark.h }}" stroke="#4c82f0" stroke-width="1" stroke-dasharray="3 3" opacity=".5" style="display:none"/>
+                        <circle id="sparkdot" r="4" fill="#4c82f0" stroke="#161b22" stroke-width="2" style="display:none"/>
+                    </svg>
+                    <div id="sparktip" class="chart-tip" style="display:none"></div>
+                </div>
+                {{ hourly|json_script:"hourly-data" }}
                 {% else %}<div class="empty">Veri yok</div>{% endif %}
             </div>
         </div>
+
+        {% if source_times %}
+        <div class="box" style="margin-bottom:16px;">
+            <h2>Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / upstream)</h2>
+            <div class="bars">
+                {% for s in source_times %}
+                <div class="bar" style="grid-template-columns:230px 1fr auto;">
+                    <span class="lbl mono">{{ s.name }}</span>
+                    <span class="track"><span class="fill" style="width:{{ s.pct }}%;"></span></span>
+                    <span class="v">{{ s.avg }} ms · {{ s.count }} sorgu</span>
+                </div>
+                {% empty %}<div class="empty">Henüz ölçüm yok</div>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         {% if block_total %}
         <div class="box" style="margin-bottom:16px;">
@@ -69,7 +89,7 @@
 
             <div class="box">
                 <h2>En Çok Sorgulanan Alan Adları</h2>
-                <div>
+                <div class="scroll5">
                     {% for d in tdomains %}
                     <div class="bl">
                         <div class="bl-top"><span class="nm mono">{{ d.domain }}</span><span class="v">{{ d.cnt }}</span></div>
@@ -90,6 +110,59 @@
                     {% empty %}<div class="empty">Veri yok</div>{% endfor %}
                 </div>
             </div>
+
+            <div class="box">
+                <h2>En Çok Engellenen Alan Adları</h2>
+                <div class="scroll5">
+                    {% for d in blocked_domains %}
+                    <div class="bl">
+                        <div class="bl-top"><span class="nm mono" style="color:var(--err);">{{ d.domain }}</span><span class="v">{{ d.cnt }}</span></div>
+                        <div class="track"><span class="fill" style="width:{{ d.pct }}%;background:var(--err);"></span></div>
+                    </div>
+                    {% empty %}<div class="empty">Henüz engelleme yok</div>{% endfor %}
+                </div>
+            </div>
         </div>
     {% endif %}
+
+    <script>
+    (function () {
+        var el = document.getElementById('hourly-data');
+        var svg = document.getElementById('sparksvg');
+        if (!el || !svg) return;
+        var data = JSON.parse(el.textContent);
+        if (!data.length) return;
+        var W = {{ spark.w }}, H = {{ spark.h }}, PAD = 12, n = data.length;
+        var step = n > 1 ? W / (n - 1) : 0, mx = 1;
+        for (var i = 0; i < n; i++) { if (data[i].total > mx) mx = data[i].total; }
+        var ys = data.map(function (d) { return H - PAD - (d.total / mx) * (H - 2 * PAD); });
+        var tip = document.getElementById('sparktip');
+        var guide = document.getElementById('sparkguide');
+        var dot = document.getElementById('sparkdot');
+
+        function fmtHour(utc) {
+            var d = new Date(utc.replace(' ', 'T') + 'Z');
+            return isNaN(d.getTime()) ? utc : d.toLocaleString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        function show(e) {
+            var r = svg.getBoundingClientRect();
+            var i = Math.round((e.clientX - r.left) / r.width * W / step);
+            if (i < 0) i = 0; if (i > n - 1) i = n - 1;
+            var d = data[i], x = i * step, y = ys[i];
+            guide.setAttribute('x1', x); guide.setAttribute('x2', x); guide.style.display = '';
+            dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.style.display = '';
+            var html = '<div class="tt-h">' + fmtHour(d.utc) + '</div>'
+                + '<div><span>Sorgu</span><b>' + d.total + '</b></div>'
+                + '<div><span>Engellenen</span><b class="tt-b">' + d.blocked + '</b></div>';
+            if (d.client) html += '<div><span>En aktif</span><b>' + d.client + ' (' + d.client_cnt + ')</b></div>';
+            tip.innerHTML = html;
+            tip.style.display = '';
+            var px = x / W * r.width, half = tip.offsetWidth / 2;
+            tip.style.left = Math.max(half + 2, Math.min(r.width - half - 2, px)) + 'px';
+        }
+        function hide() { tip.style.display = 'none'; guide.style.display = 'none'; dot.style.display = 'none'; }
+        svg.addEventListener('mousemove', show);
+        svg.addEventListener('mouseleave', hide);
+    })();
+    </script>
 {% endblock %}

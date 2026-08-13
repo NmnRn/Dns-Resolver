@@ -58,7 +58,8 @@ class DoQProtocol(QuicConnectionProtocol):
         
         reply = parsed.reply()
 
-        rcode, record = await loop.run_in_executor(None, self.core.resolve, qname, qtype)
+        src = ["—"]
+        rcode, record = await loop.run_in_executor(None, self.core.resolve, qname, qtype, 0, src)
 
         if rcode == RCODE.NXDOMAIN:
             reply.header.rcode = RCODE.NXDOMAIN
@@ -73,7 +74,7 @@ class DoQProtocol(QuicConnectionProtocol):
         except (AttributeError, IndexError):
             client_ip = "unknown"
         blocked_by = self.core.is_blocked(qname)
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by})
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
         reply.header.id = 0
         reply_bytes = reply.pack()
         

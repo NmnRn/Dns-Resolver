@@ -1,3 +1,4 @@
+import concurrent.futures
 import random
 import socket
 import ssl
@@ -109,6 +110,10 @@ class DNSCore:
         # Çözümleme modu: recursion (kendi çekirdeğimiz) vs forwarding (upstream'lere ilet).
         self.use_recursion = True
         self.upstreams = []               # ['1.1.1.1', 'https://…/dns-query', 'tls://…'] (forwarding)
+        self.upstream_strategy = "sequential"   # sequential | parallel | fastest
+        # Kaynak bazında işlem süresi: 'DNS çekirdeği' / 'Önbellek' / upstream -> (sayı, toplam_ms)
+        self.source_stats = {}
+        self._stat_lock = threading.Lock()
 
     # --- Cache ---------------------------------------------------------------
     def _cache_get(self, domain, qtype):
@@ -327,18 +332,69 @@ class DNSCore:
         except Exception:
             return None
 
+    def record_source_time(self, source, ms):
+        """Çözüm kaynağının işlem süresini kaydet (ortalama için). '—'/boş atlanır."""
+        if not source or source == "—":
+            return
+        with self._stat_lock:
+            c, t = self.source_stats.get(source, (0, 0.0))
+            self.source_stats[source] = (c + 1, t + ms)
+
+    def _upstream_avg(self, up):
+        """Upstream ortalama süresi (ms); ölçüm yoksa +inf → 'fastest' sıralamasında sona."""
+        with self._stat_lock:
+            c, t = self.source_stats.get(up, (0, 0.0))
+        return (t / c) if c else float("inf")
+
     def _forward(self, domain, qtype):
-        """Forwarding modu: upstream'leri sırayla dene, ilk cevabı dön."""
-        for up in self.upstreams:
+        """Forwarding: stratejiye göre upstream'lere ilet → (cevap, kullanılan_upstream)."""
+        ups = list(self.upstreams)
+        if not ups:
+            return None, None
+        if self.upstream_strategy == "parallel":
+            return self._forward_parallel(domain, qtype, ups)
+        if self.upstream_strategy == "fastest":
+            ups.sort(key=self._upstream_avg)          # ölçülen en hızlı önce
+        for up in ups:                                 # sequential / fastest-ordered
             resp = self._query_forward_one(domain, qtype, up)
             if resp is not None:
-                return resp
-        return None
+                return resp, up
+        return None, None
+
+    def _forward_parallel(self, domain, qtype, ups):
+        """Tüm upstream'lere aynı anda sor, ilk gelen cevabı dön (yarış)."""
+        ex = concurrent.futures.ThreadPoolExecutor(max_workers=len(ups))
+        try:
+            futs = {ex.submit(self._query_forward_one, domain, qtype, up): up for up in ups}
+            for fut in concurrent.futures.as_completed(futs, timeout=QUERY_TIMEOUT + 2):
+                up = futs[fut]
+                try:
+                    resp = fut.result()
+                except Exception:
+                    resp = None
+                if resp is not None:
+                    return resp, up
+        except Exception:
+            pass
+        finally:
+            ex.shutdown(wait=False)
+        return None, None
 
     # --- Asıl çözümleme ------------------------------------------------------
-    def resolve(self, domain, qtype, depth=0):
+    def resolve(self, domain, qtype, depth=0, source=None):
+        """En dış (depth 0) çağrıda işlem süresini kaynağa göre ölçen sarmalayıcı."""
+        if depth != 0:
+            return self._resolve(domain, qtype, depth, source)
+        src = source if source is not None else ["—"]
+        t0 = now()
+        result = self._resolve(domain, qtype, 0, src)
+        self.record_source_time(src[0], (now() - t0) * 1000.0)
+        return result
+
+    def _resolve(self, domain, qtype, depth=0, source=None):
         """
-        (rcode, [rr, ...]) döner.
+        (rcode, [rr, ...]) döner. `source` verilirse (1 elemanlı liste), çözümün
+        nereden geldiği yazılır: 'Önbellek' / 'DNS çekirdeği' / upstream adresi.
         rcode == NOERROR ve liste boşsa: NODATA (kayıt yok ama domain var).
         rcode == NXDOMAIN: domain yok.
         rcode == SERVFAIL: çözülemedi.
@@ -354,12 +410,16 @@ class DNSCore:
         cached = self._cache_get(domain, qtype)
         if cached is not None:
             logger.debug("Cache hit for **** (%s)", qtype)
+            if source is not None:
+                source[0] = "Önbellek"   # kaynağı bilinmez (çekirdek ya da upstream) → dürüstçe "Önbellek"
             return cached
         logger.debug("Cache miss for **** (%s)", qtype)
 
         # Forwarding modu: kendi çekirdeğimiz kapalıysa upstream'lere ilet (recursion yok).
         if not self.use_recursion and self.upstreams:
-            resp = self._forward(domain, qtype)
+            resp, used = self._forward(domain, qtype)
+            if source is not None:
+                source[0] = used or "upstream"
             if resp is None:
                 return RCODE.SERVFAIL, []
             rcode = resp.header.rcode
@@ -373,6 +433,8 @@ class DNSCore:
                 self._cache_put(domain, qtype, RCODE.NOERROR, [], self._soa_ttl(resp.auth))
             return rcode, []
 
+        if source is not None:
+            source[0] = "DNS çekirdeği"
         # QNAME Minimisation (RFC 7816 / RFC 9156): her hop'ta tam ismi değil,
         # o an gereken kadar etiketi gönderiyoruz. Böylece root/TLD gibi asıl
         # kaydı hiç bilmeyen sunucular, kullanıcının tam olarak hangi ismi
@@ -532,7 +594,8 @@ class DNSResolver(BaseResolver):
         qtype = QTYPE[request.q.qtype]
         client_ip = handler.client_address[0]
 
-        rcode, records = self.core.resolve(qname, qtype)
+        src = ["—"]
+        rcode, records = self.core.resolve(qname, qtype, source=src)
 
         reply = request.reply()
         if rcode == RCODE.NXDOMAIN:
@@ -547,7 +610,7 @@ class DNSResolver(BaseResolver):
         log("**** **** %s -> %s (%d kayıt)", qtype, RCODE[rcode], len(records))
 
         blocked_by = self.core.is_blocked(qname)  # None ya da eşleşen liste adı
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method, "blocked": bool(blocked_by), "blocked_by": blocked_by})
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method, "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
         
         return reply
  

@@ -307,6 +307,17 @@ async def filters(request):
                 elif action == 'allow_del':
                     await db.remove_allow(domain)
                     msg = ('ok', f'{domain} izin listesinden çıkarıldı.')
+                elif action in ('block_manage', 'allow_manage'):
+                    remove = db.remove_block if action == 'block_manage' else db.remove_allow
+                    one = request.POST.get('one', '').strip()
+                    if one:                                   # tek satır sil
+                        await remove(_norm_domain(one))
+                        msg = ('ok', 'Kaldırıldı.')
+                    else:                                     # seçilenleri sil (toplu)
+                        doms = [_norm_domain(d) for d in request.POST.getlist('domains') if d.strip()]
+                        for d in doms:
+                            await remove(d)
+                        msg = ('ok', f'{len(doms)} kayıt kaldırıldı.') if doms else ('error', 'Hiç seçim yapılmadı.')
         except Exception as exc:
             msg = ('error', f'{type(exc).__name__}: {exc}')
 
@@ -334,27 +345,42 @@ async def analytics(request):
 
     context = _base_ctx(request, 'analytics')
     try:
-        stats, hourly, methods, rtypes, tdomains, tclients, blocks = await asyncio.gather(
+        stats, hourly, methods, rtypes, tdomains, tclients, blocks, bdomains = await asyncio.gather(
             db.get_stats(),
-            db.get_hourly_series(),
+            db.get_hourly_detail(),
             db.get_method_breakdown(),
             db.get_record_type_breakdown(),
-            db.get_top_domains(15),
+            db.get_top_domains(20),
             db.get_top_clients(10),
             db.get_block_breakdown(),
+            db.get_top_blocked_domains(20),
         )
     except Exception as exc:
         context['error'] = f'{type(exc).__name__}: {exc}'
         return render(request, 'dashboard/analytics.html', context)
 
+    totals = [h['total'] for h in hourly]
     context.update(
-        stats=stats, spark=_sparkline(hourly, w=680, h=120, pad=12),
-        peak=max(hourly) if hourly else 0,
+        stats=stats, spark=_sparkline(totals, w=680, h=120, pad=12),
+        peak=max(totals) if totals else 0, hourly=hourly,
         methods=_with_pct(methods), rtypes=_with_pct(rtypes),
         tdomains=_with_pct(tdomains), tclients=_with_pct(tclients),
         blocks=_with_pct(blocks), block_total=stats.get('blocked', 0),
+        blocked_domains=_with_pct(bdomains),
+        source_times=_source_times(),
     )
     return render(request, 'dashboard/analytics.html', context)
+
+
+def _source_times():
+    """Kaynak bazında ortalama işlem süreleri (çekirdek + önbellek + upstream'ler)."""
+    rows = [{'name': k, 'avg': v.get('avg_ms'), 'count': v.get('count', 0)}
+            for k, v in db.read_source_stats().items() if v.get('avg_ms') is not None]
+    rows.sort(key=lambda r: r['avg'])
+    mx = max((r['avg'] for r in rows), default=0) or 1
+    for r in rows:
+        r['pct'] = round(r['avg'] / mx * 100)
+    return rows
 
 
 def users(request):
@@ -499,27 +525,32 @@ def _server_ips():
 
 
 def _connection_endpoints(cfg, ports, domain, addrs):
-    """Açık yöntemlere göre kullanılabilir bağlantı uç noktalarını üretir."""
+    """Açık yöntemlere göre bağlantı uç noktaları. Domain = STANDART port (host dış
+    yayını 443/853'ü iç porta eşler → domainde port yazılmaz); dns-net IP = konteynerin
+    İÇ portu (doğrudan erişim)."""
     conn = []
     if cfg.get('udp'):
-        items = [a + ':' + ports['udp'] for a in addrs] or ['<sunucu-ip>:' + ports['udp']]
-        conn.append({'m': 'UDP', 'label': 'Düz DNS (UDP/TCP)', 'cert': False, 'items': items})
+        items = []
+        if domain:
+            items.append(domain)                                    # standart 53
+        items += [a + ':' + ports['udp'] for a in addrs]            # dns-net: iç port
+        conn.append({'m': 'UDP', 'label': 'Düz DNS (UDP/TCP)', 'cert': False,
+                     'items': items or ['<sunucu-ip>:' + ports['udp']]})
     enc = [
-        ('doh', 'DoH', 'DNS-over-HTTPS', 'https://', ':{p}/dns-query'),
-        ('dot', 'DoT', 'DNS-over-TLS', 'tls://', ':{p}'),
-        ('doq', 'DoQ', 'DNS-over-QUIC', 'quic://', ':{p}'),
+        ('doh', 'DoH', 'DNS-over-HTTPS', 'https://', '/dns-query'),
+        ('dot', 'DoT', 'DNS-over-TLS', 'tls://', ''),
+        ('doq', 'DoQ', 'DNS-over-QUIC', 'quic://', ''),
     ]
-    for key, m, label, scheme, tail in enc:
+    for key, m, label, scheme, path in enc:
         if not cfg.get(key):
             continue
         p = ports[key]
         items = []
         if domain:
-            items.append(scheme + domain + tail.format(p=p))
-        items += [scheme + a + tail.format(p=p) for a in addrs]
-        if not items:
-            items = [scheme + '<sunucu-ip>' + tail.format(p=p)]
-        conn.append({'m': m, 'label': label, 'cert': True, 'items': items})
+            items.append(scheme + domain + path)                    # standart 443/853
+        items += [scheme + a + ':' + p + path for a in addrs]       # dns-net: iç port
+        conn.append({'m': m, 'label': label, 'cert': True,
+                     'items': items or [scheme + '<sunucu-ip>:' + p + path]})
     return conn
 
 
@@ -585,6 +616,9 @@ async def settings_page(request):
                 stamp = str(int(datetime.now(timezone.utc).timestamp()))
                 await db.set_setting('cache_clear_at', stamp)
                 msg = ('ok', 'Önbellek temizleme istendi — resolver ~10 sn içinde uygular.')
+            elif 'clear_history' in request.POST:
+                await db.clear_history()
+                msg = ('ok', 'Sorgu geçmişi (veritabanı) temizlendi.')
             else:
                 mn = request.POST.get('cache_min_ttl', '0').strip()
                 mx = request.POST.get('cache_max_ttl', '86400').strip()
@@ -597,6 +631,9 @@ async def settings_page(request):
                     await db.set_setting('cache_max_ttl', str(int(mx)))
                     await db.set_setting('use_recursion', '1' if request.POST.get('use_recursion') else '0')
                     await db.set_setting('upstreams', request.POST.get('upstreams', '').strip())
+                    _strat = request.POST.get('upstream_strategy', 'sequential')
+                    await db.set_setting('upstream_strategy',
+                                         _strat if _strat in ('sequential', 'parallel', 'fastest') else 'sequential')
                     msg = ('ok', 'Ayarlar kaydedildi — resolver ~10 sn içinde uygular.')
         except Exception as exc:
             msg = ('error', f'{type(exc).__name__}: {exc}')
@@ -615,5 +652,15 @@ async def settings_page(request):
         cache_max_ttl=s.get('cache_max_ttl', '86400'),
         use_recursion=s.get('use_recursion', '1') != '0',
         upstreams=s.get('upstreams', ''),
+        upstream_strategy=s.get('upstream_strategy', 'sequential'),
+        upstream_rows=_upstream_rows(s.get('upstreams', '')),
     )
     return render(request, 'dashboard/settings.html', context)
+
+
+def _upstream_rows(upstreams_raw):
+    """Yapılandırılan upstream'leri ölçülen ortalama tepki süreleriyle eşle."""
+    ups = [ln.strip() for ln in upstreams_raw.replace(',', '\n').splitlines() if ln.strip()]
+    stats = db.read_source_stats()
+    return [{'up': u, 'avg': stats.get(u, {}).get('avg_ms'),
+             'count': stats.get(u, {}).get('count', 0)} for u in ups]

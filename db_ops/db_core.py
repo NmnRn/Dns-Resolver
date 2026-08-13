@@ -11,7 +11,7 @@ import db_ops.db_control_users as dbusers
 # Şema sürümü: uyumsuz her şema değişikliğinde 1 artır ve MIGRATIONS'a
 # eski sürümü yeni sürüme taşıyan adımı ekle. Açılışta migrate_scheme()
 # kayıtlı sürümden güncel sürüme sırayla yürür.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 MIGRATIONS = {
     # 1 -> 2: timestamp BIGINT yerine queried_at DATETIME (UTC). Log verisi
@@ -21,6 +21,10 @@ MIGRATIONS = {
     2: (
         "ALTER TABLE dns_cache ADD COLUMN blocked BOOLEAN NOT NULL DEFAULT FALSE",
         "ALTER TABLE dns_cache ADD COLUMN blocked_by VARCHAR(255) DEFAULT NULL",
+    ),
+    # 3 -> 4: çözüm kaynağı — 'DNS çekirdeği' / 'Önbellek' / upstream sunucu.
+    3: (
+        "ALTER TABLE dns_cache ADD COLUMN resolved_by VARCHAR(255) DEFAULT NULL",
     ),
 }
 
@@ -149,7 +153,8 @@ class DB_CON():
                     method VARCHAR(16),
                     user_id INT,
                     blocked BOOLEAN NOT NULL DEFAULT FALSE,
-                    blocked_by VARCHAR(255) DEFAULT NULL
+                    blocked_by VARCHAR(255) DEFAULT NULL,
+                    resolved_by VARCHAR(255) DEFAULT NULL
                 );
                 CREATE TABLE IF NOT EXISTS users (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -205,7 +210,7 @@ class DB_CON():
             await cursor.execute(
                 "INSERT IGNORE INTO app_settings (k, v) VALUES "
                 "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),"
-                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
+                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
                 ('cert_file', os.getenv('CERT_FILE', 'certificates/fullchain.pem'),
                  'key_file', os.getenv('KEY_FILE', 'certificates/privkey.pem'),
                  # İç dinleme portları (build_* env'den okur; dış/host yayını ayrı).
@@ -221,7 +226,8 @@ class DB_CON():
                  'cache_clear_at', '0',     # panelden "temizle" damgası (değişince resolver boşaltır)
                  # Çözümleme modu: recursion (kendi çekirdek) vs forwarding.
                  'use_recursion', '1',      # 1 = recursive, 0 = forwarding
-                 'upstreams', ''),          # forwarding upstream'leri (satır başına bir tane)
+                 'upstreams', '',           # forwarding upstream'leri (satır başına bir tane)
+                 'upstream_strategy', 'sequential'),  # sequential | parallel | fastest
             )
             await conn.commit()
 

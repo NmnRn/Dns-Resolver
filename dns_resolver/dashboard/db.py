@@ -22,6 +22,7 @@ from django.conf import settings
 # Resolver'ın flush bekleyen tamponu (aynı container, paylaşılan dosya). db_ops/__init__.py
 # ile AYNI yol. Sorgu geçmişi = bu (cache) + DB olarak birleştirilir.
 _PENDING_FILE = os.getenv('PENDING_FILE', '/app/data/pending.json')
+_SOURCE_STATS_FILE = os.getenv('SOURCE_STATS_FILE', '/app/data/source_stats.json')
 
 _pools: dict[asyncio.AbstractEventLoop, aiomysql.Pool] = {}
 _locks: dict[asyncio.AbstractEventLoop, asyncio.Lock] = {}
@@ -62,7 +63,7 @@ async def _fetch_all(sql: str, params: tuple = ()) -> list[dict]:
     async with pool.acquire() as conn:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(sql, params)
-            return await cur.fetchall()
+            return list(await cur.fetchall())   # fetchall boşta tuple döndürebilir → hep list
 
 
 async def _fetch_one(sql: str, params: tuple = ()) -> dict | None:
@@ -111,6 +112,21 @@ async def get_block_breakdown(limit: int = 12) -> list[dict]:
     )
 
 
+async def get_top_blocked_domains(limit: int = 10) -> list[dict]:
+    """En çok engellenen alan adları (Analiz'de kırmızı liste)."""
+    return await _fetch_all(
+        """
+        SELECT TRIM(TRAILING '.' FROM domain) AS domain, COUNT(*) AS cnt
+        FROM dns_cache
+        WHERE blocked = TRUE
+        GROUP BY domain
+        ORDER BY cnt DESC
+        LIMIT %s
+        """,
+        (limit,),
+    )
+
+
 async def get_hourly_series(hours: int = 24) -> list[int]:
     """Son `hours` saatin saatlik sorgu sayıları (eskiden yeniye; eksik saatler 0)."""
     rows = await _fetch_all(
@@ -126,6 +142,49 @@ async def get_hourly_series(hours: int = 24) -> list[int]:
     now = datetime.now(timezone.utc)
     return [counts.get((now - timedelta(hours=i)).strftime('%Y-%m-%d %H'), 0)
             for i in range(hours - 1, -1, -1)]
+
+
+async def get_hourly_detail(hours: int = 24) -> list[dict]:
+    """Saatlik kırılım: toplam + engellenen + en aktif istemci (grafik hover ipucu).
+    'utc' saat başı UTC damgasıdır; panel JS'i yerel saate çevirir."""
+    tot = await _fetch_all(
+        """
+        SELECT DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H') AS bucket,
+               COUNT(*) AS total, COALESCE(SUM(blocked), 0) AS blocked
+        FROM dns_cache
+        WHERE queried_at >= UTC_TIMESTAMP() - INTERVAL %s HOUR
+        GROUP BY bucket
+        """,
+        (hours,),
+    )
+    agg = {r['bucket']: (int(r['total']), int(r['blocked'])) for r in tot}
+    cli = await _fetch_all(
+        """
+        SELECT DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H') AS bucket, client_ip, COUNT(*) AS c
+        FROM dns_cache
+        WHERE queried_at >= UTC_TIMESTAMP() - INTERVAL %s HOUR
+        GROUP BY bucket, client_ip
+        """,
+        (hours,),
+    )
+    top = {}
+    for r in cli:
+        b, c = r['bucket'], int(r['c'])
+        if b not in top or c > top[b][1]:
+            top[b] = (r['client_ip'], c)
+    now = datetime.now(timezone.utc)
+    out = []
+    for i in range(hours - 1, -1, -1):
+        dt = now - timedelta(hours=i)
+        key = dt.strftime('%Y-%m-%d %H')
+        total, blocked = agg.get(key, (0, 0))
+        tc = top.get(key)
+        out.append({
+            'utc': dt.strftime('%Y-%m-%d %H:00:00'),
+            'total': total, 'blocked': blocked,
+            'client': tc[0] if tc else '', 'client_cnt': tc[1] if tc else 0,
+        })
+    return out
 
 
 async def get_top_domains(limit: int = 10) -> list[dict]:
@@ -181,7 +240,7 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
     return await _fetch_all(
         f"""
         SELECT id, TRIM(TRAILING '.' FROM domain) AS domain, record_type, client_ip,
-               DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method, user_id, blocked, blocked_by
+               DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method, user_id, blocked, blocked_by, resolved_by
         FROM dns_cache
         {clause}
         ORDER BY queried_at DESC
@@ -215,6 +274,7 @@ def read_pending(domain: str = '', method: str = '') -> list[dict]:
             'client_ip': it.get('client_ip'), 'queried_at': it.get('queried_at'),
             'method': it.get('method'), 'user_id': None, 'pending': True,
             'blocked': it.get('blocked', False), 'blocked_by': it.get('blocked_by'),
+            'resolved_by': it.get('resolved_by'),
         })
     return out
 
@@ -340,3 +400,17 @@ async def set_setting(k: str, v: str) -> None:
         "INSERT INTO app_settings (k, v) VALUES (%s, %s) ON DUPLICATE KEY UPDATE v = VALUES(v)",
         (k, v),
     )
+
+
+async def clear_history() -> None:
+    """Veritabanındaki tüm sorgu geçmişini siler (geri alınamaz)."""
+    await _write("DELETE FROM dns_cache", ())
+
+
+def read_source_stats() -> dict:
+    """Resolver'ın yazdığı kaynak (çekirdek/önbellek/upstream) işlem süresi ortalamaları."""
+    try:
+        with open(_SOURCE_STATS_FILE, encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}

@@ -89,19 +89,19 @@
                     <input type="text" name="domain" placeholder="ör. ads.example.com" autocomplete="off" spellcheck="false">
                     <button class="btn" type="submit">Engelle</button>
                 </form>
-                <ul class="flist">
-                    {% for b in blocklist %}
-                    <li>
-                        <span class="mono">{{ b.domain }}</span>
-                        <form method="post" style="margin:0">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="block_del">
-                            <input type="hidden" name="domain" value="{{ b.domain }}">
-                            <button class="xbtn danger" type="submit">Sil</button>
-                        </form>
-                    </li>
-                    {% empty %}<li class="muted">Liste boş</li>{% endfor %}
-                </ul>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="block_manage">
+                    <ul class="flist">
+                        {% for b in blocklist %}
+                        <li>
+                            <label class="fchk"><input type="checkbox" name="domains" value="{{ b.domain }}"><span class="mono">{{ b.domain }}</span></label>
+                            <button class="xbtn danger" type="submit" name="one" value="{{ b.domain }}">Sil</button>
+                        </li>
+                        {% empty %}<li class="muted">Liste boş</li>{% endfor %}
+                    </ul>
+                    {% if blocklist %}<div class="bulkbar"><button class="xbtn danger" type="submit">Seçilenleri sil</button></div>{% endif %}
+                </form>
             </div>
 
             <div class="box">
@@ -112,19 +112,19 @@
                     <input type="text" name="domain" placeholder="ör. safe.example.com" autocomplete="off" spellcheck="false">
                     <button class="btn" type="submit">İzin ver</button>
                 </form>
-                <ul class="flist">
-                    {% for a in allowlist %}
-                    <li>
-                        <span class="mono">{{ a.domain }}</span>
-                        <form method="post" style="margin:0">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="allow_del">
-                            <input type="hidden" name="domain" value="{{ a.domain }}">
-                            <button class="xbtn danger" type="submit">Sil</button>
-                        </form>
-                    </li>
-                    {% empty %}<li class="muted">Liste boş</li>{% endfor %}
-                </ul>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="allow_manage">
+                    <ul class="flist">
+                        {% for a in allowlist %}
+                        <li>
+                            <label class="fchk"><input type="checkbox" name="domains" value="{{ a.domain }}"><span class="mono">{{ a.domain }}</span></label>
+                            <button class="xbtn danger" type="submit" name="one" value="{{ a.domain }}">Sil</button>
+                        </li>
+                        {% empty %}<li class="muted">Liste boş</li>{% endfor %}
+                    </ul>
+                    {% if allowlist %}<div class="bulkbar"><button class="xbtn danger" type="submit">Seçilenleri sil</button></div>{% endif %}
+                </form>
             </div>
         </div>
     {% endif %}
