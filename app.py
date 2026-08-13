@@ -277,6 +277,9 @@ def main():
                 # Kaldırılan/kapatılan kaynakların cache'ini temizle.
                 for sid in [k for k in _source_cache if k not in active_ids]:
                     del _source_cache[sid]
+                # Ön tanımlı servis engelleri (TikTok/Instagram…) — DB'den, list_sets'e kat.
+                for svc, doms in (await db_manager.get_service_lists()).items():
+                    list_sets[svc] = doms
                 core.update_filter_lists(manual_block, allow, list_sets)
             except Exception as e:
                 logger.error("Filtre listesi yenileme hatası: %r", e)

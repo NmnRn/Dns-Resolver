@@ -13,6 +13,9 @@
 .bl-top .v{color:var(--muted);font:12.5px var(--mono)}
 /* ~5 satır göster, gerisi kaydırılabilir */
 .scroll5{max-height:238px;overflow-y:auto}
+/* engellenenler = ayrı kırmızı blok (mavi listelere karışmaz) */
+.redlist{border-color:rgba(248,81,73,.4)}
+.redlist>h2{color:var(--err);border-bottom-color:rgba(248,81,73,.25)}
 /* 24s grafik hover ipucu */
 .sparkwrap{position:relative}
 .sparkwrap svg{display:block;cursor:crosshair}
@@ -21,3 +24,8 @@
 .chart-tip>div:not(.tt-h){display:flex;justify-content:space-between;gap:16px;color:var(--muted);line-height:1.7}
 .chart-tip b{color:var(--text);font-weight:600}
 .chart-tip .tt-b{color:var(--err)}
+.chartleg{display:flex;gap:18px;font-size:12px;color:var(--muted);margin-top:8px}
+.chartleg span{display:flex;align-items:center;gap:7px}
+.chartleg i{width:16px;height:3px;border-radius:2px;display:inline-block}
+.chartleg .lg-b{background:#4c82f0}
+.chartleg .lg-r{background:#f85149}

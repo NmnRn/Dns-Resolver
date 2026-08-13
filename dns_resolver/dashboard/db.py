@@ -407,6 +407,22 @@ async def clear_history() -> None:
     await _write("DELETE FROM dns_cache", ())
 
 
+async def get_enabled_services() -> set:
+    """Şu an engelli ön tanımlı servislerin adları."""
+    rows = await _fetch_all("SELECT DISTINCT service FROM blocked_services")
+    return {r['service'] for r in rows}
+
+
+async def set_service(name: str, domains: list, enabled: bool) -> None:
+    """Servisi aç (domainleri ekle) ya da kapat (o servisin satırlarını sil)."""
+    if enabled:
+        for d in domains:
+            await _write("INSERT IGNORE INTO blocked_services (service, domain) VALUES (%s, %s)",
+                         (name, d.strip().lower()))
+    else:
+        await _write("DELETE FROM blocked_services WHERE service = %s", (name,))
+
+
 def read_source_stats() -> dict:
     """Resolver'ın yazdığı kaynak (çekirdek/önbellek/upstream) işlem süresi ortalamaları."""
     try:

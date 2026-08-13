@@ -203,6 +203,14 @@ class DB_CON():
                     updated_at DATETIME NULL
                 )
             """)
+            # Ön tanımlı servis engelleme (panelden aç/kapa; domainler burada tutulur).
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS blocked_services (
+                    service VARCHAR(64) NOT NULL,
+                    domain VARCHAR(255) NOT NULL,
+                    PRIMARY KEY (service, domain)
+                )
+            """)
             # Panelden ayarlanabilir anahtar-değer ayarları (ör. sertifika yolları).
             await cursor.execute(
                 "CREATE TABLE IF NOT EXISTS app_settings (k VARCHAR(64) PRIMARY KEY, v VARCHAR(512))"
@@ -252,6 +260,16 @@ class DB_CON():
             await cursor.execute("SELECT domain FROM allowlist")
             allow = {norm(r["domain"]) for r in await cursor.fetchall()}
         return block, allow
+
+    async def get_service_lists(self):
+        """Ön tanımlı servis engelleri: {servis_adı: frozenset(domain)}. is_blocked
+        bunları list_sets'e katar → eşleşen servisin adını döndürür (attribution)."""
+        out = {}
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute("SELECT service, domain FROM blocked_services")
+            for r in await cursor.fetchall():
+                out.setdefault(r["service"], set()).add(r["domain"].strip().rstrip(".").lower())
+        return {k: frozenset(v) for k, v in out.items()}
 
     async def get_blocklist_sources(self):
         """

@@ -20,11 +20,14 @@
                         </linearGradient></defs>
                         <path fill="url(#ag)" d="{{ spark.area }}"/>
                         <polyline fill="none" stroke="#4c82f0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.line }}"/>
-                        <line id="sparkguide" y1="0" y2="{{ spark.h }}" stroke="#4c82f0" stroke-width="1" stroke-dasharray="3 3" opacity=".5" style="display:none"/>
+                        <polyline fill="none" stroke="#f85149" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.bline }}"/>
+                        <line id="sparkguide" y1="0" y2="{{ spark.h }}" stroke="#8b98a9" stroke-width="1" stroke-dasharray="3 3" opacity=".5" style="display:none"/>
                         <circle id="sparkdot" r="4" fill="#4c82f0" stroke="#161b22" stroke-width="2" style="display:none"/>
+                        <circle id="sparkdotb" r="4" fill="#f85149" stroke="#161b22" stroke-width="2" style="display:none"/>
                     </svg>
                     <div id="sparktip" class="chart-tip" style="display:none"></div>
                 </div>
+                <div class="chartleg"><span><i class="lg-b"></i> Toplam sorgu</span><span><i class="lg-r"></i> Engellenen</span></div>
                 {{ hourly|json_script:"hourly-data" }}
                 {% else %}<div class="empty">Veri yok</div>{% endif %}
             </div>
@@ -54,6 +57,20 @@
                     <span class="lbl" style="color:var(--err);">{{ b.name }}</span>
                     <span class="track"><span class="fill" style="width:{{ b.pct }}%;background:var(--err);"></span></span>
                     <span class="v">{{ b.cnt }}</span>
+                </div>
+                {% empty %}<div class="empty">Henüz engelleme yok</div>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if blocked_domains %}
+        <div class="box redlist" style="margin-bottom:16px;">
+            <h2>En Çok Engellenen Alan Adları</h2>
+            <div class="scroll5">
+                {% for d in blocked_domains %}
+                <div class="bl">
+                    <div class="bl-top"><span class="nm mono" style="color:var(--err);">{{ d.domain }}</span><span class="v">{{ d.cnt }}</span></div>
+                    <div class="track"><span class="fill" style="width:{{ d.pct }}%;background:var(--err);"></span></div>
                 </div>
                 {% empty %}<div class="empty">Henüz engelleme yok</div>{% endfor %}
             </div>
@@ -110,18 +127,6 @@
                     {% empty %}<div class="empty">Veri yok</div>{% endfor %}
                 </div>
             </div>
-
-            <div class="box">
-                <h2>En Çok Engellenen Alan Adları</h2>
-                <div class="scroll5">
-                    {% for d in blocked_domains %}
-                    <div class="bl">
-                        <div class="bl-top"><span class="nm mono" style="color:var(--err);">{{ d.domain }}</span><span class="v">{{ d.cnt }}</span></div>
-                        <div class="track"><span class="fill" style="width:{{ d.pct }}%;background:var(--err);"></span></div>
-                    </div>
-                    {% empty %}<div class="empty">Henüz engelleme yok</div>{% endfor %}
-                </div>
-            </div>
         </div>
     {% endif %}
 
@@ -136,9 +141,11 @@
         var step = n > 1 ? W / (n - 1) : 0, mx = 1;
         for (var i = 0; i < n; i++) { if (data[i].total > mx) mx = data[i].total; }
         var ys = data.map(function (d) { return H - PAD - (d.total / mx) * (H - 2 * PAD); });
+        var ysb = data.map(function (d) { return H - PAD - (d.blocked / mx) * (H - 2 * PAD); });
         var tip = document.getElementById('sparktip');
         var guide = document.getElementById('sparkguide');
         var dot = document.getElementById('sparkdot');
+        var dotb = document.getElementById('sparkdotb');
 
         function fmtHour(utc) {
             var d = new Date(utc.replace(' ', 'T') + 'Z');
@@ -151,6 +158,7 @@
             var d = data[i], x = i * step, y = ys[i];
             guide.setAttribute('x1', x); guide.setAttribute('x2', x); guide.style.display = '';
             dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.style.display = '';
+            dotb.setAttribute('cx', x); dotb.setAttribute('cy', ysb[i]); dotb.style.display = '';
             var html = '<div class="tt-h">' + fmtHour(d.utc) + '</div>'
                 + '<div><span>Sorgu</span><b>' + d.total + '</b></div>'
                 + '<div><span>Engellenen</span><b class="tt-b">' + d.blocked + '</b></div>';
@@ -160,7 +168,7 @@
             var px = x / W * r.width, half = tip.offsetWidth / 2;
             tip.style.left = Math.max(half + 2, Math.min(r.width - half - 2, px)) + 'px';
         }
-        function hide() { tip.style.display = 'none'; guide.style.display = 'none'; dot.style.display = 'none'; }
+        function hide() { tip.style.display = 'none'; guide.style.display = 'none'; dot.style.display = 'none'; dotb.style.display = 'none'; }
         svg.addEventListener('mousemove', show);
         svg.addEventListener('mouseleave', hide);
     })();

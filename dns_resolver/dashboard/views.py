@@ -20,6 +20,7 @@ from django.urls import reverse
 
 from . import db
 from .catalog import catalog_grouped
+from .services import SERVICES, services_list
 
 # Filtre menüsü + kontrol sayfası için desteklenen yöntemler.
 METHODS = ['udp', 'doh', 'dot', 'doq']
@@ -109,6 +110,24 @@ def _sparkline(values, w=280, h=54, pad=6):
     line = ' '.join(f'{x},{y}' for x, y in pts)
     area = f'M{pts[0][0]},{h} ' + ' '.join(f'L{x},{y}' for x, y in pts) + f' L{pts[-1][0]},{h} Z'
     return {'line': line, 'area': area, 'w': w, 'h': h, 'dx': pts[-1][0], 'dy': pts[-1][1]}
+
+
+def _sparkline2(totals, blocked, w=680, h=120, pad=12):
+    """İki çizgi AYNI ölçekte: toplam (mavi, alan dolgulu) + engellenen (kırmızı)."""
+    if not totals:
+        return None
+    mx = max(totals) or 1
+    n = len(totals)
+    step = w / (n - 1) if n > 1 else 0
+
+    def _pts(vals):
+        return [(round(i * step, 1), round(h - pad - (v / mx) * (h - 2 * pad), 1)) for i, v in enumerate(vals)]
+
+    tp, bp = _pts(totals), _pts(blocked)
+    line = ' '.join(f'{x},{y}' for x, y in tp)
+    area = f'M{tp[0][0]},{h} ' + ' '.join(f'L{x},{y}' for x, y in tp) + f' L{tp[-1][0]},{h} Z'
+    bline = ' '.join(f'{x},{y}' for x, y in bp)
+    return {'line': line, 'area': area, 'bline': bline, 'w': w, 'h': h, 'dx': tp[-1][0], 'dy': tp[-1][1]}
 
 
 def _with_pct(rows, key='cnt'):
@@ -290,6 +309,12 @@ async def filters(request):
             elif action == 'source_refresh':
                 await db.refresh_source(int(request.POST.get('source_id', 0)))
                 msg = ('ok', 'Liste yenileniyor — resolver birazdan yeniden indirir.')
+            elif action == 'service_toggle':
+                svc = SERVICES.get(request.POST.get('service', ''))
+                if svc:
+                    en = request.POST.get('enabled') == '1'
+                    await db.set_service(svc['name'], svc['domains'], en)
+                    msg = ('ok', f"{svc['name']} {'engellendi' if en else 'engeli kaldırıldı'} — resolver ~30 sn içinde uygular.")
             else:
                 # --- Elle domain işlemleri ---
                 domain = _norm_domain(request.POST.get('domain', ''))
@@ -322,8 +347,8 @@ async def filters(request):
             msg = ('error', f'{type(exc).__name__}: {exc}')
 
     try:
-        blocklist, allowlist, sources = await asyncio.gather(
-            db.get_blocklist(), db.get_allowlist(), db.get_sources())
+        blocklist, allowlist, sources, enabled_services = await asyncio.gather(
+            db.get_blocklist(), db.get_allowlist(), db.get_sources(), db.get_enabled_services())
     except Exception as exc:
         context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
         return render(request, 'dashboard/filters.html', context)
@@ -333,6 +358,8 @@ async def filters(request):
         catalog=catalog_grouped(), added_urls=[s['url'] for s in sources], msg=msg,
         block_count=len(blocklist), allow_count=len(allowlist),
         source_count=len(sources), total_list_domains=sum(s['count'] for s in sources),
+        services=[{'id': sid, 'name': name, 'enabled': name in enabled_services}
+                  for sid, name in services_list()],
     )
     return render(request, 'dashboard/filters.html', context)
 
@@ -360,8 +387,9 @@ async def analytics(request):
         return render(request, 'dashboard/analytics.html', context)
 
     totals = [h['total'] for h in hourly]
+    blocked = [h['blocked'] for h in hourly]
     context.update(
-        stats=stats, spark=_sparkline(totals, w=680, h=120, pad=12),
+        stats=stats, spark=_sparkline2(totals, blocked, w=680, h=120, pad=12),
         peak=max(totals) if totals else 0, hourly=hourly,
         methods=_with_pct(methods), rtypes=_with_pct(rtypes),
         tdomains=_with_pct(tdomains), tclients=_with_pct(tclients),

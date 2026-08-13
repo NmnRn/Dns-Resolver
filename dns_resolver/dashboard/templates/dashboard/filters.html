@@ -47,6 +47,22 @@
             </div>
         </div>
 
+        <!-- Ön tanımlı servisler -->
+        <div class="box" style="margin-bottom:16px;">
+            <h2>Ön Tanımlı Servisler — tek tıkla engelle</h2>
+            <div class="svcgrid">
+                {% for s in services %}
+                <form method="post" class="svcitem">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="service_toggle">
+                    <input type="hidden" name="service" value="{{ s.id }}">
+                    <span class="svcname">{{ s.name }}</span>
+                    <button type="submit" name="enabled" value="{% if s.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ s.enabled|yesno:'true,false' }}" aria-label="{{ s.name }} engelle/kaldır"></button>
+                </form>
+                {% endfor %}
+            </div>
+        </div>
+
         <!-- Eklenen listeler -->
         <div class="box" style="margin-bottom:16px;">
             <h2>Eklenen Listeler — {{ source_count }} liste · {{ total_list_domains }} domain</h2>
