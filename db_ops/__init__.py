@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 import db_ops.db_core as dbops
 import db_ops.db_control_users as dbusers
+import logcrypto  # istemci IP'sini at-rest şifreleme (DNS_LOG_KEY varsa)
 MAX_BUFFER = 50_000  # DB erişilemezken tamponun büyüyebileceği üst sınır
 # Flush bekleyen tamponun yazıldığı paylaşılan dosya (panel okuyup DB ile birleştirir).
 PENDING_FILE = os.getenv('PENDING_FILE', '/app/data/pending.json')
@@ -92,6 +93,7 @@ class DBManager(dbops.DB_CON):
             return
         value = dict(value)  # çağıranın dict'ini değiştirme
         value.setdefault("queried_at", self.utc_now())
+        value["client_ip"] = logcrypto.enc(value.get("client_ip"))  # PII: anahtar varsa at-rest şifrele
         with self._lock:
             self.flush_cache.append((key, value))
 

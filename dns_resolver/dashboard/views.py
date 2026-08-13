@@ -8,9 +8,12 @@ oturumu KONTROL eder (SESSION_ENGINE=signed_cookies olduğu için request.sessio
 erişimi async'te güvenlidir).
 """
 import asyncio
+import logging
 import os
 import re
 import socket
+import threading
+import time
 from datetime import datetime, timezone
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -30,6 +33,65 @@ METHOD_PORTS = {'udp': 5300, 'doh': 44300, 'dot': 8853, 'doq': 8530}
 NEEDS_CERT = {'doh', 'dot', 'doq'}
 # Metot -> app_settings anahtarı (panelden ayarlanan iç dinleme portu).
 PORT_KEY = {'udp': 'udp_port', 'doh': 'https_port', 'dot': 'dot_port', 'doq': 'doq_port'}
+
+logger = logging.getLogger('dashboard')
+
+
+def _fail(exc, msg='İşlem sırasında bir hata oluştu.'):
+    """Hata AYRINTISINI sunucu günlüğüne (docker logs) yazar, kullanıcıya genel
+    mesaj döndürür — exc tipi/metnini panelde göstermek iç yapı bilgisini sızdırır."""
+    logger.error('panel hata (%s): %s', type(exc).__name__, exc, exc_info=True)
+    return msg
+
+
+# --------------------------------------------------------------------------- #
+# Giriş brute-force koruması: istemci-IP başına başarısız deneme sayacı.
+# Panel tek-process uvicorn olduğundan basit in-process yapı yeterli (harici
+# bağımlılık yok). Ters proxy (Cloudflare tüneli) arkasında gerçek istemci
+# X-Forwarded-For'un ilk değeridir; REMOTE_ADDR tünelin kendisini gösterir.
+# --------------------------------------------------------------------------- #
+_LOGIN_MAX_FAILS = 5       # bu kadar başarısız denemeden sonra
+_LOGIN_LOCK_SECS = 900     # 15 dk kilit
+_login_fails: dict = {}    # ip -> (fail_count, window_start_ts)
+_login_lock = threading.Lock()
+
+
+def _client_ip(request):
+    """İstemci IP'si — ters proxy arkasında X-Forwarded-For'un ilk değeri."""
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if xff:
+        return xff.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '')
+
+
+def _login_locked(ip):
+    """IP şu an kilitli mi? (pencere içinde eşik aşıldıysa)"""
+    with _login_lock:
+        rec = _login_fails.get(ip)
+        if not rec:
+            return False
+        count, start = rec
+        if time.time() - start >= _LOGIN_LOCK_SECS:
+            _login_fails.pop(ip, None)   # pencere doldu → temizle
+            return False
+        return count >= _LOGIN_MAX_FAILS
+
+
+def _login_note_fail(ip):
+    """Başarısız denemeyi say; pencere kaymışsa yeniden başlat."""
+    with _login_lock:
+        rec = _login_fails.get(ip)
+        now = time.time()
+        if not rec or now - rec[1] >= _LOGIN_LOCK_SECS:
+            _login_fails[ip] = (1, now)
+        else:
+            _login_fails[ip] = (rec[0] + 1, rec[1])
+
+
+def _login_reset(ip):
+    """Başarılı girişte o IP'nin sayacını sıfırla."""
+    with _login_lock:
+        _login_fails.pop(ip, None)
 
 
 def _valid_port(s):
@@ -71,13 +133,21 @@ def login_view(request):
         return redirect('dashboard:setup')
     error, username = None, ''
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
-        user = authenticate(request, username=username, password=request.POST.get('password', ''))
-        if user is not None:
-            auth_login(request, user)
-            request.session['panel_username'] = user.username
-            return redirect(request.GET.get('next') or 'dashboard:logs')
-        error = 'Kullanıcı adı veya parola hatalı.'
+        ip = _client_ip(request)
+        if _login_locked(ip):
+            logger.warning('giriş kilitli (çok deneme): ip=%s', ip)
+            error = 'Çok fazla başarısız deneme. Lütfen bir süre sonra tekrar deneyin.'
+        else:
+            username = request.POST.get('username', '').strip()
+            user = authenticate(request, username=username, password=request.POST.get('password', ''))
+            if user is not None:
+                _login_reset(ip)
+                auth_login(request, user)
+                request.session['panel_username'] = user.username
+                return redirect(request.GET.get('next') or 'dashboard:logs')
+            _login_note_fail(ip)
+            logger.warning('başarısız panel girişi: ip=%s', ip)
+            error = 'Kullanıcı adı veya parola hatalı.'
     return render(request, 'dashboard/login.html', {
         'mode_title': 'Giriş', 'submit': 'Giriş yap', 'hint': 'Panele erişmek için giriş yap.',
         'pw_autocomplete': 'current-password', 'error': error, 'username': username,
@@ -156,7 +226,7 @@ async def logs(request):
             db.get_hourly_series(),
         )
     except Exception as exc:  # DB erişilemezse 500 yerine anlaşılır mesaj.
-        context['error'] = f'{type(exc).__name__}: {exc}'
+        context['error'] = _fail(exc, 'Veritabanına erişilemedi.')
         return render(request, 'dashboard/logs.html', context)
 
     context.update(stats=stats, top_domains=top_domains, top_clients=top_clients,
@@ -194,7 +264,7 @@ async def queries(request):
         if partial:
             return render(request, 'dashboard/_query_rows.html', {'rows': [], 'first': False})
         context = _base_ctx(request, 'queries')
-        context.update(q=domain, method=method, methods=METHODS, error=f'{type(exc).__name__}: {exc}')
+        context.update(q=domain, method=method, methods=METHODS, error=_fail(exc, 'Veritabanına erişilemedi.'))
         return render(request, 'dashboard/queries.html', context)
 
     if partial:
@@ -237,7 +307,7 @@ async def servers(request):
                               else 'metodu kapatıp açınca')
                     msg = ('ok', f'{METHOD_LABELS[method]} iç portu {port} olarak kaydedildi — {uygula} uygulanır.')
                 except Exception as exc:
-                    msg = ('error', f'{type(exc).__name__}: {exc}')
+                    msg = ('error', _fail(exc))
         else:
             enabled = request.POST.get('enabled') == '1'
             if method == 'udp' and not enabled:
@@ -248,13 +318,13 @@ async def servers(request):
                     durum = 'açıldı' if enabled else 'kapatıldı'
                     msg = ('ok', f'{METHOD_LABELS[method]} {durum} — resolver ~5 sn içinde uygular.')
                 except Exception as exc:
-                    msg = ('error', f'{type(exc).__name__}: {exc}')
+                    msg = ('error', _fail(exc))
 
     try:
         cfg = await db.get_resolver_config()
         app_settings = await db.get_settings()
     except Exception as exc:
-        context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
+        context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
         return render(request, 'dashboard/servers.html', context)
 
     context['methods'] = [{
@@ -362,14 +432,14 @@ async def filters(request):
                             await remove(d)
                         msg = ('ok', f'{len(doms)} kayıt kaldırıldı.') if doms else ('error', 'Hiç seçim yapılmadı.')
         except Exception as exc:
-            msg = ('error', f'{type(exc).__name__}: {exc}')
+            msg = ('error', _fail(exc))
 
     try:
         blocklist, allowlist, sources, enabled_services, app_set = await asyncio.gather(
             db.get_blocklist(), db.get_allowlist(), db.get_sources(),
             db.get_enabled_services(), db.get_settings())
     except Exception as exc:
-        context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
+        context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
         return render(request, 'dashboard/filters.html', context)
 
     added_urls = [s['url'] for s in sources]
@@ -408,7 +478,7 @@ async def analytics(request):
             db.get_top_blocked_domains(20),
         )
     except Exception as exc:
-        context['error'] = f'{type(exc).__name__}: {exc}'
+        context['error'] = _fail(exc, 'Veritabanına erişilemedi.')
         return render(request, 'dashboard/analytics.html', context)
 
     totals = [h['total'] for h in hourly]
@@ -498,7 +568,7 @@ def check_cert(path):
     except FileNotFoundError:
         return {'error': f'Dosya bulunamadı: {real}'}
     except Exception as exc:
-        return {'error': f'{type(exc).__name__}: {exc}'}
+        return {'error': _fail(exc, 'Sertifika okunamadı (geçersiz dosya?).')}
     try:
         na = cert.not_valid_after_utc
     except AttributeError:
@@ -534,12 +604,12 @@ async def certificate(request):
                 await db.set_setting('key_file', key_file)
             msg = ('ok', "Sertifika yolları kaydedildi — Sunucular'dan DoT/DoH/DoQ'yu kapatıp açınca yeni sertifika yüklenir.")
         except Exception as exc:
-            msg = ('error', f'{type(exc).__name__}: {exc}')
+            msg = ('error', _fail(exc))
 
     try:
         settings = await db.get_settings()
     except Exception as exc:
-        context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
+        context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
         return render(request, 'dashboard/certificate.html', context)
 
     cert_file = settings.get('cert_file', '')
@@ -708,12 +778,12 @@ async def settings_page(request):
                     await db.set_setting('log_retention_days', _rd if _rd.isdigit() else '0')
                     msg = ('ok', 'Ayarlar kaydedildi — resolver ~10 sn içinde uygular.')
         except Exception as exc:
-            msg = ('error', f'{type(exc).__name__}: {exc}')
+            msg = ('error', _fail(exc))
 
     try:
         s = await db.get_settings()
     except Exception as exc:
-        context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
+        context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
         return render(request, 'dashboard/settings.html', context)
 
     context.update(

@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 import secrets
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -22,6 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Resolver ile aynı .env dosyasını yükle (proje kökünde, dns_resolver'ın bir üstü).
 # db_ops/db_core.py ile birebir aynı DB_* değişkenlerini paylaşmak için.
 load_dotenv(BASE_DIR.parent / ".env")
+
+# Proje kökünü (resolver ile paylaşılan leaf modüller: logcrypto) import yoluna
+# ekle — panel process'inin cwd'si dns_resolver/ olduğundan kök otomatik yolda değil.
+sys.path.insert(0, str(BASE_DIR.parent))
 
 
 # Quick-start development settings - unsuitable for production
@@ -53,10 +58,28 @@ def _get_or_create_secret_key():
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY') or _get_or_create_secret_key()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
+# Varsayılan KAPALI (güvenli); yerel geliştirmede DJANGO_DEBUG=True ile açılır.
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() == 'true'
 
 # Virgülle ayrılmış host listesi (ör. "dns.example.com,127.0.0.1").
 ALLOWED_HOSTS = [h.strip() for h in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+
+# CSRF: form gönderimi bir domain/ters proxy (Cloudflare) arkasından geldiğinde
+# origin doğrulaması için güvenilir origin listesi (ör. "https://dns.example.com").
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+
+# Güvenli çerezler + tarayıcı sertleştirme başlıkları. Panel normalde HTTPS
+# (TLS / Cloudflare) arkasında çalışır → varsayılan güvenli. Düz-HTTP yerel
+# geliştirmede DJANGO_SECURE_COOKIES=False ile kapatılır (aksi halde tarayıcı
+# çerezi HTTPS olmayan bağlantıda göndermez ve giriş yapılamaz).
+_SECURE_COOKIES = os.getenv('DJANGO_SECURE_COOKIES', 'True').lower() == 'true'
+SESSION_COOKIE_SECURE = _SECURE_COOKIES
+CSRF_COOKIE_SECURE = _SECURE_COOKIES
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
 
 # Oturum imzalı çerezde tutulur (DB'siz) → async view'lardan request.session
 # erişimi SynchronousOnlyOperation üretmez. Kimlik doğrulamasız erişilemesin.

@@ -11,7 +11,7 @@ import db_ops.db_control_users as dbusers
 # Şema sürümü: uyumsuz her şema değişikliğinde 1 artır ve MIGRATIONS'a
 # eski sürümü yeni sürüme taşıyan adımı ekle. Açılışta migrate_scheme()
 # kayıtlı sürümden güncel sürüme sırayla yürür.
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 MIGRATIONS = {
     # 1 -> 2: timestamp BIGINT yerine queried_at DATETIME (UTC). Log verisi
@@ -31,6 +31,12 @@ MIGRATIONS = {
         "ALTER TABLE dns_cache ADD INDEX idx_queried_at (queried_at)",
         "ALTER TABLE dns_cache ADD INDEX idx_domain (domain)",
         "ALTER TABLE dns_cache ADD INDEX idx_blocked (blocked)",
+    ),
+    # 5 -> 6: client_ip artık (opsiyonel) DNS_LOG_KEY ile şifreli saklanabilir.
+    # Deterministik AES-SIV base64 çıktısı 45 karaktere sığmaz (IPv6 ~84) → genişlet.
+    # Şifreleme kapalıyken düz IP yazılır; kolon her iki durumu da taşır.
+    5: (
+        "ALTER TABLE dns_cache MODIFY client_ip VARCHAR(120)",
     ),
 }
 
@@ -154,7 +160,7 @@ class DB_CON():
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     domain VARCHAR(255),
                     record_type VARCHAR(10),
-                    client_ip VARCHAR(45),
+                    client_ip VARCHAR(120),
                     queried_at DATETIME,
                     method VARCHAR(16),
                     user_id INT,

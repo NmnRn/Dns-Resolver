@@ -33,6 +33,16 @@ services:
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-*}
       # Prod'da MUTLAKA .env'de kendi rastgele anahtarını ver.
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-}
+      # Panel çerezleri: HttpOnly + SameSite her zaman açık. "Secure" bayrağı
+      # çerezi yalnız HTTPS'te gönderir → düz-HTTP SSH tüneli (127.0.0.1)
+      # girişini bozmasın diye varsayılan False; paneli SALT HTTPS'te
+      # yayınlıyorsan True yap.
+      - DJANGO_SECURE_COOKIES=${DJANGO_SECURE_COOKIES:-False}
+      # Domain/ters proxy arkasından form POST'u için (ör. https://dns.example.com).
+      - DJANGO_CSRF_TRUSTED_ORIGINS=${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+      # DNS sorgu günlüğünde client_ip'yi at-rest şifrelemek için (opsiyonel).
+      # Boşsa şifreleme kapalı (IP düz saklanır). Anahtar üretimi logcrypto.py'de.
+      - DNS_LOG_KEY=${DNS_LOG_KEY:-}
     # DNS portları host'a açılmaz (sadece dns-net; setup.sh override üretir).
     # Web sitesi ayrı bir portta: auth henüz YOK, o yüzden yalnızca host'un
     # 127.0.0.1'ine publish edilir (SSH tünel / yereldeki reverse proxy ile

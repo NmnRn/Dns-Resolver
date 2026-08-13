@@ -19,6 +19,8 @@ from datetime import datetime, timedelta, timezone
 import aiomysql
 from django.conf import settings
 
+import logcrypto  # client_ip at-rest şifreliyse gösterim için çöz (DNS_LOG_KEY)
+
 # Resolver'ın flush bekleyen tamponu (aynı container, paylaşılan dosya). db_ops/__init__.py
 # ile AYNI yol. Sorgu geçmişi = bu (cache) + DB olarak birleştirilir.
 _PENDING_FILE = os.getenv('PENDING_FILE', '/app/data/pending.json')
@@ -182,7 +184,7 @@ async def get_hourly_detail(hours: int = 24) -> list[dict]:
         out.append({
             'utc': dt.strftime('%Y-%m-%d %H:00:00'),
             'total': total, 'blocked': blocked,
-            'client': tc[0] if tc else '', 'client_cnt': tc[1] if tc else 0,
+            'client': logcrypto.dec(tc[0]) if tc else '', 'client_cnt': tc[1] if tc else 0,
         })
     return out
 
@@ -237,7 +239,7 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
     params.append(limit)
     params.append(offset)
-    return await _fetch_all(
+    rows = await _fetch_all(
         f"""
         SELECT id, TRIM(TRAILING '.' FROM domain) AS domain, record_type, client_ip,
                DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method, user_id, blocked, blocked_by, resolved_by
@@ -248,6 +250,9 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
         """,
         tuple(params),
     )
+    for r in rows:                       # şifreliyse gösterim için gerçek IP'ye çöz
+        r['client_ip'] = logcrypto.dec(r.get('client_ip'))
+    return rows
 
 
 def read_pending(domain: str = '', method: str = '') -> list[dict]:
@@ -271,7 +276,7 @@ def read_pending(domain: str = '', method: str = '') -> list[dict]:
             continue
         out.append({
             'domain': d, 'record_type': it.get('record_type'),
-            'client_ip': it.get('client_ip'), 'queried_at': it.get('queried_at'),
+            'client_ip': logcrypto.dec(it.get('client_ip')), 'queried_at': it.get('queried_at'),
             'method': it.get('method'), 'user_id': None, 'pending': True,
             'blocked': it.get('blocked', False), 'blocked_by': it.get('blocked_by'),
             'resolved_by': it.get('resolved_by'),
@@ -280,7 +285,9 @@ def read_pending(domain: str = '', method: str = '') -> list[dict]:
 
 
 async def get_top_clients(limit: int = 10) -> list[dict]:
-    return await _fetch_all(
+    # GROUP BY şifreli sütun üzerinde çalışır (deterministik: aynı IP → aynı şifre);
+    # yalnız gösterim için sonra çözeriz.
+    rows = await _fetch_all(
         """
         SELECT client_ip, COUNT(*) AS cnt
         FROM dns_cache
@@ -290,6 +297,9 @@ async def get_top_clients(limit: int = 10) -> list[dict]:
         """,
         (limit,),
     )
+    for r in rows:
+        r['client_ip'] = logcrypto.dec(r.get('client_ip'))
+    return rows
 
 
 # --------------------------------------------------------------------------- #
