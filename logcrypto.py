@@ -1,8 +1,10 @@
-"""DNS sorgu günlüğünde istemci IP'sini (PII) at-rest şifreleme.
+"""DNS sorgu günlüğünde istemci IP'sini + sorgu domain'ini (PII) at-rest şifreleme.
 
-DNS_LOG_KEY ortam değişkeni VERİLMİŞSE client_ip deterministik AES-SIV ile
-şifrelenip 'enc:<base64>' biçiminde saklanır; verilmemişse düz metin kalır
-(geriye uyumlu no-op — mevcut kayıtlar ve anahtarsız kurulumlar aynen çalışır).
+DNS_LOG_KEY ortam değişkeni VERİLMİŞSE dns_cache.client_ip ve dns_cache.domain
+deterministik AES-SIV ile şifrelenip 'enc:<base64>' biçiminde saklanır; verilmemişse
+düz metin kalır (geriye uyumlu no-op — mevcut kayıtlar ve anahtarsız kurulumlar aynen
+çalışır). NOT: yalnız sorgu LOGU şifrelenir; blocklist/allowlist gibi filtre tabloları
+düz kalır (resolver onları bellekte düz metinle eşleştirir).
 
 Neden deterministik (aynı IP -> aynı şifre): panelin 'en aktif istemci',
 COUNT(DISTINCT client_ip) ve GROUP BY client_ip sorguları şifreli sütun üzerinde

@@ -93,7 +93,10 @@ class DBManager(dbops.DB_CON):
             return
         value = dict(value)  # çağıranın dict'ini değiştirme
         value.setdefault("queried_at", self.utc_now())
-        value["client_ip"] = logcrypto.enc(value.get("client_ip"))  # PII: anahtar varsa at-rest şifrele
+        # PII: anahtar (DNS_LOG_KEY) varsa istemci IP'sini ve sorgu domain'ini
+        # at-rest şifrele. Engelleme/çözümleme zaten bitti (add_to_cache son adım).
+        value["client_ip"] = logcrypto.enc(value.get("client_ip"))
+        key = logcrypto.enc(key)
         with self._lock:
             self.flush_cache.append((key, value))
 

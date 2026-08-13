@@ -116,9 +116,9 @@ async def get_block_breakdown(limit: int = 12) -> list[dict]:
 
 async def get_top_blocked_domains(limit: int = 10) -> list[dict]:
     """En çok engellenen alan adları (Analiz'de kırmızı liste)."""
-    return await _fetch_all(
+    rows = await _fetch_all(
         """
-        SELECT TRIM(TRAILING '.' FROM domain) AS domain, COUNT(*) AS cnt
+        SELECT domain, COUNT(*) AS cnt
         FROM dns_cache
         WHERE blocked = TRUE
         GROUP BY domain
@@ -127,6 +127,9 @@ async def get_top_blocked_domains(limit: int = 10) -> list[dict]:
         """,
         (limit,),
     )
+    for r in rows:                       # domain şifreliyse çöz (GROUP BY şifreli değer üzerinde çalıştı)
+        r['domain'] = (logcrypto.dec(r.get('domain')) or '').rstrip('.')
+    return rows
 
 
 async def get_hourly_series(hours: int = 24) -> list[int]:
@@ -190,16 +193,19 @@ async def get_hourly_detail(hours: int = 24) -> list[dict]:
 
 
 async def get_top_domains(limit: int = 10) -> list[dict]:
-    return await _fetch_all(
+    rows = await _fetch_all(
         """
-        SELECT TRIM(TRAILING '.' FROM domain) AS domain, COUNT(*) AS cnt
+        SELECT domain, COUNT(*) AS cnt
         FROM dns_cache
-        GROUP BY TRIM(TRAILING '.' FROM domain)
+        GROUP BY domain
         ORDER BY cnt DESC
         LIMIT %s
         """,
         (limit,),
     )
+    for r in rows:                       # domain şifreliyse çöz + sondaki DNS noktasını at
+        r['domain'] = (logcrypto.dec(r.get('domain')) or '').rstrip('.')
+    return rows
 
 
 async def get_method_breakdown() -> list[dict]:
@@ -231,8 +237,14 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
     where = []
     params: list = []
     if domain:
-        where.append('domain LIKE %s')
-        params.append(f'%{domain}%')
+        if logcrypto.enabled():
+            # Şifreli sütunda alt-string aranamaz → tam domain eşleşmesi
+            # (deterministik: aranan domain'i şifreleyip birebir eşleştir).
+            where.append('domain = %s')
+            params.append(logcrypto.enc(domain.strip().rstrip('.') + '.'))
+        else:
+            where.append('domain LIKE %s')
+            params.append(f'%{domain}%')
     if method:
         where.append('method = %s')
         params.append(method)
@@ -241,7 +253,7 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
     params.append(offset)
     rows = await _fetch_all(
         f"""
-        SELECT id, TRIM(TRAILING '.' FROM domain) AS domain, record_type, client_ip,
+        SELECT id, domain, record_type, client_ip,
                DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method, user_id, blocked, blocked_by, resolved_by
         FROM dns_cache
         {clause}
@@ -250,7 +262,8 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
         """,
         tuple(params),
     )
-    for r in rows:                       # şifreliyse gösterim için gerçek IP'ye çöz
+    for r in rows:                       # şifreliyse gösterim için çöz + sondaki DNS noktasını at
+        r['domain'] = (logcrypto.dec(r.get('domain')) or '').rstrip('.')
         r['client_ip'] = logcrypto.dec(r.get('client_ip'))
     return rows
 
@@ -269,7 +282,9 @@ def read_pending(domain: str = '', method: str = '') -> list[dict]:
     dom = domain.lower()
     out = []
     for it in reversed(items):  # append sırası → en yeni önce
-        d = (it.get('domain') or '').rstrip('.')  # sondaki DNS noktasını gösterme
+        # pending küçük + bellekte → domain'i çözüp alt-string filtre yapabiliriz
+        # (DB tarafında şifreli sütunda alt-string aranamaz; burada Python'da olur).
+        d = (logcrypto.dec(it.get('domain')) or '').rstrip('.')  # çöz + sondaki DNS noktasını at
         if dom and dom not in d.lower():
             continue
         if method and it.get('method') != method:

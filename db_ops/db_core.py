@@ -11,7 +11,7 @@ import db_ops.db_control_users as dbusers
 # Şema sürümü: uyumsuz her şema değişikliğinde 1 artır ve MIGRATIONS'a
 # eski sürümü yeni sürüme taşıyan adımı ekle. Açılışta migrate_scheme()
 # kayıtlı sürümden güncel sürüme sırayla yürür.
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 MIGRATIONS = {
     # 1 -> 2: timestamp BIGINT yerine queried_at DATETIME (UTC). Log verisi
@@ -37,6 +37,12 @@ MIGRATIONS = {
     # Şifreleme kapalıyken düz IP yazılır; kolon her iki durumu da taşır.
     5: (
         "ALTER TABLE dns_cache MODIFY client_ip VARCHAR(120)",
+    ),
+    # 6 -> 7: domain (sorgu) de DNS_LOG_KEY ile şifreli saklanabilir. En uzun DNS
+    # adı 253 char → AES-SIV base64 ~364 char; 255'e sığmaz → genişlet. Kapalıyken
+    # düz domain yazılır. (blocklist/allowlist filtre tabloları ŞİFRELENMEZ.)
+    6: (
+        "ALTER TABLE dns_cache MODIFY domain VARCHAR(400)",
     ),
 }
 
@@ -158,7 +164,7 @@ class DB_CON():
             await cursor.execute("""
                 CREATE TABLE IF NOT EXISTS dns_cache (
                     id INT AUTO_INCREMENT PRIMARY KEY,
-                    domain VARCHAR(255),
+                    domain VARCHAR(400),
                     record_type VARCHAR(10),
                     client_ip VARCHAR(120),
                     queried_at DATETIME,

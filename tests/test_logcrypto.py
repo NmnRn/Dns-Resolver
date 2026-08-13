@@ -63,6 +63,14 @@ def test_ipv6_fits_column():
     assert logcrypto.dec(ct) == ip6
 
 
+def test_domain_fits_column():
+    _use(_key())
+    dom = 'x' * 253 + '.'                  # en uzun DNS adı sınırı civarı
+    ct = logcrypto.enc(dom)
+    assert len(ct) <= 400                  # dns_cache.domain VARCHAR(400)
+    assert logcrypto.dec(ct) == dom
+
+
 def test_dec_plaintext_passthrough():
     _use(_key())
     assert logcrypto.dec('8.8.8.8') == '8.8.8.8'   # prefixsiz düz (legacy) değer korunur
