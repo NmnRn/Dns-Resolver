@@ -249,7 +249,7 @@ def main():
     # (bloklamasın). Kaldırılan/kapatılan kaynağın cache'i düşer.
     _source_cache: dict[int, tuple[str, frozenset]] = {}
 
-    async def _refresh_filters(interval=30):
+    async def _refresh_filters(interval=15):
         while True:
             await asyncio.sleep(interval)
             try:
@@ -307,6 +307,17 @@ def main():
                 ups = await db_manager.get_setting('upstreams', '') or ''
                 core.upstreams = [ln.strip() for ln in ups.replace(',', '\n').splitlines() if ln.strip()]
                 core.upstream_strategy = await db_manager.get_setting('upstream_strategy', 'sequential')
+                _ss = await db_manager.get_setting('safesearch_engines', '') or ''
+                core.safesearch_engines = set(x.strip() for x in _ss.split(',') if x.strip())
+                # Erişim kontrolü + rate limit
+                try:
+                    core.rate_limit = max(0, int(await db_manager.get_setting('rate_limit', '0')))
+                except (TypeError, ValueError):
+                    core.rate_limit = 0
+                _ca = await db_manager.get_setting('client_allow', '') or ''
+                core.client_allow = frozenset(x.strip() for x in _ca.replace(',', '\n').splitlines() if x.strip())
+                _cd = await db_manager.get_setting('client_deny', '') or ''
+                core.client_deny = frozenset(x.strip() for x in _cd.replace(',', '\n').splitlines() if x.strip())
                 # Kaynak (çekirdek/önbellek/upstream) işlem süresi ortalamalarını panele aç.
                 try:
                     _stats = {k: {'avg_ms': round(t / c, 1), 'count': c}
@@ -329,6 +340,21 @@ def main():
             await asyncio.sleep(interval)
     settings_task = loop.create_task(_refresh_settings())
     settings_task.add_done_callback(_log_task_error)
+
+    # Log retention: N günden eski sorgu geçmişini periyodik sil (0 = kapalı).
+    async def _retention_loop(interval=3600):
+        while True:
+            try:
+                days = int(await db_manager.get_setting('log_retention_days', '0') or 0)
+                if days > 0:
+                    n = await db_manager.delete_old_logs(days)
+                    if n:
+                        logger.info("Log retention: %d eski kayıt silindi (>%d gün).", n, days)
+            except Exception as e:
+                logger.error("Log retention hatası: %r", e)
+            await asyncio.sleep(interval)
+    retention_task = loop.create_task(_retention_loop())
+    retention_task.add_done_callback(_log_task_error)
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown, manager, loop, cache_cleaner)

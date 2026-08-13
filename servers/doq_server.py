@@ -58,23 +58,25 @@ class DoQProtocol(QuicConnectionProtocol):
         
         reply = parsed.reply()
 
-        src = ["—"]
-        rcode, record = await loop.run_in_executor(None, self.core.resolve, qname, qtype, 0, src)
-
-        if rcode == RCODE.NXDOMAIN:
-            reply.header.rcode = RCODE.NXDOMAIN
-        elif rcode == RCODE.SERVFAIL:
-            reply.header.rcode = RCODE.SERVFAIL
-        else:
-            reply.rr = list(record)
-
         try:
             # aioquic'in özel (private) alanı; sürüm güncellemesinde değişebilir.
             client_ip = self._quic._network_paths[0].addr[0]
         except (AttributeError, IndexError):
             client_ip = "unknown"
-        blocked_by = self.core.is_blocked(qname)
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
+
+        src = ["—"]
+        if not self.core.access_ok(client_ip):   # ACL / rate limit → reddet
+            reply.header.rcode = RCODE.REFUSED
+        else:
+            rcode, record = await loop.run_in_executor(None, self.core.resolve, qname, qtype, 0, src)
+            if rcode == RCODE.NXDOMAIN:
+                reply.header.rcode = RCODE.NXDOMAIN
+            elif rcode == RCODE.SERVFAIL:
+                reply.header.rcode = RCODE.SERVFAIL
+            else:
+                reply.rr = list(record)
+            blocked_by = self.core.is_blocked(qname)
+            self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
         reply.header.id = 0
         reply_bytes = reply.pack()
         

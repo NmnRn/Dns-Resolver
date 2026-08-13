@@ -65,6 +65,47 @@
                     {% endfor %}
                 </div>
                 {% endif %}
+
+                <div style="margin-top:14px;"><button class="btn ghost" type="submit" name="test_upstreams" value="1">Sunucuları test et</button></div>
+                {% if upstream_test %}
+                <label class="modelbl">Test sonuçları</label>
+                <div class="upstats">
+                    {% for r in upstream_test %}
+                    <div class="upstat"><span class="u">{{ r.up }}</span><span>{% if r.ok %}<span style="color:var(--ok);">✓ {{ r.ms }} ms</span>{% elif r.ok is None %}<span class="muted">{{ r.detail }}</span>{% else %}<span style="color:var(--err);">✗ {{ r.detail }} ({{ r.ms }} ms)</span>{% endif %}</span></div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="box setcard" style="margin-top:16px;">
+                <div class="setrow">
+                    <div class="si">
+                        <div class="t">Rate limit — istemci başına / sn</div>
+                        <div class="d">Bir istemci saniyede bu sayıdan fazla sorarsa fazlası reddedilir (REFUSED). 0 = kapalı.</div>
+                    </div>
+                    <input type="number" name="rate_limit" value="{{ rate_limit }}" min="0" class="numin">
+                </div>
+                <label class="modelbl">İzinli istemciler (boş = herkes) — IP / CIDR, satır başına bir tane</label>
+                <textarea class="upst" name="client_allow" rows="3" spellcheck="false" placeholder="192.168.1.0/24&#10;10.0.0.5">{{ client_allow }}</textarea>
+                <label class="modelbl">Reddedilen istemciler — IP / CIDR</label>
+                <textarea class="upst" name="client_deny" rows="3" spellcheck="false" placeholder="203.0.113.7">{{ client_deny }}</textarea>
+                <p class="setnote">İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman engellenir (izinliden önce).</p>
+            </div>
+
+            <div class="box setcard" style="margin-top:16px;">
+                <div class="setrow">
+                    <div class="si">
+                        <div class="t">Geçmiş saklama süresi</div>
+                        <div class="d">Bu süreden eski sorgu geçmişi otomatik silinir (saatlik kontrol). "Kapalı" = sonsuz.</div>
+                    </div>
+                    <select name="log_retention_days">
+                        <option value="0" {% if retention_days == '0' %}selected{% endif %}>Kapalı</option>
+                        {% for d in retention_presets %}{% if d != '0' %}<option value="{{ d }}" {% if retention_days == d %}selected{% endif %}>{{ d }} gün</option>{% endif %}{% endfor %}
+                        <option value="custom" {% if retention_is_custom %}selected{% endif %}>Özel…</option>
+                    </select>
+                </div>
+                <label class="modelbl">Özel gün (yalnız "Özel…" seçiliyken)</label>
+                <input type="number" name="log_retention_custom" value="{% if retention_is_custom %}{{ retention_days }}{% endif %}" min="1" placeholder="ör. 45" class="numin">
             </div>
 
             <div style="margin-top:16px;"><button class="btn" type="submit">Kaydet</button></div>

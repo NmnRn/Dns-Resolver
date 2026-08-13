@@ -49,23 +49,27 @@ class DoHHandler(BaseHTTPRequestHandler):
         client_ip = self.client_address[0]
 
         src = ["—"]
-        rcode, records = self.core.resolve(qname, qtype, source=src)
-
-        reply = request.reply()
-        if rcode == RCODE.NXDOMAIN:
-            reply.header.rcode = RCODE.NXDOMAIN
-        elif rcode == RCODE.SERVFAIL:
-            reply.header.rcode = RCODE.SERVFAIL
+        if not self.core.access_ok(client_ip):   # ACL / rate limit → sessizce reddet
+            reply = request.reply()
+            reply.header.rcode = RCODE.REFUSED
+            reply_bytes = reply.pack()
         else:
-            reply.rr = list(records)
-        reply_bytes = reply.pack()
+            rcode, records = self.core.resolve(qname, qtype, source=src)
+            reply = request.reply()
+            if rcode == RCODE.NXDOMAIN:
+                reply.header.rcode = RCODE.NXDOMAIN
+            elif rcode == RCODE.SERVFAIL:
+                reply.header.rcode = RCODE.SERVFAIL
+            else:
+                reply.rr = list(records)
+            reply_bytes = reply.pack()
 
-        log = logger.warning if rcode == RCODE.SERVFAIL else logger.info
-        # Mahremiyet: istemci IP + sorgulanan ad loglanmaz (DB'de gerçek tutulur).
-        log("(DoH) **** **** %s -> %s (%d kayıt)", qtype, RCODE[rcode], len(records))
+            log = logger.warning if rcode == RCODE.SERVFAIL else logger.info
+            # Mahremiyet: istemci IP + sorgulanan ad loglanmaz (DB'de gerçek tutulur).
+            log("(DoH) **** **** %s -> %s (%d kayıt)", qtype, RCODE[rcode], len(records))
 
-        blocked_by = self.core.is_blocked(qname)
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doh", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
+            blocked_by = self.core.is_blocked(qname)
+            self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doh", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
 
         self.send_response(200)
         self.send_header("Content-Type", "application/dns-message")

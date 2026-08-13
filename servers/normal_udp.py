@@ -1,4 +1,5 @@
 import concurrent.futures
+import ipaddress
 import random
 import socket
 import ssl
@@ -7,7 +8,7 @@ import threading
 import urllib.request
 from time import time as now
 
-from dnslib import QTYPE, RCODE, EDNS0, DNSRecord
+from dnslib import QTYPE, RCODE, EDNS0, DNSRecord, RR, CNAME
 from dnslib.server import BaseResolver, DNSLogger
 from dotenv import load_dotenv
 
@@ -26,6 +27,42 @@ MAX_DEPTH = 16           # CNAME / NS-çözme özyineleme derinliği
 EDNS_UDP_SIZE = 4096     # EDNS0 ile ilan ettiğimiz UDP tampon boyutu
 MAX_TTL = 86400          # cache'te bir kaydı en fazla tutma süresi (sn)
 NEG_TTL_CAP = 900        # negatif (NXDOMAIN/NODATA) cache üst sınırı (sn)
+
+# Güvenli arama: motor -> (görünen ad, zorunlu güvenli hedef). Panelde motor başına seçilir.
+SAFE_SEARCH_ENGINES = {
+    "google":     ("Google", "forcesafesearch.google.com"),
+    "youtube":    ("YouTube", "restrict.youtube.com"),
+    "bing":       ("Bing", "strict.bing.com"),
+    "duckduckgo": ("DuckDuckGo", "safe.duckduckgo.com"),
+    "yandex":     ("Yandex", "familysearch.yandex.ru"),
+    "pixabay":    ("Pixabay", "safesearch.pixabay.com"),
+}
+# alan adı -> motor (Google tüm ülke uzantıları jenerik ele alınır, aşağıda).
+_SS_DOMAIN_ENGINE = {
+    "youtube.com": "youtube", "www.youtube.com": "youtube", "m.youtube.com": "youtube",
+    "youtubei.googleapis.com": "youtube", "youtube.googleapis.com": "youtube",
+    "www.youtube-nocookie.com": "youtube",
+    "bing.com": "bing", "www.bing.com": "bing",
+    "duckduckgo.com": "duckduckgo", "www.duckduckgo.com": "duckduckgo",
+    "yandex.com": "yandex", "yandex.ru": "yandex", "yandex.by": "yandex", "yandex.kz": "yandex",
+    "yandex.com.tr": "yandex", "www.yandex.com": "yandex", "www.yandex.ru": "yandex",
+    "pixabay.com": "pixabay", "www.pixabay.com": "pixabay",
+}
+
+
+def safesearch_lookup(domain):
+    """(motor_id, hedef) döner; güvenli arama alanı değilse (None, None).
+    Google tüm ülke uzantılarını (google.<tld>) kapsar."""
+    name = domain.rstrip(".").lower()
+    eng = _SS_DOMAIN_ENGINE.get(name)
+    if not eng:
+        base = name[4:] if name.startswith("www.") else name
+        labels = base.split(".")
+        if labels[0] == "google" and 2 <= len(labels) <= 3:
+            eng = "google"
+    if eng:
+        return eng, SAFE_SEARCH_ENGINES[eng][1]
+    return None, None
 
 
 class QuietDNSLogger(DNSLogger):
@@ -103,6 +140,13 @@ class DNSCore:
         self.manual_block = frozenset()   # elle eklenen engeller (blocklist tablosu)
         self.allowset = frozenset()
         self.list_sets = {}               # {liste_adı: frozenset} — hangi liste eşleşti izlenir
+        self.safesearch_engines = set()   # güvenli arama açık motorlar (panelden seçilir)
+        # Erişim kontrolü + rate limit (panelden; app.py periyodik uygular).
+        self.client_allow = frozenset()   # boş = herkes; doluysa YALNIZ bunlar sorabilir
+        self.client_deny = frozenset()    # her zaman reddedilen istemciler
+        self.rate_limit = 0               # istemci başına saniyede sorgu (0 = kapalı)
+        self._rate = {}                   # ip -> (pencere_başı, sayı)
+        self._rate_lock = threading.Lock()
         # Önbellek ayarları (panelden, app.py periyodik uygular).
         self.cache_enabled = True
         self.cache_min_ttl = 0            # 0 = alt sınır yok (kısa TTL'leri yukarı çekmez)
@@ -147,6 +191,55 @@ class DNSCore:
             n = len(self._cache)
             self._cache.clear()
         return n
+
+    # --- Erişim kontrolü + rate limit ----------------------------------------
+    @staticmethod
+    def _ip_matches(ip, entries):
+        """ip, entries (IP ya da CIDR kümesi) ile eşleşiyor mu?"""
+        if not entries:
+            return False
+        if ip in entries:                         # birebir hızlı yol
+            return True
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            return False
+        for e in entries:
+            if "/" in e:
+                try:
+                    if addr in ipaddress.ip_network(e, strict=False):
+                        return True
+                except ValueError:
+                    pass
+        return False
+
+    def is_client_allowed(self, ip):
+        """deny'deyse ya da allow doluyken allow'da değilse False."""
+        if self._ip_matches(ip, self.client_deny):
+            return False
+        if self.client_allow and not self._ip_matches(ip, self.client_allow):
+            return False
+        return True
+
+    def is_rate_limited(self, ip):
+        """İstemci saniyelik limiti aştı mı? (0 = kapalı). Sayaç bu çağrıda artar."""
+        if self.rate_limit <= 0:
+            return False
+        t = now()
+        with self._rate_lock:
+            win, cnt = self._rate.get(ip, (0.0, 0))
+            if t - win >= 1.0:
+                self._rate[ip] = (t, 1)
+                return False
+            cnt += 1
+            self._rate[ip] = (win, cnt)
+            return cnt > self.rate_limit
+
+    def access_ok(self, ip):
+        """İstemci sorguya devam edebilir mi (ACL + rate limit)."""
+        if not self.is_client_allowed(ip):
+            return False
+        return not self.is_rate_limited(ip)
  
     @staticmethod
     def _soa_ttl(authority):
@@ -407,6 +500,16 @@ class DNSCore:
             logger.info("ENGELLENDİ **** (%s)", qtype)
             return RCODE.NXDOMAIN, []
 
+        # Güvenli arama: seçili motoru zorunlu güvenli varyanta CNAME'le yönlendir.
+        if self.safesearch_engines and qtype in ("A", "AAAA", "HTTPS"):
+            eng, target = safesearch_lookup(domain)
+            if target and eng in self.safesearch_engines:
+                sub_rcode, sub_rr = self.resolve(target + ".", qtype, depth + 1)
+                if source is not None:
+                    source[0] = "Güvenli arama"
+                cname = RR(domain, QTYPE.CNAME, ttl=300, rdata=CNAME(target))
+                return sub_rcode, [cname] + list(sub_rr)
+
         cached = self._cache_get(domain, qtype)
         if cached is not None:
             logger.debug("Cache hit for **** (%s)", qtype)
@@ -593,6 +696,10 @@ class DNSResolver(BaseResolver):
             qname += "."
         qtype = QTYPE[request.q.qtype]
         client_ip = handler.client_address[0]
+        if not self.core.access_ok(client_ip):   # ACL / rate limit → reddet
+            reply = request.reply()
+            reply.header.rcode = RCODE.REFUSED
+            return reply
 
         src = ["—"]
         rcode, records = self.core.resolve(qname, qtype, source=src)

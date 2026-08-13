@@ -30,3 +30,8 @@
 .svcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding:16px}
 .svcitem{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:10px 14px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px}
 .svcname{font:600 13.5px var(--sans);color:var(--text)}
+/* Güvenli arama satırı */
+.ssrow{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px}
+.ssrow .si{flex:1;min-width:0}
+.ssrow .t{font:600 14px var(--sans);color:var(--text)}
+.ssrow .d{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.55}

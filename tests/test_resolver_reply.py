@@ -45,6 +45,10 @@ class StubCore:
         # Handler her çözümlemeden sonra bunu çağırır (blocked/blocked_by için).
         return self._blocked_by
 
+    def access_ok(self, ip):
+        # Handler girişinde ACL/rate-limit kontrolü; testte hep izin ver.
+        return True
+
 
 class FakeHandler:
     client_address = ("192.0.2.1", 12345)

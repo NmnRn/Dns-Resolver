@@ -11,7 +11,7 @@ import db_ops.db_control_users as dbusers
 # Şema sürümü: uyumsuz her şema değişikliğinde 1 artır ve MIGRATIONS'a
 # eski sürümü yeni sürüme taşıyan adımı ekle. Açılışta migrate_scheme()
 # kayıtlı sürümden güncel sürüme sırayla yürür.
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 MIGRATIONS = {
     # 1 -> 2: timestamp BIGINT yerine queried_at DATETIME (UTC). Log verisi
@@ -25,6 +25,12 @@ MIGRATIONS = {
     # 3 -> 4: çözüm kaynağı — 'DNS çekirdeği' / 'Önbellek' / upstream sunucu.
     3: (
         "ALTER TABLE dns_cache ADD COLUMN resolved_by VARCHAR(255) DEFAULT NULL",
+    ),
+    # 4 -> 5: dns_cache indeksleri (büyük log tablosunda sorgu/analiz hızı).
+    4: (
+        "ALTER TABLE dns_cache ADD INDEX idx_queried_at (queried_at)",
+        "ALTER TABLE dns_cache ADD INDEX idx_domain (domain)",
+        "ALTER TABLE dns_cache ADD INDEX idx_blocked (blocked)",
     ),
 }
 
@@ -154,7 +160,10 @@ class DB_CON():
                     user_id INT,
                     blocked BOOLEAN NOT NULL DEFAULT FALSE,
                     blocked_by VARCHAR(255) DEFAULT NULL,
-                    resolved_by VARCHAR(255) DEFAULT NULL
+                    resolved_by VARCHAR(255) DEFAULT NULL,
+                    INDEX idx_queried_at (queried_at),
+                    INDEX idx_domain (domain),
+                    INDEX idx_blocked (blocked)
                 );
                 CREATE TABLE IF NOT EXISTS users (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -218,7 +227,8 @@ class DB_CON():
             await cursor.execute(
                 "INSERT IGNORE INTO app_settings (k, v) VALUES "
                 "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),"
-                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
+                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),"
+                "(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
                 ('cert_file', os.getenv('CERT_FILE', 'certificates/fullchain.pem'),
                  'key_file', os.getenv('KEY_FILE', 'certificates/privkey.pem'),
                  # İç dinleme portları (build_* env'den okur; dış/host yayını ayrı).
@@ -235,7 +245,13 @@ class DB_CON():
                  # Çözümleme modu: recursion (kendi çekirdek) vs forwarding.
                  'use_recursion', '1',      # 1 = recursive, 0 = forwarding
                  'upstreams', '',           # forwarding upstream'leri (satır başına bir tane)
-                 'upstream_strategy', 'sequential'),  # sequential | parallel | fastest
+                 'upstream_strategy', 'sequential',  # sequential | parallel | fastest
+                 'safesearch_engines', '',   # güvenli arama açık motorlar (virgülle: google,bing…)
+                 # Erişim kontrolü + log retention.
+                 'client_allow', '',         # yalnız bu istemciler sorabilir (boş = herkes)
+                 'client_deny', '',          # reddedilen istemciler (IP/CIDR)
+                 'rate_limit', '0',          # istemci başına saniyede sorgu (0 = kapalı)
+                 'log_retention_days', '0'),  # N günden eski geçmişi sil (0 = sonsuz)
             )
             await conn.commit()
 
@@ -291,6 +307,16 @@ class DB_CON():
             await cursor.execute("SELECT v FROM app_settings WHERE k = %s", (key,))
             row = await cursor.fetchone()
         return row["v"] if row else default
+
+    async def delete_old_logs(self, days):
+        """N günden eski dns_cache satırlarını sil (log retention). Silinen sayı."""
+        if days <= 0:
+            return 0
+        async with self.get_db_cursor() as (cursor, conn):
+            await cursor.execute(
+                "DELETE FROM dns_cache WHERE queried_at < UTC_TIMESTAMP() - INTERVAL %s DAY", (days,))
+            await conn.commit()
+            return cursor.rowcount
 
     async def set_source_stats(self, source_id, count):
         """Bir listenin domain sayısını ve son güncelleme zamanını yazar."""

@@ -320,7 +320,7 @@ async def set_method_enabled(method: str, enabled: bool) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# blocklist / allowlist — panelden filtre yönetimi (resolver ~30 sn'de uygular).
+# blocklist / allowlist — panelden filtre yönetimi (resolver ~15 sn'de uygular).
 # --------------------------------------------------------------------------- #
 async def get_blocklist() -> list[dict]:
     return await _fetch_all("SELECT domain, enabled FROM blocklist ORDER BY domain")
@@ -373,6 +373,10 @@ async def add_source(name: str, url: str) -> None:
 
 async def remove_source(source_id: int) -> None:
     await _write("DELETE FROM blocklist_sources WHERE id = %s", (source_id,))
+
+
+async def remove_source_by_url(url: str) -> None:
+    await _write("DELETE FROM blocklist_sources WHERE url = %s", (url,))
 
 
 async def toggle_source(source_id: int, enabled: bool) -> None:

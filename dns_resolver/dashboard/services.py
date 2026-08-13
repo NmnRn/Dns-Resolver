@@ -30,3 +30,25 @@ SERVICES = {
 def services_list():
     """Panel gösterimi için [(id, name)] — ada göre sıralı."""
     return sorted(((sid, s["name"]) for sid, s in SERVICES.items()), key=lambda x: x[1].lower())
+
+
+# İçerik kategorileri (ebeveyn/kategori engelleme) — hazır blocklist kaynağı olarak
+# eklenir/çıkarılır (mevcut abonelik altyapısını kullanır). "Yetişkin" + Güvenli Arama
+# birlikte ebeveyn kontrolü sağlar.
+CATEGORIES = {
+    "adult":    {"name": "Yetişkin İçerik",     "url": "https://raw.githubusercontent.com/Sinfonietta/hostfiles/master/pornography-hosts"},
+    "gambling": {"name": "Kumar",               "url": "https://raw.githubusercontent.com/Sinfonietta/hostfiles/master/gambling-hosts"},
+    "social":   {"name": "Sosyal Medya",        "url": "https://raw.githubusercontent.com/Sinfonietta/hostfiles/master/social-hosts"},
+    "violence": {"name": "Şiddet / Uyuşturucu", "url": "https://raw.githubusercontent.com/Sinfonietta/hostfiles/master/snuff-hosts"},
+}
+
+
+def categories_list():
+    return [(cid, c["name"], c["url"]) for cid, c in CATEGORIES.items()]
+
+
+# Güvenli arama motorları (id resolver'daki SAFE_SEARCH_ENGINES ile aynı olmalı).
+SAFESEARCH_ENGINES = [
+    ("google", "Google"), ("youtube", "YouTube"), ("bing", "Bing"),
+    ("duckduckgo", "DuckDuckGo"), ("yandex", "Yandex"), ("pixabay", "Pixabay"),
+]

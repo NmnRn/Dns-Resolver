@@ -20,7 +20,8 @@ from django.urls import reverse
 
 from . import db
 from .catalog import catalog_grouped
-from .services import SERVICES, services_list
+from .services import SERVICES, services_list, CATEGORIES, categories_list, SAFESEARCH_ENGINES
+from .upstream_test import test_upstream
 
 # Filtre menüsü + kontrol sayfası için desteklenen yöntemler.
 METHODS = ['udp', 'doh', 'dot', 'doq']
@@ -266,7 +267,7 @@ async def servers(request):
 
 
 # --------------------------------------------------------------------------- #
-# Filtreler (blocklist / allowlist) — resolver bu tabloları ~30 sn'de yeniler.
+# Filtreler (blocklist / allowlist) — resolver bu tabloları ~15 sn'de yeniler.
 # --------------------------------------------------------------------------- #
 _DOMAIN_RE = re.compile(r'^(?=.{1,253}$)([a-z0-9](-?[a-z0-9])*\.)+[a-z]{2,}$')
 
@@ -314,7 +315,24 @@ async def filters(request):
                 if svc:
                     en = request.POST.get('enabled') == '1'
                     await db.set_service(svc['name'], svc['domains'], en)
-                    msg = ('ok', f"{svc['name']} {'engellendi' if en else 'engeli kaldırıldı'} — resolver ~30 sn içinde uygular.")
+                    msg = ('ok', f"{svc['name']} {'engellendi' if en else 'engeli kaldırıldı'} — resolver ~15 sn içinde uygular.")
+            elif action == 'safesearch_engine':
+                eng = request.POST.get('engine', '')
+                if eng in dict(SAFESEARCH_ENGINES):
+                    en = request.POST.get('enabled') == '1'
+                    cur = {x for x in (await db.get_settings()).get('safesearch_engines', '').split(',') if x}
+                    cur.add(eng) if en else cur.discard(eng)
+                    await db.set_setting('safesearch_engines', ','.join(sorted(cur)))
+                    msg = ('ok', f"Güvenli arama ({eng}) {'açıldı' if en else 'kapatıldı'} — resolver ~10 sn içinde uygular.")
+            elif action == 'category_toggle':
+                cat = CATEGORIES.get(request.POST.get('category', ''))
+                if cat:
+                    if request.POST.get('enabled') == '1':
+                        await db.add_source(cat['name'], cat['url'])
+                        msg = ('ok', f"{cat['name']} kategorisi engellendi — resolver birazdan indirir.")
+                    else:
+                        await db.remove_source_by_url(cat['url'])
+                        msg = ('ok', f"{cat['name']} kategorisi kaldırıldı.")
             else:
                 # --- Elle domain işlemleri ---
                 domain = _norm_domain(request.POST.get('domain', ''))
@@ -347,19 +365,26 @@ async def filters(request):
             msg = ('error', f'{type(exc).__name__}: {exc}')
 
     try:
-        blocklist, allowlist, sources, enabled_services = await asyncio.gather(
-            db.get_blocklist(), db.get_allowlist(), db.get_sources(), db.get_enabled_services())
+        blocklist, allowlist, sources, enabled_services, app_set = await asyncio.gather(
+            db.get_blocklist(), db.get_allowlist(), db.get_sources(),
+            db.get_enabled_services(), db.get_settings())
     except Exception as exc:
         context.update(error=f'{type(exc).__name__}: {exc}', msg=msg)
         return render(request, 'dashboard/filters.html', context)
 
+    added_urls = [s['url'] for s in sources]
     context.update(
         blocklist=blocklist, allowlist=allowlist, sources=sources,
-        catalog=catalog_grouped(), added_urls=[s['url'] for s in sources], msg=msg,
+        catalog=catalog_grouped(), added_urls=added_urls, msg=msg,
         block_count=len(blocklist), allow_count=len(allowlist),
         source_count=len(sources), total_list_domains=sum(s['count'] for s in sources),
         services=[{'id': sid, 'name': name, 'enabled': name in enabled_services}
                   for sid, name in services_list()],
+        safesearch_engines=[{'id': eid, 'name': name,
+                             'enabled': eid in {x for x in app_set.get('safesearch_engines', '').split(',') if x}}
+                            for eid, name in SAFESEARCH_ENGINES],
+        categories=[{'id': cid, 'name': name, 'enabled': url in added_urls}
+                    for cid, name, url in categories_list()],
     )
     return render(request, 'dashboard/filters.html', context)
 
@@ -638,6 +663,7 @@ async def settings_page(request):
 
     context = _base_ctx(request, 'settings')
     msg = None
+    test_results = None
     if request.method == 'POST':
         try:
             if 'clear_cache' in request.POST:
@@ -647,6 +673,13 @@ async def settings_page(request):
             elif 'clear_history' in request.POST:
                 await db.clear_history()
                 msg = ('ok', 'Sorgu geçmişi (veritabanı) temizlendi.')
+            elif 'test_upstreams' in request.POST:
+                _ups = [ln.strip() for ln in request.POST.get('upstreams', '').replace(',', '\n').splitlines() if ln.strip()]
+                if _ups:
+                    test_results = list(await asyncio.gather(*[asyncio.to_thread(test_upstream, u) for u in _ups]))
+                    msg = ('ok', f'{len(_ups)} sunucu test edildi.')
+                else:
+                    msg = ('error', 'Test edilecek upstream yok — önce ekle.')
             else:
                 mn = request.POST.get('cache_min_ttl', '0').strip()
                 mx = request.POST.get('cache_max_ttl', '86400').strip()
@@ -662,6 +695,17 @@ async def settings_page(request):
                     _strat = request.POST.get('upstream_strategy', 'sequential')
                     await db.set_setting('upstream_strategy',
                                          _strat if _strat in ('sequential', 'parallel', 'fastest') else 'sequential')
+                    # Erişim kontrolü
+                    _rl = request.POST.get('rate_limit', '0').strip()
+                    await db.set_setting('rate_limit', _rl if _rl.isdigit() else '0')
+                    await db.set_setting('client_allow', request.POST.get('client_allow', '').strip())
+                    await db.set_setting('client_deny', request.POST.get('client_deny', '').strip())
+                    # Log retention (preset ya da özel)
+                    _rd = request.POST.get('log_retention_days', '0')
+                    if _rd == 'custom':
+                        _rc = request.POST.get('log_retention_custom', '0').strip()
+                        _rd = _rc if (_rc.isdigit() and int(_rc) > 0) else '0'
+                    await db.set_setting('log_retention_days', _rd if _rd.isdigit() else '0')
                     msg = ('ok', 'Ayarlar kaydedildi — resolver ~10 sn içinde uygular.')
         except Exception as exc:
             msg = ('error', f'{type(exc).__name__}: {exc}')
@@ -682,6 +726,13 @@ async def settings_page(request):
         upstreams=s.get('upstreams', ''),
         upstream_strategy=s.get('upstream_strategy', 'sequential'),
         upstream_rows=_upstream_rows(s.get('upstreams', '')),
+        rate_limit=s.get('rate_limit', '0'),
+        client_allow=s.get('client_allow', ''),
+        client_deny=s.get('client_deny', ''),
+        retention_presets=['0', '7', '14', '30', '90', '365'],
+        retention_days=s.get('log_retention_days', '0'),
+        retention_is_custom=s.get('log_retention_days', '0') not in {'0', '7', '14', '30', '90', '365'},
+        upstream_test=test_results,
     )
     return render(request, 'dashboard/settings.html', context)
 

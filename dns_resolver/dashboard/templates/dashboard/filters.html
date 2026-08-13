@@ -4,13 +4,47 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/filters.css' %}">{% endblock %}
 {% block content %}
     <h1>Filtreler</h1>
-    <p class="sub">Engelleme ve izin listelerini yönet — değişiklikleri resolver ~30 sn içinde uygular. İzin listesi engel listesinden önceliklidir; bir alanı engellemek alt alanlarını da engeller (ör. <span class="mono">doubleclick.net</span> → <span class="mono">ads.doubleclick.net</span>).</p>
+    <p class="sub">Engelleme ve izin listelerini yönet — değişiklikleri resolver ~15 sn içinde uygular. İzin listesi engel listesinden önceliklidir; bir alanı engellemek alt alanlarını da engeller (ör. <span class="mono">doubleclick.net</span> → <span class="mono">ads.doubleclick.net</span>).</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
     {% if error %}
         <div class="error">Veritabanına erişilemedi: {{ error }}</div>
     {% else %}
+        <!-- Güvenli Arama (motor başına seçim) -->
+        <div class="box" style="margin-bottom:16px;">
+            <h2>Güvenli Arama — arama motoru seç</h2>
+            <div class="svcgrid">
+                {% for e in safesearch_engines %}
+                <form method="post" class="svcitem">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="safesearch_engine">
+                    <input type="hidden" name="engine" value="{{ e.id }}">
+                    <span class="svcname">{{ e.name }}</span>
+                    <button type="submit" name="enabled" value="{% if e.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ e.enabled|yesno:'true,false' }}" aria-label="{{ e.name }} güvenli arama aç/kapat"></button>
+                </form>
+                {% endfor %}
+            </div>
+            <p class="sub" style="padding:0 16px 14px;margin:0;">Seçilen motorlar zorunlu güvenli varyanta yönlendirilir (Google tüm ülke uzantıları dahil).</p>
+        </div>
+
+        <!-- Kategori engelleme (ebeveyn kontrolü) -->
+        <div class="box" style="margin-bottom:16px;">
+            <h2>Kategori Engelleme</h2>
+            <div class="svcgrid">
+                {% for c in categories %}
+                <form method="post" class="svcitem">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="category_toggle">
+                    <input type="hidden" name="category" value="{{ c.id }}">
+                    <span class="svcname">{{ c.name }}</span>
+                    <button type="submit" name="enabled" value="{% if c.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ c.enabled|yesno:'true,false' }}" aria-label="{{ c.name }} engelle/kaldır"></button>
+                </form>
+                {% endfor %}
+            </div>
+            <p class="sub" style="padding:0 16px 14px;margin:0;">Ebeveyn kontrolü = <b>Güvenli Arama</b> (yukarıda) + <b>Yetişkin İçerik</b>. Kategoriler hazır blocklist olarak eklenir (resolver ~15 sn'de indirir).</p>
+        </div>
+
         <!-- Hazır liste kataloğu (kategoriye göre, tıkla-ekle) -->
         <div class="box" style="margin-bottom:16px;">
             <h2>Hazır Engelleme Listeleri</h2>
