@@ -309,6 +309,18 @@ def main():
                 ups = await db_manager.get_setting('upstreams', '') or ''
                 core.upstreams = [ln.strip() for ln in ups.replace(',', '\n').splitlines() if ln.strip()]
                 core.upstream_strategy = await db_manager.get_setting('upstream_strategy', 'sequential')
+                # Koşullu forwarding: satır başına "son-ek upstream" → [(son-ek, upstream)].
+                _cf = await db_manager.get_setting('conditional_forwards', '') or ''
+                conds = []
+                for _ln in _cf.splitlines():
+                    _p = _ln.split()
+                    if len(_p) >= 2:
+                        _suf = _p[0].strip().lower().rstrip('.')
+                        if _suf.startswith('*.'):
+                            _suf = _suf[2:]
+                        if _suf:
+                            conds.append((_suf, _p[1].strip()))
+                core.conditionals = conds
                 _ss = await db_manager.get_setting('safesearch_engines', '') or ''
                 core.safesearch_engines = set(x.strip() for x in _ss.split(',') if x.strip())
                 # Erişim kontrolü + rate limit

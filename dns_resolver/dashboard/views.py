@@ -810,6 +810,7 @@ async def settings_page(request):
                     _strat = request.POST.get('upstream_strategy', 'sequential')
                     await db.set_setting('upstream_strategy',
                                          _strat if _strat in ('sequential', 'parallel', 'fastest') else 'sequential')
+                    await db.set_setting('conditional_forwards', request.POST.get('conditional_forwards', '').strip())
                     # Erişim kontrolü
                     _rl = request.POST.get('rate_limit', '0').strip()
                     await db.set_setting('rate_limit', _rl if _rl.isdigit() else '0')
@@ -840,6 +841,7 @@ async def settings_page(request):
         use_recursion=s.get('use_recursion', '1') != '0',
         upstreams=s.get('upstreams', ''),
         upstream_strategy=s.get('upstream_strategy', 'sequential'),
+        conditional_forwards=s.get('conditional_forwards', ''),
         upstream_rows=_upstream_rows(s.get('upstreams', '')),
         rate_limit=s.get('rate_limit', '0'),
         client_allow=s.get('client_allow', ''),

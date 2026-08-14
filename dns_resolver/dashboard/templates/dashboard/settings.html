@@ -57,6 +57,10 @@
                     <label class="stratopt"><input type="radio" name="upstream_strategy" value="fastest" {% if upstream_strategy == 'fastest' %}checked{% endif %}><span><b>En hızlı</b> — ölçülen ortalamaya göre en hızlı upstream'i önce dene</span></label>
                 </div>
 
+                <label class="modelbl">Koşullu yönlendirme (son-ek → upstream)</label>
+                <textarea class="upst" name="conditional_forwards" rows="3" spellcheck="false" placeholder="home.arpa 192.168.1.1&#10;corp.local tls://10.0.0.53">{{ conditional_forwards }}</textarea>
+                <p class="setnote">Satır başına <span class="mono">son-ek&nbsp;upstream</span>. Eşleşen domain (ve tüm alt alanları) <b>her zaman</b> o upstream'e çözdürülür — "Kendi çekirdeğimizi kullan" açık olsa bile. Yerel/özel alanlar için (ör. <span class="mono">*.home.arpa → 192.168.1.1</span>). En uzun eşleşen son-ek kazanır.</p>
+
                 {% if upstream_rows %}
                 <label class="modelbl">Upstream tepki süreleri (ort.)</label>
                 <div class="upstats">

@@ -159,6 +159,9 @@ class DNSCore:
         self.use_recursion = True
         self.upstreams = []               # ['1.1.1.1', 'https://…/dns-query', 'tls://…'] (forwarding)
         self.upstream_strategy = "sequential"   # sequential | parallel | fastest
+        # Koşullu forwarding: [(son-ek, upstream)] — eşleşen domaini belirli bir
+        # upstream'e çözdürür (use_recursion'dan bağımsız). Panelden ayarlanır.
+        self.conditionals = []
         # Kaynak bazında işlem süresi: 'DNS çekirdeği' / 'Önbellek' / upstream -> (sayı, toplam_ms)
         self.source_stats = {}
         self._stat_lock = threading.Lock()
@@ -518,6 +521,36 @@ class DNSCore:
             ex.shutdown(wait=False)
         return None, None
 
+    def _match_conditional(self, domain):
+        """Koşullu forwarding: domain bir son-ek kuralıyla eşleşiyorsa o upstream'i
+        döner (en uzun/en spesifik son-ek kazanır), yoksa None. 'home.arpa' hem
+        'home.arpa'yı hem tüm alt alanlarını (x.home.arpa) kapsar."""
+        if not self.conditionals:
+            return None
+        name = domain.rstrip(".").lower()
+        best = None
+        for suffix, up in self.conditionals:
+            if name == suffix or name.endswith("." + suffix):
+                if best is None or len(suffix) > len(best[0]):
+                    best = (suffix, up)
+        return best[1] if best else None
+
+    def _forward_result(self, domain, qtype, resp):
+        """Forward cevabını (DNSRecord | None) → (rcode, [rr]) + önbelleğe yaz.
+        Normal forwarding ile koşullu forwarding'in ORTAK sonuç işleme mantığı."""
+        if resp is None:
+            return RCODE.SERVFAIL, []
+        rcode = resp.header.rcode
+        if rcode == RCODE.NXDOMAIN:
+            self._cache_put(domain, qtype, RCODE.NXDOMAIN, [], self._soa_ttl(resp.auth))
+            return RCODE.NXDOMAIN, []
+        if resp.rr:
+            self._cache_put(domain, qtype, rcode, list(resp.rr), _min_ttl(resp.rr))
+            return rcode, list(resp.rr)
+        if any(QTYPE[a.rtype] == "SOA" for a in resp.auth):
+            self._cache_put(domain, qtype, RCODE.NOERROR, [], self._soa_ttl(resp.auth))
+        return rcode, []
+
     # --- Asıl çözümleme ------------------------------------------------------
     def resolve(self, domain, qtype, depth=0, source=None):
         """En dış (depth 0) çağrıda işlem süresini kaynağa göre ölçen sarmalayıcı."""
@@ -571,23 +604,21 @@ class DNSCore:
             return cached
         logger.debug("Cache miss for **** (%s)", qtype)
 
+        # Koşullu forwarding: bir son-ek eşleşiyorsa domaini BELİRLİ bir upstream'e
+        # çözdür (use_recursion'dan bağımsız — split-horizon; ör. *.home.arpa → router).
+        cond_up = self._match_conditional(domain)
+        if cond_up:
+            resp = self._query_forward_one(domain, qtype, cond_up)
+            if source is not None:
+                source[0] = cond_up
+            return self._forward_result(domain, qtype, resp)
+
         # Forwarding modu: kendi çekirdeğimiz kapalıysa upstream'lere ilet (recursion yok).
         if not self.use_recursion and self.upstreams:
             resp, used = self._forward(domain, qtype)
             if source is not None:
                 source[0] = used or "upstream"
-            if resp is None:
-                return RCODE.SERVFAIL, []
-            rcode = resp.header.rcode
-            if rcode == RCODE.NXDOMAIN:
-                self._cache_put(domain, qtype, RCODE.NXDOMAIN, [], self._soa_ttl(resp.auth))
-                return RCODE.NXDOMAIN, []
-            if resp.rr:
-                self._cache_put(domain, qtype, rcode, list(resp.rr), _min_ttl(resp.rr))
-                return rcode, list(resp.rr)
-            if any(QTYPE[a.rtype] == "SOA" for a in resp.auth):
-                self._cache_put(domain, qtype, RCODE.NOERROR, [], self._soa_ttl(resp.auth))
-            return rcode, []
+            return self._forward_result(domain, qtype, resp)
 
         if source is not None:
             source[0] = "DNS çekirdeği"
