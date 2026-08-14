@@ -47,6 +47,18 @@ MIGRATIONS = {
 }
 
 
+def schedule_active(days, start_min, end_min, weekday, minute):
+    """Zamanlanmış engelleme penceresi ŞU AN aktif mi?
+    days: haftanın günleri kümesi (Pazartesi=0 … Pazar=6, Python weekday()).
+    start_min/end_min: gün içi dakika (0–1439, yerel saat). end < start ise
+    pencere gece yarısını aşar (ör. 22:00–06:00). Boş gün kümesi → hiç aktif değil."""
+    if weekday not in days:
+        return False
+    if start_min <= end_min:
+        return start_min <= minute < end_min
+    return minute >= start_min or minute < end_min
+
+
 class DB_CON():
     
     def __init__(self):
@@ -241,6 +253,16 @@ class DB_CON():
                     enabled BOOLEAN NOT NULL DEFAULT TRUE
                 )
             """)
+            # Zamanlanmış engelleme: servis adı -> gün + saat penceresi (yerel).
+            # Yeni tablo → migration gerekmez (IF NOT EXISTS).
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS block_schedules (
+                    name VARCHAR(64) PRIMARY KEY,
+                    days VARCHAR(16) NOT NULL,
+                    start_min INT NOT NULL,
+                    end_min INT NOT NULL
+                )
+            """)
             # Panelden ayarlanabilir anahtar-değer ayarları (ör. sertifika yolları).
             await cursor.execute(
                 "CREATE TABLE IF NOT EXISTS app_settings (k VARCHAR(64) PRIMARY KEY, v VARCHAR(512))"
@@ -317,6 +339,18 @@ class DB_CON():
             await cursor.execute("SELECT domain, answer FROM dns_rewrites WHERE enabled = TRUE")
             for r in await cursor.fetchall():
                 out[r["domain"].strip().rstrip(".").lower()] = r["answer"].strip()
+        return out
+
+    async def get_schedules(self):
+        """Zamanlanmış engeller: {servis_adı: (frozenset(gün), start_min, end_min)}.
+        app._refresh_filters bunu kullanıp servisi YALNIZ pencere içindeyken
+        list_sets'e katar (pencere dışında engelleme kalkar)."""
+        out = {}
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute("SELECT name, days, start_min, end_min FROM block_schedules")
+            for r in await cursor.fetchall():
+                days = frozenset(int(x) for x in str(r["days"]).split(",") if x.strip().isdigit())
+                out[r["name"]] = (days, int(r["start_min"]), int(r["end_min"]))
         return out
 
     async def get_blocklist_sources(self):

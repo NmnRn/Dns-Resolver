@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import signal
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from project_control import settings, cache_loop, blocklists
 
@@ -278,8 +279,17 @@ def main():
                 for sid in [k for k in _source_cache if k not in active_ids]:
                     del _source_cache[sid]
                 # Ön tanımlı servis engelleri (TikTok/Instagram…) — DB'den, list_sets'e kat.
+                # Zamanlanmış engelleme: pencere dışındaki servisleri list_sets'e KATMA.
+                schedules = await db_manager.get_schedules()
+                _wd = _mn = 0
+                if schedules:
+                    _off = int(await db_manager.get_setting('schedule_tz_offset', '0') or 0)
+                    _now = datetime.now(timezone.utc) + timedelta(minutes=_off)
+                    _wd, _mn = _now.weekday(), _now.hour * 60 + _now.minute
                 for svc, doms in (await db_manager.get_service_lists()).items():
-                    list_sets[svc] = doms
+                    sch = schedules.get(svc)
+                    if sch is None or db_ops.db_core.schedule_active(sch[0], sch[1], sch[2], _wd, _mn):
+                        list_sets[svc] = doms   # zamanlama yok → hep engelli; var → yalnız pencere içinde
                 # DNS rewrites (elle tanımlı kayıt) — atomik ata (is_blocked'tan önce bakılır).
                 core.rewrites = await db_manager.get_rewrites()
                 core.update_filter_lists(manual_block, allow, list_sets)

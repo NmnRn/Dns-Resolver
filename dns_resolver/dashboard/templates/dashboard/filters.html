@@ -202,5 +202,44 @@
                 {% if rewrites %}<div class="bulkbar"><button class="xbtn danger" type="submit">Seçilenleri sil</button></div>{% endif %}
             </form>
         </div>
+
+        <div class="box" style="margin-top:16px;">
+            <h2>Zamanlanmış Engelleme ({{ schedules|length }})</h2>
+            <p class="sub" style="margin:0 16px 4px;">Bir ön tanımlı servis yalnız seçtiğin gün ve saat aralığında engelli olsun (ör. sosyal medya hafta içi 09:00–17:00). Pencere dışında engel otomatik kalkar. Saatler <b>senin yerel saatine</b> göredir (tarayıcıdan otomatik alınır). İlgili servisin "Ön Tanımlı Servisler"de de açık olması gerekir.</p>
+            <form method="post" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="schedule_add">
+                <input type="hidden" name="tz_offset" id="tzoff" value="0">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <select name="service" style="flex:1;min-width:160px;">
+                        {% for s in services %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+                    </select>
+                    <input type="time" name="start" value="09:00" required>
+                    <span>–</span>
+                    <input type="time" name="end" value="17:00" required>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <label class="fchk"><input type="checkbox" name="days" value="0" checked>Pzt</label>
+                    <label class="fchk"><input type="checkbox" name="days" value="1" checked>Sal</label>
+                    <label class="fchk"><input type="checkbox" name="days" value="2" checked>Çar</label>
+                    <label class="fchk"><input type="checkbox" name="days" value="3" checked>Per</label>
+                    <label class="fchk"><input type="checkbox" name="days" value="4" checked>Cum</label>
+                    <label class="fchk"><input type="checkbox" name="days" value="5">Cmt</label>
+                    <label class="fchk"><input type="checkbox" name="days" value="6">Paz</label>
+                </div>
+                <div><button class="btn" type="submit">Zamanlama ekle</button></div>
+            </form>
+            {% if schedules %}
+            <ul class="flist">
+                {% for sc in schedules %}
+                <li>
+                    <span class="mono">{{ sc.name }} — {{ sc.days }} · {{ sc.start }}–{{ sc.end }}</span>
+                    <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="schedule_del"><input type="hidden" name="name" value="{{ sc.name }}"><button class="xbtn danger" type="submit">Sil</button></form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        <script>document.getElementById('tzoff').value = -new Date().getTimezoneOffset();</script>
     {% endif %}
 {% endblock %}

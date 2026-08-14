@@ -374,6 +374,28 @@ def _valid_rewrite_answer(a: str) -> bool:
         return _valid_domain(a.rstrip('.').lower())
 
 
+# Zamanlanmış engelleme: gün adları (Python weekday: Pazartesi=0 … Pazar=6).
+DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+
+
+def _hhmm_to_min(s: str):
+    """'HH:MM' → gün içi dakika (0–1439); geçersizse None."""
+    try:
+        h, m = str(s).split(':')
+        h, m = int(h), int(m)
+    except (ValueError, AttributeError):
+        return None
+    return h * 60 + m if (0 <= h < 24 and 0 <= m < 60) else None
+
+
+def _fmt_schedule(r: dict) -> dict:
+    """DB satırını panelde gösterime çevir: gün adları + HH:MM aralık."""
+    days = [DAY_NAMES[int(x)] for x in str(r['days']).split(',') if x.isdigit() and 0 <= int(x) < 7]
+    hhmm = lambda mn: f'{mn // 60:02d}:{mn % 60:02d}'  # noqa: E731
+    return {'name': r['name'], 'days': ', '.join(days),
+            'start': hhmm(int(r['start_min'])), 'end': hhmm(int(r['end_min']))}
+
+
 async def filters(request):
     gate = _gate(request)
     if gate:
@@ -447,6 +469,30 @@ async def filters(request):
                     for d in doms:
                         await db.remove_rewrite(d)
                     msg = ('ok', f'{len(doms)} kayıt kaldırıldı.') if doms else ('error', 'Hiç seçim yapılmadı.')
+            elif action == 'schedule_add':
+                sname = request.POST.get('service', '').strip()
+                valid_names = {v['name'] for v in SERVICES.values()}
+                days = [d for d in request.POST.getlist('days') if d in {'0', '1', '2', '3', '4', '5', '6'}]
+                smin, emin = _hhmm_to_min(request.POST.get('start', '')), _hhmm_to_min(request.POST.get('end', ''))
+                if sname not in valid_names:
+                    msg = ('error', 'Geçersiz servis.')
+                elif not days:
+                    msg = ('error', 'En az bir gün seçmelisin.')
+                elif smin is None or emin is None:
+                    msg = ('error', 'Geçersiz saat.')
+                elif smin == emin:
+                    msg = ('error', 'Başlangıç ve bitiş saati aynı olamaz.')
+                else:
+                    try:
+                        tz = int(request.POST.get('tz_offset', '0'))
+                    except ValueError:
+                        tz = 0
+                    await db.set_setting('schedule_tz_offset', str(tz))
+                    await db.set_schedule(sname, ','.join(days), smin, emin)
+                    msg = ('ok', f'{sname} için zamanlama kaydedildi — resolver ~15 sn içinde uygular.')
+            elif action == 'schedule_del':
+                await db.remove_schedule(request.POST.get('name', '').strip())
+                msg = ('ok', 'Zamanlama kaldırıldı.')
             else:
                 # --- Elle domain işlemleri ---
                 domain = _norm_domain(request.POST.get('domain', ''))
@@ -479,9 +525,9 @@ async def filters(request):
             msg = ('error', _fail(exc))
 
     try:
-        blocklist, allowlist, sources, enabled_services, app_set, rewrites = await asyncio.gather(
+        blocklist, allowlist, sources, enabled_services, app_set, rewrites, schedules = await asyncio.gather(
             db.get_blocklist(), db.get_allowlist(), db.get_sources(),
-            db.get_enabled_services(), db.get_settings(), db.get_rewrites())
+            db.get_enabled_services(), db.get_settings(), db.get_rewrites(), db.get_schedules())
     except Exception as exc:
         context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
         return render(request, 'dashboard/filters.html', context)
@@ -491,6 +537,7 @@ async def filters(request):
         blocklist=blocklist, allowlist=allowlist, sources=sources,
         catalog=catalog_grouped(), added_urls=added_urls, msg=msg,
         rewrites=rewrites, rewrite_count=len(rewrites),
+        schedules=[_fmt_schedule(r) for r in schedules],
         block_count=len(blocklist), allow_count=len(allowlist),
         source_count=len(sources), total_list_domains=sum(s['count'] for s in sources),
         services=[{'id': sid, 'name': name, 'enabled': name in enabled_services}

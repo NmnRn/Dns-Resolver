@@ -455,6 +455,25 @@ async def remove_rewrite(domain: str) -> None:
     await _write("DELETE FROM dns_rewrites WHERE domain = %s", (domain,))
 
 
+# --------------------------------------------------------------------------- #
+# block_schedules — servis zamanlanmış engelleme. resolver ~15 sn'de uygular.
+# --------------------------------------------------------------------------- #
+async def get_schedules() -> list[dict]:
+    return await _fetch_all("SELECT name, days, start_min, end_min FROM block_schedules ORDER BY name")
+
+
+async def set_schedule(name: str, days: str, start_min: int, end_min: int) -> None:
+    await _write(
+        "INSERT INTO block_schedules (name, days, start_min, end_min) VALUES (%s,%s,%s,%s) "
+        "ON DUPLICATE KEY UPDATE days=VALUES(days), start_min=VALUES(start_min), end_min=VALUES(end_min)",
+        (name, days, start_min, end_min),
+    )
+
+
+async def remove_schedule(name: str) -> None:
+    await _write("DELETE FROM block_schedules WHERE name = %s", (name,))
+
+
 async def get_enabled_services() -> set:
     """Şu an engelli ön tanımlı servislerin adları."""
     rows = await _fetch_all("SELECT DISTINCT service FROM blocked_services")
