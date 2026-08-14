@@ -436,6 +436,25 @@ async def clear_history() -> None:
     await _write("DELETE FROM dns_cache", ())
 
 
+# --------------------------------------------------------------------------- #
+# dns_rewrites — elle tanımlı kayıt (domain→IP/hedef). resolver ~15 sn'de uygular.
+# --------------------------------------------------------------------------- #
+async def get_rewrites() -> list[dict]:
+    return await _fetch_all("SELECT domain, answer, enabled FROM dns_rewrites ORDER BY domain")
+
+
+async def add_rewrite(domain: str, answer: str) -> None:
+    await _write(
+        "INSERT INTO dns_rewrites (domain, answer, enabled) VALUES (%s, %s, TRUE) "
+        "ON DUPLICATE KEY UPDATE answer = VALUES(answer), enabled = TRUE",
+        (domain, answer),
+    )
+
+
+async def remove_rewrite(domain: str) -> None:
+    await _write("DELETE FROM dns_rewrites WHERE domain = %s", (domain,))
+
+
 async def get_enabled_services() -> set:
     """Şu an engelli ön tanımlı servislerin adları."""
     rows = await _fetch_all("SELECT DISTINCT service FROM blocked_services")

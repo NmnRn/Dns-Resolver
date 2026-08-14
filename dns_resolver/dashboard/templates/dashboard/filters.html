@@ -177,5 +177,30 @@
                 </form>
             </div>
         </div>
+
+        <div class="box" style="margin-top:16px;">
+            <h2>DNS Rewrites ({{ rewrite_count }})</h2>
+            <p class="sub" style="margin:0 16px 4px;">Elle tanımlı kayıt: bir alan adını sabit bir IP'ye ya da başka bir alana yönlendir (yerel <span class="mono">/etc/hosts</span> gibi). <span class="mono">0.0.0.0</span> = sinkhole; <span class="mono">*.reklam.com</span> = tüm alt alanlar. Engel/izin listelerinden önceliklidir.</p>
+            <form method="post" class="addf">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="rewrite_add">
+                <input type="text" name="domain" placeholder="alan adı — ör. nas.ev ya da *.reklam.com" autocomplete="off" spellcheck="false">
+                <input type="text" name="answer" placeholder="cevap — ör. 192.168.1.10 ya da hedef.com" autocomplete="off" spellcheck="false">
+                <button class="btn" type="submit">Ekle</button>
+            </form>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="rewrite_manage">
+                <ul class="flist">
+                    {% for r in rewrites %}
+                    <li>
+                        <label class="fchk"><input type="checkbox" name="domains" value="{{ r.domain }}"><span class="mono">{{ r.domain }} &rarr; {{ r.answer }}</span></label>
+                        <button class="xbtn danger" type="submit" name="one" value="{{ r.domain }}">Sil</button>
+                    </li>
+                    {% empty %}<li class="muted">Henüz kayıt yok</li>{% endfor %}
+                </ul>
+                {% if rewrites %}<div class="bulkbar"><button class="xbtn danger" type="submit">Seçilenleri sil</button></div>{% endif %}
+            </form>
+        </div>
     {% endif %}
 {% endblock %}

@@ -28,9 +28,23 @@ except Exception:  # pragma: no cover - Django yoksa dashboard testleri skip olu
     pass
 
 import db_ops
+import logcrypto
 
 
 @pytest.fixture(autouse=True)
 def _isolate_pending_file(tmp_path, monkeypatch):
     """Snapshot yazımı testte /app'e değil izole bir tmp dosyasına gitsin."""
     monkeypatch.setattr(db_ops, "PENDING_FILE", str(tmp_path / "pending.json"))
+
+
+@pytest.fixture(autouse=True)
+def _disable_log_encryption(monkeypatch):
+    """Testler operatörün .env'indeki DNS_LOG_KEY'den ETKİLENMESİN: şifrelemeyi
+    kapat (düz metin varsay). At-rest şifreleme kendi başına test_logcrypto'da
+    sınanır; buffer/snapshot testleri düz metin üzerinden çalışır."""
+    monkeypatch.delenv("DNS_LOG_KEY", raising=False)
+    logcrypto._siv = None
+    logcrypto._init = False
+    yield
+    logcrypto._siv = None
+    logcrypto._init = False

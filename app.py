@@ -280,6 +280,8 @@ def main():
                 # Ön tanımlı servis engelleri (TikTok/Instagram…) — DB'den, list_sets'e kat.
                 for svc, doms in (await db_manager.get_service_lists()).items():
                     list_sets[svc] = doms
+                # DNS rewrites (elle tanımlı kayıt) — atomik ata (is_blocked'tan önce bakılır).
+                core.rewrites = await db_manager.get_rewrites()
                 core.update_filter_lists(manual_block, allow, list_sets)
             except Exception as e:
                 logger.error("Filtre listesi yenileme hatası: %r", e)

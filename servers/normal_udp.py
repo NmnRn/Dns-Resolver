@@ -8,7 +8,7 @@ import threading
 import urllib.request
 from time import time as now
 
-from dnslib import QTYPE, RCODE, EDNS0, DNSRecord, RR, CNAME
+from dnslib import QTYPE, RCODE, EDNS0, DNSRecord, RR, CNAME, A, AAAA
 from dnslib.server import BaseResolver, DNSLogger
 from dotenv import load_dotenv
 
@@ -27,6 +27,7 @@ MAX_DEPTH = 16           # CNAME / NS-çözme özyineleme derinliği
 EDNS_UDP_SIZE = 4096     # EDNS0 ile ilan ettiğimiz UDP tampon boyutu
 MAX_TTL = 86400          # cache'te bir kaydı en fazla tutma süresi (sn)
 NEG_TTL_CAP = 900        # negatif (NXDOMAIN/NODATA) cache üst sınırı (sn)
+REWRITE_TTL = 300        # DNS rewrite (elle tanımlı kayıt) cevaplarının TTL'i (sn)
 
 # Güvenli arama: motor -> (görünen ad, zorunlu güvenli hedef). Panelde motor başına seçilir.
 SAFE_SEARCH_ENGINES = {
@@ -141,6 +142,9 @@ class DNSCore:
         self.allowset = frozenset()
         self.list_sets = {}               # {liste_adı: frozenset} — hangi liste eşleşti izlenir
         self.safesearch_engines = set()   # güvenli arama açık motorlar (panelden seçilir)
+        # DNS rewrites (elle tanımlı kayıt): {domain|*.sonek: cevap(IP ya da hedef domain)}.
+        # Panelden yönetilir, _refresh_filters ile atomik yenilenir; is_blocked'tan önce bakılır.
+        self.rewrites = {}
         # Erişim kontrolü + rate limit (panelden; app.py periyodik uygular).
         self.client_allow = frozenset()   # boş = herkes; doluysa YALNIZ bunlar sorabilir
         self.client_deny = frozenset()    # her zaman reddedilen istemciler
@@ -281,6 +285,47 @@ class DNSCore:
             if any(c in s for c in candidates):
                 return src_name
         return None
+
+    # --- DNS rewrites (elle tanımlı kayıt) -----------------------------------
+    def _lookup_rewrite(self, domain):
+        """Elle tanımlı DNS rewrite'ı bulur: önce tam eşleşme, sonra '*.sonek'
+        wildcard (alt alanlar). Eşleşen cevabı (IP ya da hedef domain) döner,
+        yoksa None. is_blocked ile aynı en-spesifik-önce mantığı."""
+        rules = self.rewrites
+        if not rules:
+            return None
+        name = domain.rstrip(".").lower()
+        if not name:
+            return None
+        if name in rules:                       # tam eşleşme önceliklidir
+            return rules[name]
+        labels = name.split(".")
+        for i in range(1, len(labels)):         # *.sonek wildcard (yalnız alt alanlar)
+            w = "*." + ".".join(labels[i:])
+            if w in rules:
+                return rules[w]
+        return None
+
+    def _rewrite_response(self, domain, qtype, answer, depth):
+        """Rewrite cevabını DNS kaydına çevirir. answer bir IP ise A/AAAA döner
+        (istenen tip uyuşmazsa NODATA); bir domain ise CNAME + hedefi normal çöz.
+        0.0.0.0 / :: gibi cevaplar da geçerli IP'dir → sinkhole olarak döner."""
+        try:
+            ip = ipaddress.ip_address(answer)
+        except ValueError:
+            ip = None
+        if ip is not None:
+            want = "A" if ip.version == 4 else "AAAA"
+            if qtype != want:
+                return RCODE.NOERROR, []        # IP var ama istenen tip değil → NODATA
+            qt = QTYPE.A if ip.version == 4 else QTYPE.AAAA
+            rd = A(answer) if ip.version == 4 else AAAA(answer)
+            return RCODE.NOERROR, [RR(domain, qt, ttl=REWRITE_TTL, rdata=rd)]
+        # answer bir domain → CNAME zinciri + hedefi normal çöz (özyineleme derinlik korumalı)
+        target = answer.rstrip(".")
+        sub_rcode, sub_rr = self.resolve(target + ".", qtype, depth + 1)
+        cname = RR(domain, QTYPE.CNAME, ttl=REWRITE_TTL, rdata=CNAME(target))
+        return sub_rcode, [cname] + list(sub_rr)
 
     # --- Tel üzerinde sorgu --------------------------------------------------
     def _query(self, domain, qtype, server_ip, tcp=False, timeout=QUERY_TIMEOUT):
@@ -494,6 +539,14 @@ class DNSCore:
         """
         if depth > MAX_DEPTH:
             return RCODE.SERVFAIL, []
+
+        # DNS rewrite: elle tanımlı domain→cevap (yerel kayıt). is_blocked'tan ÖNCE
+        # bakılır — açık kullanıcı tanımı hem engel hem izin listesine göre önceliklidir.
+        _rw = self._lookup_rewrite(domain)
+        if _rw is not None:
+            if source is not None:
+                source[0] = "DNS rewrite"
+            return self._rewrite_response(domain, qtype, _rw, depth)
 
         # Engelleme: blocklist'teki (ya da üst alanı engelli) domain çözülmez.
         if self.is_blocked(domain):

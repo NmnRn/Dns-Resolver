@@ -232,6 +232,15 @@ class DB_CON():
                     PRIMARY KEY (service, domain)
                 )
             """)
+            # DNS rewrites (elle tanımlı kayıt): domain -> cevap (IP ya da hedef domain).
+            # Yeni tablo → migration gerekmez (IF NOT EXISTS; SCHEMA_VERSION değişmez).
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS dns_rewrites (
+                    domain VARCHAR(255) PRIMARY KEY,
+                    answer VARCHAR(64) NOT NULL,
+                    enabled BOOLEAN NOT NULL DEFAULT TRUE
+                )
+            """)
             # Panelden ayarlanabilir anahtar-değer ayarları (ör. sertifika yolları).
             await cursor.execute(
                 "CREATE TABLE IF NOT EXISTS app_settings (k VARCHAR(64) PRIMARY KEY, v VARCHAR(512))"
@@ -298,6 +307,17 @@ class DB_CON():
             for r in await cursor.fetchall():
                 out.setdefault(r["service"], set()).add(r["domain"].strip().rstrip(".").lower())
         return {k: frozenset(v) for k, v in out.items()}
+
+    async def get_rewrites(self):
+        """Etkin DNS rewrite'lar: {domain(normalize): answer}. Resolver
+        _lookup_rewrite bunu kullanır (elle tanımlı kayıt, is_blocked'tan önce).
+        Wildcard anahtarlar '*.sonek' biçiminde saklanır (baştaki * korunur)."""
+        out = {}
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute("SELECT domain, answer FROM dns_rewrites WHERE enabled = TRUE")
+            for r in await cursor.fetchall():
+                out[r["domain"].strip().rstrip(".").lower()] = r["answer"].strip()
+        return out
 
     async def get_blocklist_sources(self):
         """

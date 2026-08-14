@@ -8,6 +8,7 @@ oturumu KONTROL eder (SESSION_ENGINE=signed_cookies olduğu için request.sessio
 erişimi async'te güvenlidir).
 """
 import asyncio
+import ipaddress
 import logging
 import os
 import re
@@ -350,6 +351,29 @@ def _valid_domain(d: str) -> bool:
     return bool(_DOMAIN_RE.match(d))
 
 
+def _norm_rewrite_domain(s: str) -> str:
+    """Rewrite anahtarını normalize et; baştaki '*.' wildcard korunur."""
+    return s.strip().rstrip('.').lower()
+
+
+def _valid_rewrite_domain(d: str) -> bool:
+    """Tam alan adı ya da '*.sonek' wildcard geçerli mi?"""
+    base = d[2:] if d.startswith('*.') else d
+    return bool(base) and _valid_domain(base)
+
+
+def _valid_rewrite_answer(a: str) -> bool:
+    """Cevap geçerli bir IP (A/AAAA) ya da hedef alan adı (CNAME) mı?"""
+    a = a.strip()
+    if not a:
+        return False
+    try:
+        ipaddress.ip_address(a)
+        return True
+    except ValueError:
+        return _valid_domain(a.rstrip('.').lower())
+
+
 async def filters(request):
     gate = _gate(request)
     if gate:
@@ -403,6 +427,26 @@ async def filters(request):
                     else:
                         await db.remove_source_by_url(cat['url'])
                         msg = ('ok', f"{cat['name']} kategorisi kaldırıldı.")
+            elif action == 'rewrite_add':
+                rdomain = _norm_rewrite_domain(request.POST.get('domain', ''))
+                answer = request.POST.get('answer', '').strip()
+                if not _valid_rewrite_domain(rdomain):
+                    msg = ('error', f'Geçersiz alan adı: {rdomain or "(boş)"} (örn. nas.ev ya da *.reklam.com)')
+                elif not _valid_rewrite_answer(answer):
+                    msg = ('error', f'Geçersiz cevap: {answer or "(boş)"} (IP ya da hedef alan adı olmalı)')
+                else:
+                    await db.add_rewrite(rdomain, answer)
+                    msg = ('ok', f'{rdomain} → {answer} eklendi — resolver ~15 sn içinde uygular.')
+            elif action == 'rewrite_manage':
+                one = request.POST.get('one', '').strip()
+                if one:                                       # tek satır sil
+                    await db.remove_rewrite(_norm_rewrite_domain(one))
+                    msg = ('ok', 'Kayıt kaldırıldı.')
+                else:                                         # seçilenleri sil (toplu)
+                    doms = [_norm_rewrite_domain(d) for d in request.POST.getlist('domains') if d.strip()]
+                    for d in doms:
+                        await db.remove_rewrite(d)
+                    msg = ('ok', f'{len(doms)} kayıt kaldırıldı.') if doms else ('error', 'Hiç seçim yapılmadı.')
             else:
                 # --- Elle domain işlemleri ---
                 domain = _norm_domain(request.POST.get('domain', ''))
@@ -435,9 +479,9 @@ async def filters(request):
             msg = ('error', _fail(exc))
 
     try:
-        blocklist, allowlist, sources, enabled_services, app_set = await asyncio.gather(
+        blocklist, allowlist, sources, enabled_services, app_set, rewrites = await asyncio.gather(
             db.get_blocklist(), db.get_allowlist(), db.get_sources(),
-            db.get_enabled_services(), db.get_settings())
+            db.get_enabled_services(), db.get_settings(), db.get_rewrites())
     except Exception as exc:
         context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
         return render(request, 'dashboard/filters.html', context)
@@ -446,6 +490,7 @@ async def filters(request):
     context.update(
         blocklist=blocklist, allowlist=allowlist, sources=sources,
         catalog=catalog_grouped(), added_urls=added_urls, msg=msg,
+        rewrites=rewrites, rewrite_count=len(rewrites),
         block_count=len(blocklist), allow_count=len(allowlist),
         source_count=len(sources), total_list_domains=sum(s['count'] for s in sources),
         services=[{'id': sid, 'name': name, 'enabled': name in enabled_services}
