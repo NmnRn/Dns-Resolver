@@ -22,6 +22,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from project_control.blocklists import normalize_url
 from . import db
 from .catalog import catalog_grouped
 from .services import SERVICES, services_list, CATEGORIES, categories_list, SAFESEARCH_ENGINES
@@ -410,7 +411,7 @@ async def filters(request):
             # --- Hazır liste (kaynak) işlemleri ---
             if action == 'source_add':
                 name = request.POST.get('name', '').strip()
-                url = request.POST.get('url', '').strip()
+                url = normalize_url(request.POST.get('url', ''))   # GitHub blob linki → ham link
                 if not url.startswith(('http://', 'https://')):
                     msg = ('error', 'Geçersiz URL — http:// veya https:// ile başlamalı.')
                 else:

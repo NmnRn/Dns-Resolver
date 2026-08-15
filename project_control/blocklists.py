@@ -20,6 +20,18 @@ _SKIP = {"localhost", "localhost.localdomain", "local", "broadcasthost", "ip6-lo
 # İndirme üst sınırı: kötü niyetli/dev bir URL belleği doldurmasın (25 MB).
 _MAX_BYTES = 25 * 1024 * 1024
 
+# GitHub 'blob' (HTML sayfası) URL'si → 'raw' (ham dosya) URL'si.
+_GH_BLOB = re.compile(r'^https?://github\.com/([^/]+)/([^/]+)/blob/(.+)$')
+
+
+def normalize_url(url: str) -> str:
+    """Kullanıcı GitHub'ın blob (HTML) linkini yapıştırırsa ham linke çevir —
+    aksi halde domain listesi yerine HTML sayfası inip 0 domain çıkar."""
+    m = _GH_BLOB.match(url.strip())
+    if m:
+        return f"https://raw.githubusercontent.com/{m.group(1)}/{m.group(2)}/{m.group(3)}"
+    return url.strip()
+
 
 def parse_blocklist(text: str) -> set[str]:
     """Metinden (hosts/düz/adblock) engellenecek domain kümesini çıkarır."""
@@ -47,6 +59,7 @@ def parse_blocklist(text: str) -> set[str]:
 
 def download_and_parse(url: str, timeout: float = 30) -> set[str]:
     """URL'yi indirir (senkron; executor'da çağır) ve domain kümesi döndürür."""
+    url = normalize_url(url)   # GitHub blob linki yapıştırıldıysa ham linke çevir
     req = urllib.request.Request(url, headers={"User-Agent": "dns-resolver-blocklist/1.0"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = resp.read(_MAX_BYTES)

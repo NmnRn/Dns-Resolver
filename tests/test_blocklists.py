@@ -6,7 +6,21 @@ download_and_parse ağa çıkmadan (urlopen sahte) ve boyut sınırına uyarak t
 edilir.
 """
 import project_control.blocklists as bl
-from project_control.blocklists import parse_blocklist, download_and_parse
+from project_control.blocklists import parse_blocklist, download_and_parse, normalize_url
+
+
+def test_normalize_github_blob_to_raw():
+    # Kullanıcı GitHub'ın HTML (blob) linkini yapıştırırsa ham linke çevrilmeli.
+    blob = "https://github.com/hagezi/dns-blocklists/blob/main/share/ad-shield-subdomains.txt"
+    assert normalize_url(blob) == \
+        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/share/ad-shield-subdomains.txt"
+
+
+def test_normalize_leaves_raw_and_others_unchanged():
+    raw = "https://raw.githubusercontent.com/x/y/main/a.txt"
+    assert normalize_url(raw) == raw
+    assert normalize_url("https://small.oisd.nl/") == "https://small.oisd.nl/"
+    assert normalize_url("  https://example.com/list.txt  ") == "https://example.com/list.txt"
 
 
 def test_parses_hosts_format():
