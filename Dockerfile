@@ -7,8 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # --- Resolver tarafı ---
 COPY app.py run_all.py ./
-# Resolver + panel'in paylaştığı leaf modül (client_ip at-rest şifreleme).
-COPY logcrypto.py ./
+# Resolver + panel'in paylaştığı leaf modüller (log şifreleme + DoH HTTP/2 istemcisi).
+COPY logcrypto.py doh_client.py ./
 COPY servers ./servers
 COPY db_ops ./db_ops
 COPY project_control ./project_control

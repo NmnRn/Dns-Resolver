@@ -6,9 +6,8 @@ import socket
 import ssl
 import struct
 import time
-import urllib.error
-import urllib.request
 
+import doh_client
 from dnslib import DNSRecord
 
 
@@ -30,11 +29,7 @@ def test_upstream(up, timeout=3):
     t0 = time.time()
     try:
         if low.startswith("https://"):
-            req = urllib.request.Request(
-                up, data=q.pack(), method="POST",
-                headers={"Content-Type": "application/dns-message", "Accept": "application/dns-message"})
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                DNSRecord.parse(r.read())
+            DNSRecord.parse(doh_client.doh_query(up, q.pack(), timeout))   # önce HTTP/2, olmazsa HTTP/1.1
         elif low.startswith("tls://"):
             host, _, port = up[6:].partition(":")
             ctx = ssl.create_default_context()
@@ -56,11 +51,13 @@ def test_upstream(up, timeout=3):
             DNSRecord.parse(s.recvfrom(4096)[0])
             s.close()
         return {"up": up, "ok": True, "ms": round((time.time() - t0) * 1000), "detail": ""}
-    except urllib.error.HTTPError as exc:
-        # 505 = sunucu HTTP/2 zorunlu kılıyor; urllib yalnız HTTP/1.1 → bu DoH ucu
-        # bizim istemciyle çalışmaz (ör. quad9). Düz IP / DoT alternatifini öner.
-        hint = " — HTTP/2 gerekli, bu DoH ucu desteklenmiyor" if exc.code == 505 else ""
-        return {"up": up, "ok": False, "ms": round((time.time() - t0) * 1000),
-                "detail": f"HTTP {exc.code}{hint}"}
     except Exception as exc:
-        return {"up": up, "ok": False, "ms": round((time.time() - t0) * 1000), "detail": type(exc).__name__}
+        # HTTP durum kodu: httpx.HTTPStatusError.response.status_code ya da urllib HTTPError.code.
+        code = getattr(getattr(exc, "response", None), "status_code", None) or getattr(exc, "code", None)
+        if code == 505:
+            detail = "HTTP 505 — HTTP/2 gerekli (httpx kurulu değil)"
+        elif code:
+            detail = f"HTTP {code}"
+        else:
+            detail = type(exc).__name__
+        return {"up": up, "ok": False, "ms": round((time.time() - t0) * 1000), "detail": detail}

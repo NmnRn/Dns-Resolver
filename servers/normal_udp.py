@@ -18,6 +18,7 @@ settings.control_env_file()
 load_dotenv(settings.PROJECT_DIRECTORY / ".env")
 
 from logs.dns_logs import logger
+import doh_client   # DoH: önce HTTP/2, olmazsa HTTP/1.1 (resolver + panel paylaşır)
 
 
 # --- Ayarlanabilir limitler -------------------------------------------------
@@ -389,25 +390,12 @@ class DNSCore:
         return None
 
     def _query_doh(self, domain, qtype, endpoint, timeout=QUERY_TIMEOUT):
-        """RFC 8484: DNS sorgusunu ham wire-format olarak HTTPS body'sinde POST eder."""
+        """RFC 8484 DoH — önce HTTP/2, olmazsa HTTP/1.1 (doh_client, ALPN)."""
         q = DNSRecord.question(domain, qtype)
         qid = q.header.id
-        req = urllib.request.Request(
-            endpoint,
-            data=q.pack(),
-            method="POST",
-            headers={
-                "Content-Type": "application/dns-message",
-                "Accept": "application/dns-message",
-            },
-        )
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                resp_data = r.read()
-            resp = DNSRecord.parse(resp_data)
-            if resp.header.id != qid:
-                return None
-            return resp
+            resp = DNSRecord.parse(doh_client.doh_query(endpoint, q.pack(), timeout))
+            return resp if resp.header.id == qid else None
         except Exception:
             return None
 
