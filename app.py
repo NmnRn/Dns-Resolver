@@ -256,17 +256,20 @@ def main():
             try:
                 manual_block, allow = await db_manager.get_filter_lists()
                 sources = await db_manager.get_blocklist_sources()
-                active_ids = set()
+                active_ids = {s["id"] for s in sources}
                 list_sets: dict[str, frozenset] = {}
-                for s in sources:
-                    sid, name, url, force = s["id"], s["name"], s["url"], s["force"]
-                    active_ids.add(sid)
-                    cached = _source_cache.get(sid)
-                    if cached is None or cached[0] != url or force:
+
+                # İndirme eşzamanlılığı SINIRI: aynı anda EN FAZLA 2 liste iner
+                # (bant genişliği/CPU'yu boğmasın). Bu bir İNDİRME sınırıdır —
+                # kaç liste EKLENECEĞİNE sınır yoktur; çok liste varsa 2'şerli iner.
+                _dl_sem = asyncio.Semaphore(2)
+
+                async def _download_source(s):
+                    sid, url = s["id"], s["url"]
+                    async with _dl_sem:
                         try:
                             domains = await loop.run_in_executor(
-                                None, blocklists.download_and_parse, url
-                            )
+                                None, blocklists.download_and_parse, url)
                             _source_cache[sid] = (url, frozenset(domains))
                             await db_manager.set_source_stats(sid, len(domains))
                             logger.info("Engelleme listesi indirildi: %s (%d domain)", url, len(domains))
@@ -274,7 +277,16 @@ def main():
                             logger.error("Engelleme listesi indirilemedi %s: %r", url, e)
                             await db_manager.set_source_stats(sid, 0)
                             _source_cache.setdefault(sid, (url, frozenset()))
-                    list_sets[name] = _source_cache[sid][1]
+
+                # Yalnız yeni / URL-değişmiş / bayat (force) kaynakları indir.
+                pending = [s for s in sources
+                           if (_source_cache.get(s["id"]) is None
+                               or _source_cache[s["id"]][0] != s["url"] or s["force"])]
+                if pending:
+                    await asyncio.gather(*(_download_source(s) for s in pending))
+
+                for s in sources:   # list_sets'i (indirilmiş + önceden cache'li) kur
+                    list_sets[s["name"]] = _source_cache.get(s["id"], (s["url"], frozenset()))[1]
                 # Kaldırılan/kapatılan kaynakların cache'ini temizle.
                 for sid in [k for k in _source_cache if k not in active_ids]:
                     del _source_cache[sid]
