@@ -1,6 +1,6 @@
 {% for r in rows %}
 <tr class="{% if r.pending %}pending {% endif %}{% if r.blocked %}blocked{% endif %}">
-    <td>{% if r.pending %}<span class="livedot" title="Flush bekliyor — canlı, henüz DB'de değil"></span>{% endif %}{{ r.domain }}{% if r.blocked %}<span class="bblk" title="{{ r.blocked_by }} listesinden engellendi">⛔ {{ r.blocked_by }}</span>{% endif %}</td>
+    <td>{% if r.pending %}<span class="livedot" title="Flush bekliyor — canlı, henüz DB'de değil"></span>{% endif %}{{ r.domain }}{% if r.blocked %}<span class="bblk" title="{{ r.blocked_by }} listesinden engellendi">⛔ {{ r.blocked_by|truncatechars:26 }}</span>{% endif %}</td>
     <td><span class="tag t-{{ r.record_type }}">{{ r.record_type }}</span></td>
     <td class="muted mono">{{ r.client_ip }}</td>
     <td class="m-{{ r.method }}">{{ r.method|upper }}</td>

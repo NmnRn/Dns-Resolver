@@ -72,7 +72,7 @@
                     <tbody>
                         {% for s in sources %}
                         <tr>
-                            <td><b>{{ s.name }}</b><br><span class="muted mono" style="font-size:11px;">{{ s.url|truncatechars:64 }}</span></td>
+                            <td><b title="{{ s.name }}">{{ s.name|truncatechars:44 }}</b><br><span class="muted mono" style="font-size:11px;">{{ s.url|truncatechars:64 }}</span></td>
                             <td class="num">{{ s.count }}</td>
                             <td class="muted num"><span class="lt" data-utc="{{ s.updated_at|date:'Y-m-d H:i:s' }}">{{ s.updated_at|date:"Y-m-d H:i:s"|default:"—" }}</span></td>
                             <td>
@@ -241,11 +241,11 @@
                     {% endfor %}
                 </div>
                 <div class="modal-foot">
-                    <form method="post" style="display:flex;gap:8px;flex:1;">
+                    <form method="post" style="display:flex;gap:8px;flex:1;flex-wrap:wrap;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="source_add">
-                        <input type="hidden" name="name" value="">
-                        <input type="text" name="url" placeholder="…veya özel liste URL'si (https://…)" style="flex:1;" autocomplete="off" spellcheck="false">
+                        <input type="text" name="name" placeholder="İsim (opsiyonel)" style="flex:0 1 150px;" autocomplete="off" spellcheck="false">
+                        <input type="text" name="url" placeholder="özel liste URL'si (https://…)" style="flex:1;min-width:190px;" autocomplete="off" spellcheck="false">
                         <button class="btn" type="submit">Ekle</button>
                     </form>
                 </div>

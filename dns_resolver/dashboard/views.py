@@ -352,6 +352,20 @@ def _valid_domain(d: str) -> bool:
     return bool(_DOMAIN_RE.match(d))
 
 
+def _auto_list_name(url: str) -> str:
+    """Özel liste URL'sinden kısa bir ad türet (son anlamlı yol parçası, uzantısız;
+    yoksa host). İsim verilmeyince tabloda/engellenen sütununda upuzun URL görünmesin."""
+    from urllib.parse import urlparse
+    p = urlparse(url)
+    skip = {'adblock', 'adguard', 'hosts', 'host', 'main', 'master', 'refs', 'heads',
+            'raw', 'list', 'lists', 'dns', 'download', 'blocklist'}
+    for seg in reversed([s for s in p.path.split('/') if s]):
+        base = seg.rsplit('.', 1)[0].strip()
+        if base and base.lower() not in skip:
+            return base[:48]
+    return (p.netloc or 'Özel liste')[:48]
+
+
 def _norm_rewrite_domain(s: str) -> str:
     """Rewrite anahtarını normalize et; baştaki '*.' wildcard korunur."""
     return s.strip().rstrip('.').lower()
@@ -415,8 +429,9 @@ async def filters(request):
                 if not url.startswith(('http://', 'https://')):
                     msg = ('error', 'Geçersiz URL — http:// veya https:// ile başlamalı.')
                 else:
-                    await db.add_source(name or url, url)
-                    msg = ('ok', f'"{name or url}" listesi eklendi — resolver birazdan indirir.')
+                    final_name = name or _auto_list_name(url)   # isim yoksa URL'den kısa ad
+                    await db.add_source(final_name, url)
+                    msg = ('ok', f'"{final_name}" listesi eklendi — resolver birazdan indirir.')
             elif action == 'source_del':
                 await db.remove_source(int(request.POST.get('source_id', 0)))
                 msg = ('ok', 'Liste kaldırıldı.')

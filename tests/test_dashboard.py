@@ -94,6 +94,19 @@ def test_cert_path_empty():
 
 
 # --------------------------------------------------------------------------- #
+# _auto_list_name  (isim verilmeyen özel liste için URL'den kısa ad)
+# --------------------------------------------------------------------------- #
+def test_auto_list_name_last_segment():
+    assert views._auto_list_name("https://x.com/a/b/multi.txt") == "multi"
+    assert views._auto_list_name(
+        "https://raw.githubusercontent.com/h/d/refs/heads/main/adblock/ultimate.txt") == "ultimate"
+
+
+def test_auto_list_name_falls_back_to_host():
+    assert views._auto_list_name("https://small.oisd.nl/") == "small.oisd.nl"
+
+
+# --------------------------------------------------------------------------- #
 # check_cert  (kendinden-imzalı sertifika üreterek)
 # --------------------------------------------------------------------------- #
 def _write_cert(path, not_before, not_after, cn="dns.test"):
