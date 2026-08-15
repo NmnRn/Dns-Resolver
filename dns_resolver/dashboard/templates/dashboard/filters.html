@@ -45,41 +45,7 @@
             <p class="sub" style="padding:0 16px 14px;margin:0;">Ebeveyn kontrolü = <b>Güvenli Arama</b> (yukarıda) + <b>Yetişkin İçerik</b>. Kategoriler hazır blocklist olarak eklenir (resolver ~15 sn'de indirir).</p>
         </div>
 
-        <!-- Hazır liste kataloğu (kategoriye göre, tıkla-ekle) -->
-        <div class="box" style="margin-bottom:16px;">
-            <h2>Hazır Engelleme Listeleri</h2>
-            <div class="catwrap">
-                {% for cat, items in catalog %}
-                <div>
-                    <div class="cathead">{{ cat }}</div>
-                    <div class="chips">
-                        {% for name, url in items %}
-                            {% if url in added_urls %}
-                            <span class="lchip added" title="Zaten ekli">{{ name }} <span class="ok">✓</span></span>
-                            {% else %}
-                            <form method="post" style="margin:0;">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="source_add">
-                                <input type="hidden" name="name" value="{{ name }}">
-                                <input type="hidden" name="url" value="{{ url }}">
-                                <button type="submit" class="lchip"><span class="plus">+</span> {{ name }}</button>
-                            </form>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            <div class="custom">
-                <form method="post" style="display:flex;gap:8px;flex:1;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="source_add">
-                    <input type="hidden" name="name" value="">
-                    <input type="text" name="url" placeholder="…veya özel liste URL'si yapıştır (https://…)" style="flex:1;min-width:200px;" autocomplete="off" spellcheck="false">
-                    <button class="btn" type="submit">Ekle</button>
-                </form>
-            </div>
-        </div>
+        <!-- Katalog artık "Eklenen Listeler" kartındaki "+ Liste Ekle" butonuyla açılan modalde -->
 
         <!-- Ön tanımlı servisler -->
         <div class="box" style="margin-bottom:16px;">
@@ -99,7 +65,7 @@
 
         <!-- Eklenen listeler -->
         <div class="box" style="margin-bottom:16px;">
-            <h2>Eklenen Listeler — {{ source_count }} liste · {{ total_list_domains }} domain</h2>
+            <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;">Eklenen Listeler — {{ source_count }} liste · {{ total_list_domains }} domain<button type="button" class="btn" data-open="listmodal" style="padding:6px 13px;font-size:12px;text-transform:none;">+ Liste Ekle</button></h2>
             <div class="tablescroll">
                 <table>
                     <thead><tr><th>Liste</th><th>Domain</th><th>Güncellendi <span class="muted" style="font-weight:400;">(yerel)</span></th><th>Açık</th><th></th></tr></thead>
@@ -241,5 +207,73 @@
             {% endif %}
         </div>
         <script>document.getElementById('tzoff').value = -new Date().getTimezoneOffset();</script>
+
+        <!-- Liste ekleme modal'ı (katalog buradan seçilir + aranır) -->
+        <div class="modal-overlay" id="listmodal" hidden>
+            <div class="modal">
+                <div class="modal-head">
+                    <h3>Hazır Engelleme Listesi Ekle</h3>
+                    <button type="button" class="modal-x" data-close aria-label="Kapat">&#10005;</button>
+                </div>
+                <div class="modal-search">
+                    <input type="text" id="listsearch" placeholder="Liste ara…" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="modal-body">
+                    {% for cat, items in catalog %}
+                    <div class="catgroup">
+                        <div class="cathead">{{ cat }}</div>
+                        <div class="chips">
+                            {% for name, url in items %}
+                                {% if url in added_urls %}
+                                <span class="lchip added" title="Zaten ekli" data-name="{{ name|lower }}">{{ name }} <span class="ok">✓</span></span>
+                                {% else %}
+                                <form method="post" style="margin:0;" data-name="{{ name|lower }}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="source_add">
+                                    <input type="hidden" name="name" value="{{ name }}">
+                                    <input type="hidden" name="url" value="{{ url }}">
+                                    <button type="submit" class="lchip"><span class="plus">+</span> {{ name }}</button>
+                                </form>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-foot">
+                    <form method="post" style="display:flex;gap:8px;flex:1;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="source_add">
+                        <input type="hidden" name="name" value="">
+                        <input type="text" name="url" placeholder="…veya özel liste URL'si (https://…)" style="flex:1;" autocomplete="off" spellcheck="false">
+                        <button class="btn" type="submit">Ekle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <script>
+        (function(){
+          var ov = document.getElementById('listmodal'); if(!ov) return;
+          var si = document.getElementById('listsearch');
+          function filt(){
+            var q = (si.value||'').trim().toLowerCase();
+            ov.querySelectorAll('.chips [data-name]').forEach(function(el){
+              el.style.display = (!q || el.getAttribute('data-name').indexOf(q) !== -1) ? '' : 'none';
+            });
+            ov.querySelectorAll('.catgroup').forEach(function(g){
+              var vis = 0;
+              g.querySelectorAll('.chips [data-name]').forEach(function(el){ if(el.style.display !== 'none') vis++; });
+              g.style.display = vis ? '' : 'none';
+            });
+          }
+          function open(){ ov.hidden = false; if(si){ si.value=''; filt(); si.focus(); } }
+          function close(){ ov.hidden = true; }
+          document.querySelectorAll('[data-open="listmodal"]').forEach(function(b){ b.addEventListener('click', open); });
+          ov.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click', close); });
+          ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
+          document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !ov.hidden) close(); });
+          if(si) si.addEventListener('input', filt);
+        })();
+        </script>
     {% endif %}
 {% endblock %}

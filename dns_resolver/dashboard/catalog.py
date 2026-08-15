@@ -11,11 +11,6 @@ URL'ler jsdelivr/raw.githubusercontent üzerinden çekilir; kırık bir URL pane
 CATALOG = [
     # --- Genel (reklam + izleyici + kötücül karışık) ---
     ("StevenBlack Unified",        "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", "Genel"),
-    ("Hagezi Light",               "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/light.txt", "Genel"),
-    ("Hagezi Normal (Multi)",      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/multi.txt", "Genel"),
-    ("Hagezi Pro",                 "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.txt", "Genel"),
-    ("Hagezi Pro++",               "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/pro.plus.txt", "Genel"),
-    ("Hagezi Ultimate",            "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/ultimate.txt", "Genel"),
     ("OISD Small",                 "https://small.oisd.nl/", "Genel"),
     ("OISD Big",                   "https://big.oisd.nl/", "Genel"),
     ("AdGuard DNS filter",         "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt", "Genel"),
@@ -34,7 +29,6 @@ CATALOG = [
     # --- Kötücül / Phishing (güvenlik) ---
     ("URLhaus (malware)",          "https://urlhaus.abuse.ch/downloads/hostfile/", "Güvenlik"),
     ("Phishing Army (Extended)",   "https://phishing.army/download/phishing_army_blocklist_extended.txt", "Güvenlik"),
-    ("Hagezi Threat Intel (TIF)",  "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/tif.txt", "Güvenlik"),
     ("abuse.ch ThreatFox",         "https://threatfox.abuse.ch/downloads/hostfile/", "Güvenlik"),
     ("URLhaus Filter (curben)",    "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-hosts.txt", "Güvenlik"),
     ("NoCoin (kripto madenci)",    "https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/hosts.txt", "Güvenlik"),
@@ -46,13 +40,11 @@ CATALOG = [
     # --- Cihaz (Smart TV / mobil / yerel izleyiciler) ---
     ("Perflyst Smart TV",          "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartTV.txt", "Cihaz"),
     ("Perflyst Android İzleyici",  "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/android-tracking.txt", "Cihaz"),
-    ("Hagezi Native (Apple)",      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/native.apple.txt", "Cihaz"),
 
     # --- Kategorik (kumar / sosyal / sahte haber / bypass) ---
     ("StevenBlack Kumar",          "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling/hosts", "Kategorik"),
     ("StevenBlack Sosyal Medya",   "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social/hosts", "Kategorik"),
     ("StevenBlack Sahte Haber",    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews/hosts", "Kategorik"),
-    ("Hagezi DoH/VPN Bypass",      "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/hosts/doh.txt", "Kategorik"),
 ]
 
 # name -> url (panelden 'katalogdan ekle' seçimi için hızlı arama)
