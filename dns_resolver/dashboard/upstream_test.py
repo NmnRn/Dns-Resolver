@@ -6,6 +6,7 @@ import socket
 import ssl
 import struct
 import time
+import urllib.error
 import urllib.request
 
 from dnslib import DNSRecord
@@ -55,5 +56,11 @@ def test_upstream(up, timeout=3):
             DNSRecord.parse(s.recvfrom(4096)[0])
             s.close()
         return {"up": up, "ok": True, "ms": round((time.time() - t0) * 1000), "detail": ""}
+    except urllib.error.HTTPError as exc:
+        # 505 = sunucu HTTP/2 zorunlu kılıyor; urllib yalnız HTTP/1.1 → bu DoH ucu
+        # bizim istemciyle çalışmaz (ör. quad9). Düz IP / DoT alternatifini öner.
+        hint = " — HTTP/2 gerekli, bu DoH ucu desteklenmiyor" if exc.code == 505 else ""
+        return {"up": up, "ok": False, "ms": round((time.time() - t0) * 1000),
+                "detail": f"HTTP {exc.code}{hint}"}
     except Exception as exc:
         return {"up": up, "ok": False, "ms": round((time.time() - t0) * 1000), "detail": type(exc).__name__}
