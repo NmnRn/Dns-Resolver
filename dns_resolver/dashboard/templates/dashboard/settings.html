@@ -70,15 +70,34 @@
                 </div>
                 {% endif %}
 
-                <div style="margin-top:14px;"><button class="btn ghost" type="submit" name="test_upstreams" value="1">Sunucuları test et</button></div>
-                {% if upstream_test %}
-                <label class="modelbl">Test sonuçları</label>
-                <div class="upstats">
-                    {% for r in upstream_test %}
-                    <div class="upstat"><span class="u">{{ r.up }}</span><span>{% if r.ok %}<span style="color:var(--ok);">✓ {{ r.ms }} ms</span>{% elif r.ok is None %}<span class="muted">{{ r.detail }}</span>{% else %}<span style="color:var(--err);">✗ {{ r.detail }} ({{ r.ms }} ms)</span>{% endif %}</span></div>
-                    {% endfor %}
-                </div>
-                {% endif %}
+                <div style="margin-top:14px;"><button class="btn ghost" type="button" id="uptest-btn">Sunucuları test et</button></div>
+                <div id="uptest-out"></div>
+                <script>
+                (function(){
+                  var btn=document.getElementById('uptest-btn'); if(!btn) return;
+                  var out=document.getElementById('uptest-out');
+                  function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
+                  btn.addEventListener('click',function(){
+                    var ta=document.querySelector('textarea[name="upstreams"]');
+                    var tok=document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    var orig=btn.textContent; btn.disabled=true; btn.textContent='Test ediliyor…'; out.innerHTML='';
+                    fetch('{% url "dashboard:test_upstreams" %}',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':tok},body:'upstreams='+encodeURIComponent(ta.value)})
+                      .then(function(r){return r.json();})
+                      .then(function(data){
+                        var rows=(data.results||[]).map(function(x){
+                          var s = x.ok===true ? '<span style="color:var(--ok);">✓ '+x.ms+' ms</span>'
+                                : x.ok===null ? '<span class="muted">'+esc(x.detail)+'</span>'
+                                : '<span style="color:var(--err);">✗ '+esc(x.detail)+' ('+x.ms+' ms)</span>';
+                          return '<div class="upstat"><span class="u">'+esc(x.up)+'</span><span>'+s+'</span></div>';
+                        }).join('');
+                        out.innerHTML = rows ? '<label class="modelbl">Test sonuçları</label><div class="upstats">'+rows+'</div>'
+                                             : '<p class="setnote">Test edilecek upstream yok — önce ekle.</p>';
+                      })
+                      .catch(function(){ out.innerHTML='<p class="setnote" style="color:var(--err);">Test başarısız.</p>'; })
+                      .finally(function(){ btn.disabled=false; btn.textContent=orig; });
+                  });
+                })();
+                </script>
             </div>
 
             <div class="box setcard" style="margin-top:16px;">

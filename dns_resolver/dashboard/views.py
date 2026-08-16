@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
@@ -865,6 +865,19 @@ async def guide(request):
 # --------------------------------------------------------------------------- #
 # Genel Ayarlar — geçmiş aç/kapa + önbellek (resolver ~10 sn'de uygular)
 # --------------------------------------------------------------------------- #
+async def test_upstreams_ajax(request):
+    """AJAX: girilen upstream'leri test et → JSON döndür (sayfa YENİLENMEZ).
+    Textarea'daki güncel (kaydedilmemiş olabilir) değerleri test eder."""
+    if not request.session.get('_auth_user_id'):
+        return JsonResponse({'error': 'auth'}, status=403)
+    ups = [ln.strip() for ln in request.POST.get('upstreams', '').replace(',', '\n').splitlines() if ln.strip()]
+    if not ups:
+        return JsonResponse({'results': []})
+    ups = ups[:20]   # üst sınır (uzun bekleme / kötüye kullanım önle)
+    results = list(await asyncio.gather(*[asyncio.to_thread(test_upstream, u) for u in ups]))
+    return JsonResponse({'results': results})
+
+
 async def settings_page(request):
     gate = _gate(request)
     if gate:
