@@ -64,8 +64,10 @@
         e.preventDefault();
         var btn = e.submitter, fd = new FormData(form);
         if (btn && btn.name) fd.append(btn.name, btn.value);  // tıklanan butonun name/value'su
-        var method = (form.method || 'get').toLowerCase();
-        var action = (btn && btn.getAttribute('formaction')) || form.action || location.href;
+        // DİKKAT: form.method / form.action, name="method" / name="action" alanlarıyla
+        // GÖLGELENİR (o input/select elementini döndürür) → hep getAttribute kullan.
+        var method = (form.getAttribute('method') || 'get').toLowerCase();
+        var action = (btn && btn.getAttribute('formaction')) || form.getAttribute('action') || location.href;
         if (btn) btn.disabled = true;
         var reenable = function () { if (btn) btn.disabled = false; };  // eski buton silinse de zararsız
         if (method === 'post') {
