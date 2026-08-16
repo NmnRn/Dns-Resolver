@@ -32,6 +32,19 @@
         catch (e) { window.location = url; return; }
         var neu = doc.querySelector('main.wrap');
         if (!neu) { window.location = url; return; }        // beklenmedik yanıt → normal git
+        // Yeni sayfanın stil dosyalarını (sayfa-özel extra_css) head'e ekle (yoksa) —
+        // yoksa başka bir sayfaya geçince o sayfanın CSS'i yüklenmez, stilsiz görünür.
+        var have = {}, cur = document.head.querySelectorAll('link[rel="stylesheet"]');
+        for (var k = 0; k < cur.length; k++) have[cur[k].getAttribute('href')] = 1;
+        var css = doc.head ? doc.head.querySelectorAll('link[rel="stylesheet"]') : [];
+        for (var m = 0; m < css.length; m++) {
+            var href = css[m].getAttribute('href');
+            if (href && !have[href]) {
+                var nl = document.createElement('link');
+                nl.rel = 'stylesheet'; nl.href = href;
+                document.head.appendChild(nl);
+            }
+        }
         var y = window.scrollY;
         main.innerHTML = neu.innerHTML;
         runScripts(main);
@@ -76,6 +89,20 @@
             var q = new URLSearchParams(fd).toString();
             go(action.split('?')[0] + (q ? '?' + q : ''), { headers: { 'X-Requested-With': 'fetch' } }, false, true).then(reenable);
         }
+    });
+
+    // Panel içi bağlantı tıklamalarını da yakala (navbar sayfa geçişleri yenilemesiz).
+    // Hariç: yeni-sekme/modifier tıklamalar, data-no-ajax, download, dış site, mailto/#.
+    document.addEventListener('click', function (e) {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var a = e.target.closest && e.target.closest('a');
+        if (!a || a.hasAttribute('data-no-ajax') || a.hasAttribute('download') || a.target === '_blank') return;
+        if (a.protocol !== 'http:' && a.protocol !== 'https:') return;   // mailto/tel vb.
+        if (a.origin !== location.origin) return;                        // dış site
+        var href = a.getAttribute('href');
+        if (!href || href.charAt(0) === '#') return;                     // sayfa-içi çapa
+        e.preventDefault();
+        go(a.href, { headers: { 'X-Requested-With': 'fetch' } }, false, true);
     });
 
     window.addEventListener('popstate', function () {

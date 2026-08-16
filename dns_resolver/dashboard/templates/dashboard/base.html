@@ -29,7 +29,7 @@
                 <a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">Kullanıcılar</a>
                 <a href="{% url 'dashboard:guide' %}" class="{% if active == 'guide' %}active{% endif %}">Kurulum</a>
             </nav>
-            <div class="user">{{ panel_username }} · <a href="{% url 'dashboard:logout' %}">Çıkış</a></div>
+            <div class="user">{{ panel_username }} · <a href="{% url 'dashboard:logout' %}" data-no-ajax>Çıkış</a></div>
         </div>
     </header>
     <main class="wrap">

@@ -6,7 +6,7 @@
     <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;">
         <div><h1>Sorgu Geçmişi</h1><p class="sub" style="margin:2px 0 18px;">En yeni üstte · zamanlar UTC · aşağı kaydırdıkça sonraki 25’i otomatik yükler (yüklenenler tarayıcıda kalır)</p></div>
         <div style="display:flex;gap:8px;">
-            <a class="btn ghost" href="{% url 'dashboard:queries_export' %}?q={{ q|urlencode }}&amp;method={{ method }}">⭳ CSV indir</a>
+            <a class="btn ghost" href="{% url 'dashboard:queries_export' %}?q={{ q|urlencode }}&amp;method={{ method }}" data-no-ajax>⭳ CSV indir</a>
             <a class="btn ghost" href="{% url 'dashboard:queries' %}?q={{ q|urlencode }}&amp;method={{ method }}">↻ Yenile</a>
         </div>
     </div>
