@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}DNS Panel{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v={{ static_v }}">
     {% block extra_css %}{% endblock %}
-    <script src="{% static 'dashboard/js/localtime.js' %}" defer></script>
-    <script src="{% static 'dashboard/js/ajax.js' %}" defer></script>
+    <script src="{% static 'dashboard/js/localtime.js' %}?v={{ static_v }}" defer></script>
+    <script src="{% static 'dashboard/js/ajax.js' %}?v={{ static_v }}" defer></script>
 </head>
 <body>
     <header class="topbar">

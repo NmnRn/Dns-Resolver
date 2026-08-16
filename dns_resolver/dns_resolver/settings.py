@@ -13,9 +13,15 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 import secrets
 import sys
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+# Statik dosya sürüm damgası (önbellek kırma). Her process başlangıcında/deploy'da
+# değişir → base.html'de "?v={{ static_v }}" ile tarayıcı yeni JS/CSS'i çeker,
+# whitenoise'ın 60 sn cache'ine ya da bellekteki eski script'e takılmaz.
+STATIC_VERSION = str(int(time.time()))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -123,6 +129,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'dashboard.context_processors.static_version',
             ],
         },
     },
