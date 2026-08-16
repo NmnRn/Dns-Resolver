@@ -416,6 +416,11 @@ async def refresh_source(source_id: int) -> None:
     await _write("UPDATE blocklist_sources SET updated_at = NULL WHERE id = %s", (source_id,))
 
 
+async def refresh_all_sources() -> None:
+    """Tüm etkin kaynakları yeniden indirtir (updated_at=NULL → resolver 2'şerli indirir)."""
+    await _write("UPDATE blocklist_sources SET updated_at = NULL WHERE enabled = TRUE", ())
+
+
 # --------------------------------------------------------------------------- #
 # app_settings — panelden ayarlanabilir yapılandırma (ör. sertifika yolları).
 # --------------------------------------------------------------------------- #

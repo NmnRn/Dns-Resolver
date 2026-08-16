@@ -41,6 +41,9 @@
 .fchk input{width:auto;min-width:0;flex:none;margin:0;accent-color:var(--accent)}
 .fchk span{overflow:hidden;text-overflow:ellipsis}
 .bulkbar{padding:10px 16px;border-top:1px solid var(--border);text-align:right}
+/* Kaynak durum rozeti (indirilemedi / bekliyor) */
+.lbadge{display:inline-block;padding:2px 9px;border-radius:999px;font:600 11px var(--sans);background:var(--panel-2);border:1px solid var(--border-strong);color:var(--muted)}
+.lbadge.err{background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.4);color:var(--err)}
 /* Gün seçme chip'leri (zamanlanmış engelleme): tıkla-seç toggle */
 .daychip{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:7px 12px;border:1px solid var(--border-strong);border-radius:999px;background:var(--panel-2);color:var(--muted);font:600 12.5px var(--sans);cursor:pointer;user-select:none;transition:all .15s ease}
 .daychip input{position:absolute;opacity:0;width:0;height:0;margin:0;pointer-events:none}

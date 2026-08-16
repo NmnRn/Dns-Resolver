@@ -442,6 +442,9 @@ async def filters(request):
             elif action == 'source_refresh':
                 await db.refresh_source(int(request.POST.get('source_id', 0)))
                 msg = ('ok', 'Liste yenileniyor — resolver birazdan yeniden indirir.')
+            elif action == 'source_refresh_all':
+                await db.refresh_all_sources()
+                msg = ('ok', "Tüm listeler yenileniyor — resolver birazdan (2'şerli) yeniden indirir.")
             elif action == 'service_toggle':
                 svc = SERVICES.get(request.POST.get('service', ''))
                 if svc:
