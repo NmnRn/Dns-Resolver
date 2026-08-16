@@ -151,6 +151,28 @@
                 <button class="btn ghost" type="submit" name="clear_history" value="1" onclick="return confirm('Tüm sorgu geçmişi silinsin mi? Bu işlem geri alınamaz.')">Geçmişi sil</button>
             </div>
         </form>
+
+        <div class="box setcard" style="margin-top:16px;">
+            <div class="setrow">
+                <div class="si">
+                    <div class="t">Ayarları yedekle</div>
+                    <div class="d">Tüm ayarlar + engel/izin listeleri + hazır listeler + rewrite + zamanlama'yı tek JSON olarak indir. <b>Şifreleme anahtarı (DNS_LOG_KEY) yedeğe DAHİL DEĞİL.</b></div>
+                </div>
+                <a class="btn ghost" href="{% url 'dashboard:backup_export' %}" data-no-ajax>⭳ JSON indir</a>
+            </div>
+            <form method="post" enctype="multipart/form-data" class="setrow" style="align-items:center;">
+                {% csrf_token %}
+                <input type="hidden" name="import_backup" value="1">
+                <div class="si">
+                    <div class="t">Yedekten geri yükle</div>
+                    <div class="d">Bir yedek JSON'u seç; içindekiler mevcut ayarlarla <b>birleştirilir</b> (mevcutları silmez).</div>
+                </div>
+                <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input type="file" name="backup" accept=".json,application/json" required>
+                    <button class="btn ghost" type="submit" onclick="return confirm('Yedekteki ayarlar mevcutlarla birleştirilecek. Devam edilsin mi?')">Geri yükle</button>
+                </span>
+            </form>
+        </div>
         {% endif %}
     </div>
 {% endblock %}

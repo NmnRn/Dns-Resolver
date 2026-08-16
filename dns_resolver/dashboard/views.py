@@ -11,6 +11,7 @@ import asyncio
 import csv
 import io
 import ipaddress
+import json
 import logging
 import os
 import re
@@ -878,6 +879,36 @@ async def test_upstreams_ajax(request):
     return JsonResponse({'results': results})
 
 
+async def backup_export(request):
+    """Tüm panel ayarları + filtre/rewrite/zamanlama listelerini JSON olarak indir.
+    DNS_LOG_KEY .env'de tutulur; yedekte YER ALMAZ (sır sızmaz)."""
+    gate = _gate(request)
+    if gate:
+        return gate
+    try:
+        s, blocklist, allowlist, sources, rewrites, schedules, services = await asyncio.gather(
+            db.get_settings(), db.get_blocklist(), db.get_allowlist(), db.get_sources(),
+            db.get_rewrites(), db.get_schedules(), db.get_enabled_services())
+    except Exception as exc:
+        _fail(exc)
+        return redirect('dashboard:settings')
+    data = {
+        'version': 1,
+        'exported_at': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
+        'app_settings': s,
+        'blocklist': [b['domain'] for b in blocklist],
+        'allowlist': [a['domain'] for a in allowlist],
+        'sources': [{'name': x['name'], 'url': x['url'], 'enabled': bool(x['enabled'])} for x in sources],
+        'rewrites': [{'domain': r['domain'], 'answer': r['answer'], 'enabled': bool(r['enabled'])} for r in rewrites],
+        'schedules': [{'name': x['name'], 'days': x['days'], 'start_min': x['start_min'], 'end_min': x['end_min']} for x in schedules],
+        'services': sorted(services),
+    }
+    fname = f"dns-panel-yedek-{datetime.now(timezone.utc).strftime('%Y%m%d')}.json"
+    resp = HttpResponse(json.dumps(data, ensure_ascii=False, indent=2), content_type='application/json; charset=utf-8')
+    resp['Content-Disposition'] = f'attachment; filename="{fname}"'
+    return resp
+
+
 async def settings_page(request):
     gate = _gate(request)
     if gate:
@@ -902,6 +933,48 @@ async def settings_page(request):
                     msg = ('ok', f'{len(_ups)} sunucu test edildi.')
                 else:
                     msg = ('error', 'Test edilecek upstream yok — önce ekle.')
+            elif 'import_backup' in request.POST:
+                f = request.FILES.get('backup')
+                data = None
+                if not f:
+                    msg = ('error', 'Dosya seçilmedi.')
+                else:
+                    try:
+                        data = json.loads(f.read().decode('utf-8'))
+                    except Exception:
+                        msg = ('error', 'Geçersiz JSON yedek dosyası.')
+                if isinstance(data, dict):
+                    for k, v in (data.get('app_settings') or {}).items():
+                        await db.set_setting(str(k), '' if v is None else str(v))
+                    for d in (data.get('blocklist') or []):
+                        dd = _norm_domain(str(d))
+                        if _valid_domain(dd):
+                            await db.add_block(dd)
+                    for d in (data.get('allowlist') or []):
+                        dd = _norm_domain(str(d))
+                        if _valid_domain(dd):
+                            await db.add_allow(dd)
+                    for src in (data.get('sources') or []):
+                        u = normalize_url(str(src.get('url', '')))
+                        if u.startswith(('http://', 'https://')):
+                            await db.add_source(src.get('name') or _auto_list_name(u), u)
+                    for r in (data.get('rewrites') or []):
+                        rd = _norm_rewrite_domain(str(r.get('domain', '')))
+                        if _valid_rewrite_domain(rd) and _valid_rewrite_answer(str(r.get('answer', ''))):
+                            await db.add_rewrite(rd, str(r['answer']).strip())
+                    for sc in (data.get('schedules') or []):
+                        try:
+                            if sc.get('name'):
+                                await db.set_schedule(str(sc['name']), str(sc.get('days', '')),
+                                                      int(sc.get('start_min', 0)), int(sc.get('end_min', 0)))
+                        except (ValueError, TypeError):
+                            pass
+                    _svc_by_name = {v['name']: v for v in SERVICES.values()}
+                    for name in (data.get('services') or []):
+                        svc = _svc_by_name.get(name)
+                        if svc:
+                            await db.set_service(svc['name'], svc['domains'], True)
+                    msg = ('ok', 'Yedek geri yüklendi (mevcutlarla birleştirildi) — resolver ~15 sn içinde uygular.')
             else:
                 mn = request.POST.get('cache_min_ttl', '0').strip()
                 mx = request.POST.get('cache_max_ttl', '86400').strip()
