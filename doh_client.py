@@ -68,6 +68,14 @@ def bootstrap_resolve(bootstrap_ip: str, hostname: str, timeout: float = 3.0) ->
     return hostname
 
 
+def _bootstrap_target(url: str, ip: str) -> str:
+    """URL'nin host'unu ip ile değiştirip yeni URL döndür (yol/port/query korunur).
+    Bağlantı IP'ye kurulur; Host header + SNI orijinal ad çağıranda ayrıca ayarlanır."""
+    parts = urlsplit(url)
+    netloc = ip + (":%d" % parts.port if parts.port else "")
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+
+
 def doh_query(url: str, query_wire: bytes, timeout: float = 5.0, bootstrap: str = "") -> bytes:
     """DoH sunucusuna wire-format DNS sorgusu gönderip cevabın gövdesini (bytes) döndürür.
 
@@ -78,14 +86,12 @@ def doh_query(url: str, query_wire: bytes, timeout: float = 5.0, bootstrap: str 
     if httpx is not None:
         dns = base64.urlsafe_b64encode(query_wire).decode("ascii").rstrip("=")
         target, headers, extensions = url, dict(_ACCEPT), None
-        parts = urlsplit(url)
-        host = parts.hostname
+        host = urlsplit(url).hostname
         if bootstrap and host and not _is_ip(host):
             ip = bootstrap_resolve(bootstrap, host, timeout)
             if ip != host:
-                netloc = ip + (":%d" % parts.port if parts.port else "")
-                target = urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
-                headers["Host"] = host
+                target = _bootstrap_target(url, ip)
+                headers["Host"] = host                 # IP'ye bağlan ama Host + SNI orijinal ad
                 extensions = {"sni_hostname": host}
         kw = {"params": {"dns": dns}, "headers": headers}
         if extensions:

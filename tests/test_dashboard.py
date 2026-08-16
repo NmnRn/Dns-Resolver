@@ -107,6 +107,40 @@ def test_auto_list_name_falls_back_to_host():
 
 
 # --------------------------------------------------------------------------- #
+# Zamanlama saat ayrıştırma + DNS rewrite doğrulayıcıları
+# --------------------------------------------------------------------------- #
+def test_hhmm_to_min():
+    assert views._hhmm_to_min("09:00") == 540
+    assert views._hhmm_to_min("00:00") == 0
+    assert views._hhmm_to_min("23:59") == 1439
+
+
+def test_hhmm_to_min_invalid():
+    assert views._hhmm_to_min("24:00") is None   # saat 0–23
+    assert views._hhmm_to_min("12:60") is None   # dakika 0–59
+    assert views._hhmm_to_min("9") is None
+    assert views._hhmm_to_min("") is None
+    assert views._hhmm_to_min("ab:cd") is None
+
+
+def test_valid_rewrite_domain():
+    assert views._valid_rewrite_domain("nas.example.com")
+    assert views._valid_rewrite_domain("*.reklam.example.com")   # wildcard
+    assert not views._valid_rewrite_domain("")
+    assert not views._valid_rewrite_domain("*.")
+    assert not views._valid_rewrite_domain("nodots")             # tek etiket, TLD yok
+
+
+def test_valid_rewrite_answer():
+    assert views._valid_rewrite_answer("192.168.1.10")           # IPv4
+    assert views._valid_rewrite_answer("2001:db8::1")            # IPv6
+    assert views._valid_rewrite_answer("0.0.0.0")               # sinkhole
+    assert views._valid_rewrite_answer("hedef.example.com")      # domain (CNAME)
+    assert not views._valid_rewrite_answer("")
+    assert not views._valid_rewrite_answer("ne ip ne domain !!")
+
+
+# --------------------------------------------------------------------------- #
 # check_cert  (kendinden-imzalı sertifika üreterek)
 # --------------------------------------------------------------------------- #
 def _write_cert(path, not_before, not_after, cn="dns.test"):
