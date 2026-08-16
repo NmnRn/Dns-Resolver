@@ -332,8 +332,8 @@ class DNSCore:
         return sub_rcode, [cname] + list(sub_rr)
 
     # --- Tel üzerinde sorgu --------------------------------------------------
-    def _query(self, domain, qtype, server_ip, tcp=False, timeout=QUERY_TIMEOUT):
-        """Tek bir sunucuya sorgu at. TC (truncated) gelirse TCP'ye düş."""
+    def _query(self, domain, qtype, server_ip, tcp=False, timeout=QUERY_TIMEOUT, port=53):
+        """Tek bir sunucuya sorgu at (varsayılan port 53). TC gelirse TCP'ye düş."""
         q = DNSRecord.question(domain, qtype)
         q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE))  # büyük cevaplar UDP'de kesilmesin
         qid = q.header.id
@@ -342,7 +342,7 @@ class DNSCore:
             if tcp:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(timeout)
-                sock.connect((server_ip, 53))
+                sock.connect((server_ip, port))
                 data = q.pack()
                 sock.sendall(struct.pack("!H", len(data)) + data)
                 length = struct.unpack("!H", _recv_exact(sock, 2))[0]
@@ -350,7 +350,7 @@ class DNSCore:
             else:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.settimeout(timeout)
-                sock.sendto(q.pack(), (server_ip, 53))
+                sock.sendto(q.pack(), (server_ip, port))
                 resp_data, _ = sock.recvfrom(EDNS_UDP_SIZE)
  
             resp = DNSRecord.parse(resp_data)
@@ -361,7 +361,7 @@ class DNSCore:
  
             # UDP'de kesik geldiyse TCP ile tekrar dene
             if resp.header.tc and not tcp:
-                return self._query(domain, qtype, server_ip, tcp=True, timeout=timeout)
+                return self._query(domain, qtype, server_ip, tcp=True, timeout=timeout, port=port)
  
             return resp
         except Exception:
@@ -456,8 +456,8 @@ class DNSCore:
                 return None
             if low.startswith("udp://"):
                 u = u[6:]
-            host = u.split(":")[0]          # düz IP / host (port 53 varsayılır)
-            return self._query(domain, qtype, host)
+            host, _, port = u.partition(":")     # düz IP[:port] (port yoksa 53)
+            return self._query(domain, qtype, host, port=int(port) if port.isdigit() else 53)
         except Exception:
             return None
 

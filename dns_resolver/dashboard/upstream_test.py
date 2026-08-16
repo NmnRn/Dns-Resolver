@@ -44,10 +44,12 @@ def test_upstream(up, timeout=3):
         elif low.startswith("quic://"):
             return {"up": up, "ok": None, "ms": 0, "detail": "DoQ testi desteklenmiyor"}
         else:
-            host = (up[6:] if low.startswith("udp://") else up).split(":")[0]
+            addr = up[6:] if low.startswith("udp://") else up
+            host, _, port = addr.partition(":")          # düz IP[:port] (port yoksa 53)
+            port = int(port) if port.isdigit() else 53
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.settimeout(timeout)
-            s.sendto(q.pack(), (host, 53))
+            s.sendto(q.pack(), (host, port))
             DNSRecord.parse(s.recvfrom(4096)[0])
             s.close()
         return {"up": up, "ok": True, "ms": round((time.time() - t0) * 1000), "detail": ""}
