@@ -61,6 +61,10 @@
                 <textarea class="upst" name="conditional_forwards" rows="3" spellcheck="false" placeholder="home.arpa 192.168.1.1&#10;corp.local tls://10.0.0.53">{{ conditional_forwards }}</textarea>
                 <p class="setnote">Satır başına <span class="mono">son-ek&nbsp;upstream</span>. Eşleşen domain (ve tüm alt alanları) <b>her zaman</b> o upstream'e çözdürülür — "Kendi çekirdeğimizi kullan" açık olsa bile. Yerel/özel alanlar için (ör. <span class="mono">*.home.arpa → 192.168.1.1</span>). En uzun eşleşen son-ek kazanır.</p>
 
+                <label class="modelbl">Bootstrap DNS (isimli şifreli upstream'ler için)</label>
+                <input type="text" name="bootstrap_dns" value="{{ bootstrap_dns }}" placeholder="ör. 9.9.9.9  (boş = sistem çözümleyicisi)" style="width:100%;max-width:300px;" spellcheck="false" autocomplete="off">
+                <p class="setnote"><span class="mono">tls://dns.google</span> / <span class="mono">https://cloudflare-dns.com/…</span> gibi <b>isimli</b> şifreli upstream'lerin host adını bu düz-DNS IP'siyle çözer (IP'ye bağlanır; TLS doğrulaması yine host adına yapılır). Boşsa sistem DNS'i kullanılır. Düz-IP upstream'leri etkilemez.</p>
+
                 {% if upstream_rows %}
                 <label class="modelbl">Upstream tepki süreleri (ort.)</label>
                 <div class="upstats">

@@ -991,6 +991,15 @@ async def settings_page(request):
                     await db.set_setting('upstream_strategy',
                                          _strat if _strat in ('sequential', 'parallel', 'fastest') else 'sequential')
                     await db.set_setting('conditional_forwards', request.POST.get('conditional_forwards', '').strip())
+                    _bs = request.POST.get('bootstrap_dns', '').strip()
+                    if not _bs:
+                        await db.set_setting('bootstrap_dns', '')
+                    else:
+                        try:
+                            ipaddress.ip_address(_bs)
+                            await db.set_setting('bootstrap_dns', _bs)
+                        except ValueError:
+                            msg = ('error', f'Geçersiz bootstrap DNS IP: {_bs}')
                     # Erişim kontrolü
                     _rl = request.POST.get('rate_limit', '0').strip()
                     await db.set_setting('rate_limit', _rl if _rl.isdigit() else '0')
@@ -1022,6 +1031,7 @@ async def settings_page(request):
         upstreams=s.get('upstreams', ''),
         upstream_strategy=s.get('upstream_strategy', 'sequential'),
         conditional_forwards=s.get('conditional_forwards', ''),
+        bootstrap_dns=s.get('bootstrap_dns', ''),
         upstream_rows=_upstream_rows(s.get('upstreams', '')),
         rate_limit=s.get('rate_limit', '0'),
         client_allow=s.get('client_allow', ''),

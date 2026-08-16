@@ -343,6 +343,8 @@ def main():
                         if _suf:
                             conds.append((_suf, _p[1].strip()))
                 core.conditionals = conds
+                # Bootstrap DNS: isimli şifreli upstream host çözümü için düz IP (boş=sistem).
+                core.bootstrap_dns = (await db_manager.get_setting('bootstrap_dns', '') or '').strip()
                 _ss = await db_manager.get_setting('safesearch_engines', '') or ''
                 core.safesearch_engines = set(x.strip() for x in _ss.split(',') if x.strip())
                 # Erişim kontrolü + rate limit

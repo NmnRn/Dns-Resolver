@@ -163,6 +163,9 @@ class DNSCore:
         # Koşullu forwarding: [(son-ek, upstream)] — eşleşen domaini belirli bir
         # upstream'e çözdürür (use_recursion'dan bağımsız). Panelden ayarlanır.
         self.conditionals = []
+        # Bootstrap DNS: isimli şifreli upstream'lerin (tls://dns.google gibi) host
+        # adını çözmek için düz-DNS IP'si (boş = sistem çözümleyicisi). Panelden ayarlanır.
+        self.bootstrap_dns = ""
         # Kaynak bazında işlem süresi: 'DNS çekirdeği' / 'Önbellek' / upstream -> (sayı, toplam_ms)
         self.source_stats = {}
         self._stat_lock = threading.Lock()
@@ -394,7 +397,7 @@ class DNSCore:
         q = DNSRecord.question(domain, qtype)
         qid = q.header.id
         try:
-            resp = DNSRecord.parse(doh_client.doh_query(endpoint, q.pack(), timeout))
+            resp = DNSRecord.parse(doh_client.doh_query(endpoint, q.pack(), timeout, bootstrap=self.bootstrap_dns))
             return resp if resp.header.id == qid else None
         except Exception:
             return None
@@ -422,8 +425,11 @@ class DNSCore:
         sock = None
         try:
             ctx = ssl.create_default_context()
-            raw = socket.create_connection((host, port), timeout=timeout)
-            sock = ctx.wrap_socket(raw, server_hostname=host)
+            target = host
+            if self.bootstrap_dns and not doh_client._is_ip(host):   # host adını bootstrap ile çöz
+                target = doh_client.bootstrap_resolve(self.bootstrap_dns, host, timeout)
+            raw = socket.create_connection((target, port), timeout=timeout)
+            sock = ctx.wrap_socket(raw, server_hostname=host)        # SNI/doğrulama = orijinal host adı
             sock.settimeout(timeout)
             data = q.pack()
             sock.sendall(struct.pack("!H", len(data)) + data)
