@@ -8,6 +8,8 @@ oturumu KONTROL eder (SESSION_ENGINE=signed_cookies olduğu için request.sessio
 erişimi async'te güvenlidir).
 """
 import asyncio
+import csv
+import io
 import ipaddress
 import logging
 import os
@@ -19,6 +21,7 @@ from datetime import datetime, timezone
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
@@ -284,6 +287,31 @@ async def queries(request):
         pending_count=len(pending),
     )
     return render(request, 'dashboard/queries.html', context)
+
+
+async def queries_export(request):
+    """Sorgu geçmişini CSV olarak indir (aynı q/method filtresiyle; client_ip+domain çözülü)."""
+    gate = _gate(request)
+    if gate:
+        return gate
+    domain = request.GET.get('q', '').strip()
+    method = request.GET.get('method', '').strip()
+    try:
+        rows = await db.get_queries_for_export(domain=domain, method=method)
+    except Exception as exc:
+        _fail(exc)
+        return redirect('dashboard:queries')
+    buf = io.StringIO()
+    buf.write('\ufeff')                     # UTF-8 BOM → Excel Türkçe karakterleri doğru okusun
+    w = csv.writer(buf)
+    w.writerow(['tarih (UTC)', 'domain', 'tip', 'istemci', 'yontem', 'engellendi', 'engelleyen', 'kaynak'])
+    for r in rows:
+        w.writerow([r['queried_at'], r['domain'], r['record_type'], r['client_ip'], r['method'],
+                    'evet' if r['blocked'] else 'hayir', r.get('blocked_by') or '', r.get('resolved_by') or ''])
+    fname = f"dns-gecmis-{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    resp = HttpResponse(buf.getvalue(), content_type='text/csv; charset=utf-8')
+    resp['Content-Disposition'] = f'attachment; filename="{fname}"'
+    return resp
 
 
 async def servers(request):

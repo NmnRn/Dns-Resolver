@@ -268,6 +268,41 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
     return rows
 
 
+async def get_queries_for_export(domain: str = '', method: str = '', limit: int = 100000) -> list[dict]:
+    """CSV dışa aktarma: filtreli sorgu satırları (OFFSET yok, yüksek üst sınır).
+    client_ip + domain çözülür (okunur CSV); şifreliyken domain filtresi tam-eşleşme."""
+    where = []
+    params: list = []
+    if domain:
+        if logcrypto.enabled():
+            where.append('domain = %s')
+            params.append(logcrypto.enc(domain.strip().rstrip('.') + '.'))
+        else:
+            where.append('domain LIKE %s')
+            params.append(f'%{domain}%')
+    if method:
+        where.append('method = %s')
+        params.append(method)
+    clause = ('WHERE ' + ' AND '.join(where)) if where else ''
+    params.append(int(limit))
+    rows = await _fetch_all(
+        f"""
+        SELECT domain, record_type, client_ip,
+               DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method,
+               blocked, blocked_by, resolved_by
+        FROM dns_cache
+        {clause}
+        ORDER BY queried_at DESC
+        LIMIT %s
+        """,
+        tuple(params),
+    )
+    for r in rows:
+        r['domain'] = (logcrypto.dec(r.get('domain')) or '').rstrip('.')
+        r['client_ip'] = logcrypto.dec(r.get('client_ip'))
+    return rows
+
+
 def read_pending(domain: str = '', method: str = '') -> list[dict]:
     """
     Resolver'ın flush bekleyen tamponu (paylaşılan dosya) — henüz DB'de olmayan

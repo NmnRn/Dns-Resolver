@@ -7,6 +7,7 @@ app_name = 'dashboard'
 urlpatterns = [
     path('', views.logs, name='logs'),
     path('gecmis/', views.queries, name='queries'),
+    path('gecmis/disa-aktar/', views.queries_export, name='queries_export'),
     path('sunucular/', views.servers, name='servers'),
     path('filtreler/', views.filters, name='filters'),
     path('analiz/', views.analytics, name='analytics'),
