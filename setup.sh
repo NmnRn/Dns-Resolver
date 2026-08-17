@@ -68,6 +68,27 @@ ask_bool() {
     done
 }
 
+# Bir host portu baska bir surec tarafindan DINLENIYOR mu? (ss ile, agsiz)
+#   $1=port  $2=proto (t=tcp | u=udp).  ss yoksa 1 doner (kontrol atlanir).
+port_in_use() {
+    local port="$1" proto="$2" flag
+    command -v ss >/dev/null 2>&1 || return 1
+    [ "$proto" = "u" ] && flag="-lunH" || flag="-ltnH"
+    [ -n "$(ss $flag "sport = :$port" 2>/dev/null)" ]
+}
+
+# Ayarlanan portlarin bosta olup olmadigini kontrol et (yalniz bilgi/uyari).
+#   $1=etiket  $2=port  $3=proto.  Doluysa ports_busy=1 yapar.
+check_port() {
+    local label="$1" port="$2" proto="$3"
+    if port_in_use "$port" "$proto"; then
+        echo "  ! $label: $port/$proto ZATEN DINLENIYOR (baska servis olabilir)."
+        ports_busy=1
+    else
+        echo "  + $label: $port/$proto bos."
+    fi
+}
+
 echo "=== Dns Python .env ayar sihirbazi ==="
 echo
 
@@ -143,6 +164,9 @@ else
     secure_cookies="$(get_existing DJANGO_SECURE_COOKIES false)"
     allowed_hosts="$(get_existing DJANGO_ALLOWED_HOSTS '*')"
 fi
+echo "Panel yalniz host'un 127.0.0.1'ine yayinlanir (public DEGIL); SSH tuneli / ters"
+echo "proxy / Cloudflare Tunnel ile erisilir. Asagidaki port o yerel yayin portudur."
+site_port=$(ask "WEB PANELI host (local) portu" "$(get_existing SITE_PORT 8444)")
 
 log_days="$(get_existing LOG_DAYS 90)"
 
@@ -193,6 +217,7 @@ EXTERNAL_UDP_PORT=$external_udp_port
 EXTERNAL_HTTPS_PORT=$external_https_port
 EXTERNAL_DOT_PORT=$external_dot_port
 EXTERNAL_DOQ_PORT=$external_doq_port
+SITE_PORT=$site_port
 LOG_DAYS=$log_days
 DJANGO_ALLOWED_HOSTS=$allowed_hosts
 DJANGO_CSRF_TRUSTED_ORIGINS=$panel_origin
@@ -215,6 +240,25 @@ if [ "$open_external" = "true" ]; then
     echo "docker-compose.override.yml yazildi (disariya port acilacak)."
 else
     echo "docker-compose.override.yml kaldirildi (disariya port acilmiyor)."
+fi
+
+# --- Ayarlanan host portlari bosta mi? (bilgi/uyari — 'docker compose up' oncesi) ---
+echo
+echo "-- Port kullanim kontrolu (host) --"
+ports_busy=0
+check_port "Web panel" "$site_port" t
+if [ "$open_external" = "true" ]; then
+    check_port "Do53 (UDP)" "$external_udp_port" u
+    check_port "Do53 (TCP)" "$external_udp_port" t
+    [ "$enable_https" = "true" ] && check_port "DoH" "$external_https_port" t
+    [ "$enable_dot" = "true" ] && check_port "DoT" "$external_dot_port" t
+    [ "$enable_doq" = "true" ] && check_port "DoQ" "$external_doq_port" u
+fi
+if [ "$ports_busy" = "1" ]; then
+    echo "  NOT: Bu proje ZATEN calisiyorsa dolu gorunmesi normaldir. Aksi halde"
+    echo "       cakisan servisi durdur ya da yukaridaki portlari degistir (./setup.sh)."
+elif ! command -v ss >/dev/null 2>&1; then
+    echo "  (ss bulunamadi — port kontrolu atlandi; iproute2 kurabilirsin.)"
 fi
 
 if [ "$enable_https" = "true" ] || [ "$enable_dot" = "true" ] || [ "$enable_doq" = "true" ]; then

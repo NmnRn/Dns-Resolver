@@ -61,20 +61,25 @@ curl -fsSL https://raw.githubusercontent.com/NmnRn/Dns-Resolver/dns-python-websi
 
 # 2) Sunucu ayarları sihirbazı (.env: portlar, şifreli sunucular, güvenlik anahtarları)
 cd /opt/DNS_RESOLVER
-./setup.sh
+sudo ./setup.sh
 
 # 3) Başlat
-docker compose up -d --build
+sudo docker compose up -d --build
 ```
+
+> Betikleri **sudo** ile çağır: `install.sh` paket/servis kurar, `setup.sh` port-dolu
+> kontrolü + `docker compose` için ayrıcalık ister. (Kullanıcın `docker` grubundaysa
+> `docker compose`'u sudo'suz da çalıştırabilirsin.)
 
 `install.sh` şunları **kontrol eder ve yapar:** Docker kurulu + daemon çalışıyor mu · MariaDB kurulu mu ·
 dns-net ağı · MariaDB **bind-address'e `172.27.17.1` ekler** (mevcutları koruyarak, conf'u bozmadan;
 yedekli) · `dns_user@172.27.17.%` + veritabanı + GRANT · `.env`'e DB ayarları (parola `openssl` ile) ·
 **bağlantı testi** (dinleyici + kimlik).
 
-`setup.sh` şunları sorar/yazar: dinleme portları, DoH/DoT/DoQ aç-kapa + sertifika, dışarı-port açma
-(varsayılan **hayır** — açık resolver uyarısıyla), DNS log şifreleme, ve **`DJANGO_SECRET_KEY`
-(512-bit) + `DNS_LOG_KEY` üretimi**.
+`setup.sh` şunları sorar/yazar: dinleme portları, **web panel host portu (`SITE_PORT`)**, DoH/DoT/DoQ
+aç-kapa + sertifika, dışarı-port açma (varsayılan **hayır** — açık resolver uyarısıyla), DNS log
+şifreleme, ve **`DJANGO_SECRET_KEY` (512-bit) + `DNS_LOG_KEY` üretimi**. Sonunda ayarlanan host
+portlarının **boşta olup olmadığını** (`ss` ile) kontrol edip çakışma varsa uyarır.
 
 ---
 
@@ -152,13 +157,13 @@ hiçbir DNS portu host'a açılmaz** — sadece dns-net iç ağı.
 
 ```bash
 cd /opt/DNS_RESOLVER
-./upgrade.sh        # git reset origin/<dal> + imajı yeniden derler; .env/override/certificates KORUNUR
+sudo ./upgrade.sh   # git reset origin/<dal> + imajı yeniden derler; .env/override/certificates KORUNUR
 ```
 
 Elle yapmak istersen:
 ```bash
-git pull --ff-only               # 1) kodu çek
-docker compose up -d --build     # 2) imajı yeniden derle + başlat  ← BU ŞART
+git pull --ff-only                    # 1) kodu çek
+sudo docker compose up -d --build     # 2) imajı yeniden derle + başlat  ← BU ŞART
 ```
 `upgrade.sh` çalışan daldan (`git rev-parse HEAD`) çeker; izlenmeyen dosyalarına (`.env`,
 `docker-compose.override.yml`, `certificates/`) dokunmaz.
