@@ -132,8 +132,13 @@ echo "Yalniz 127.0.0.1 / SSH tuneli kullaniyorsan bos birak. Coklu adres icin vi
 panel_origin=$(ask "Panel public URL(ler)i (https://..., bos = yerel)" "$(get_existing DJANGO_CSRF_TRUSTED_ORIGINS '')")
 if [ -n "$panel_origin" ]; then
     secure_cookies=true    # HTTPS domain -> panel cerezleri Secure
+    # ALLOWED_HOSTS: origin(ler)den host adini cikar (sema/port/yol at) + yerel erisim
+    allowed_hosts=$(printf '%s' "$panel_origin" | tr ',' '\n' | sed -E 's#^https?://##; s#[:/].*$##' | paste -sd, -)
+    allowed_hosts="$allowed_hosts,127.0.0.1,localhost"
+    echo "DJANGO_ALLOWED_HOSTS = $allowed_hosts"
 else
     secure_cookies="$(get_existing DJANGO_SECURE_COOKIES false)"
+    allowed_hosts="$(get_existing DJANGO_ALLOWED_HOSTS '*')"
 fi
 
 log_days="$(get_existing LOG_DAYS 90)"
@@ -186,6 +191,7 @@ EXTERNAL_HTTPS_PORT=$external_https_port
 EXTERNAL_DOT_PORT=$external_dot_port
 EXTERNAL_DOQ_PORT=$external_doq_port
 LOG_DAYS=$log_days
+DJANGO_ALLOWED_HOSTS=$allowed_hosts
 DJANGO_CSRF_TRUSTED_ORIGINS=$panel_origin
 DJANGO_SECURE_COOKIES=$secure_cookies
 DJANGO_SECRET_KEY=$django_secret
