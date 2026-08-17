@@ -40,6 +40,9 @@ METHOD_PORTS = {'udp': 5300, 'doh': 44300, 'dot': 8853, 'doq': 8530}
 NEEDS_CERT = {'doh', 'dot', 'doq'}
 # Metot -> app_settings anahtarı (panelden ayarlanan iç dinleme portu).
 PORT_KEY = {'udp': 'udp_port', 'doh': 'https_port', 'dot': 'dot_port', 'doq': 'doq_port'}
+# Host (yayın) port env adları — panelde BİLGİ olarak gösterilir (ayar setup.sh'te).
+EXTERNAL_KEY = {'udp': 'EXTERNAL_UDP_PORT', 'doh': 'EXTERNAL_HTTPS_PORT',
+                'dot': 'EXTERNAL_DOT_PORT', 'doq': 'EXTERNAL_DOQ_PORT'}
 
 logger = logging.getLogger('dashboard')
 
@@ -353,19 +356,8 @@ async def servers(request):
         method = request.POST.get('method', '')
         if method not in METHODS:
             msg = ('error', 'Geçersiz yöntem.')
-        elif 'save_port' in request.POST:
-            port = request.POST.get('port', '').strip()
-            if not _valid_port(port):
-                msg = ('error', 'Geçersiz port (1–65535 arası bir sayı olmalı).')
-            else:
-                try:
-                    await db.set_setting(PORT_KEY[method], port)
-                    uygula = ('resolver yeniden başlatılınca' if method == 'udp'
-                              else 'metodu kapatıp açınca')
-                    msg = ('ok', f'{METHOD_LABELS[method]} iç portu {port} olarak kaydedildi — {uygula} uygulanır.')
-                except Exception as exc:
-                    msg = ('error', _fail(exc))
         else:
+            # Port ayarı panelden KALDIRILDI (setup.sh ile yapılır) — yalnız aç/kapat.
             enabled = request.POST.get('enabled') == '1'
             if method == 'udp' and not enabled:
                 msg = ('error', 'UDP kapatılamaz (temel çözümleme).')
@@ -386,7 +378,8 @@ async def servers(request):
 
     context['methods'] = [{
         'key': m, 'label': METHOD_LABELS[m],
-        'port': app_settings.get(PORT_KEY[m], str(METHOD_PORTS[m])),
+        'port': app_settings.get(PORT_KEY[m], str(METHOD_PORTS[m])),   # container içi dinleme portu
+        'local_port': os.getenv(EXTERNAL_KEY[m], '').strip(),          # host (yayın) portu — bilgi
         'enabled': cfg.get(m, False), 'needs_cert': m in NEEDS_CERT,
     } for m in METHODS]
     context['msg'] = msg

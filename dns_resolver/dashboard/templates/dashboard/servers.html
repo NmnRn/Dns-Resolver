@@ -24,11 +24,8 @@
                             {% if m.key == 'udp' %}disabled title="UDP kapatılamaz (temel çözümleme)"{% endif %}></button>
                 </div>
                 <div class="meta">
-                    <span>İç port</span>
-                    <span class="portedit">
-                        <input type="number" name="port" value="{{ m.port }}" min="1" max="65535" class="mono pin" aria-label="{{ m.label }} iç dinleme portu">
-                        <button type="submit" name="save_port" value="1" class="pbtn">Kaydet</button>
-                    </span>
+                    <span>Container portu</span><b class="mono">{{ m.port }}</b>
+                    <span>Local (host) portu</span><b class="mono">{{ m.local_port|default:"—" }}</b>
                     <span>Durum</span><b style="color:{% if m.enabled %}var(--ok){% else %}var(--muted){% endif %}">{% if m.enabled %}açık{% else %}kapalı{% endif %}</b>
                     {% if m.needs_cert %}<span>Sertifika</span><b>gerekli</b>{% endif %}
                 </div>
@@ -36,6 +33,11 @@
             {% endfor %}
         </div>
         <p class="sub" style="margin-top:18px;">DoT/DoH/DoQ için geçerli sertifika yoksa açık istenip başlatılamaz (resolver güvenli şekilde atlar).</p>
-        <p class="sub" style="margin-top:6px;">“İç port” konteyner içindeki dinleme portudur; uygulanması için metodu kapatıp açın (UDP için resolver'ı yeniden başlatın). Dış/host port eşlemesi (<span class="mono">compose.override.yml</span>) ayrıdır — değiştirirseniz tünel/AdGuard upstream'ini ve host eşlemesini de güncelleyin.</p>
+        <div class="srvnote">
+            🛠️ <b>Portlar buradan değiştirilmez — yalnızca bilgi.</b> <span class="mono">Container portu</span>
+            = konteyner içindeki dinleme portu; <span class="mono">Local (host) portu</span> = dışarı yayınlanan
+            port. Değiştirmek için sunucu klasöründe <span class="mono">./setup.sh</span> çalıştır (her iki portu da
+            sorar), sonra <span class="mono">docker compose up -d</span>.
+        </div>
     {% endif %}
 {% endblock %}

@@ -1,5 +1,7 @@
-.portedit{display:inline-flex;gap:6px;align-items:center}
-.portedit .pin{width:78px;padding:4px 7px;font-size:12.5px;background:var(--panel-2);border:1px solid var(--border-strong);border-radius:5px;color:var(--text)}
-.portedit .pin:focus{outline:none;border-color:var(--accent)}
-.portedit .pbtn{font:600 11px var(--sans);padding:5px 10px;border-radius:5px;border:1px solid var(--border-strong);background:var(--panel-2);color:var(--muted);cursor:pointer}
-.portedit .pbtn:hover{color:var(--text);border-color:var(--accent)}
+/* Sunucular — port düzenleme KALDIRILDI (setup.sh ile yapılır); sayfa yalnız bilgi + renkli not */
+.srvnote{ margin-top:18px; padding:13px 16px; border-radius:var(--r-sm); font-size:13.5px; line-height:1.65;
+    background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+    border-left:3px solid var(--accent-deep); color:var(--text); }
+.srvnote b{ color:var(--accent-deep); }
+:root[data-theme="dark"] .srvnote b, :root[data-theme="dark"] .srvnote .mono{ color:var(--accent); }
+.srvnote .mono{ color:var(--accent-deep); }
