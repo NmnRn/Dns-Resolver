@@ -30,6 +30,8 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from project_control.blocklists import normalize_url, check_link
 from . import db
 from .catalog import catalog_grouped
+from .models import PanelLogin
+from .useragent import parse_user_agent
 from .services import SERVICES, services_list, CATEGORIES, categories_list, SAFESEARCH_ENGINES
 from .upstream_test import test_upstream
 
@@ -104,6 +106,27 @@ def _login_reset(ip):
         _login_fails.pop(ip, None)
 
 
+_PANEL_LOGIN_KEEP = 1000   # denetim tablosunu makul tut (en yeni N kayıt)
+
+
+def _record_panel_login(request, username):
+    """Başarılı panel girişini denetim tablosuna yaz (IP + User-Agent + zaman).
+    Girişi ASLA bloklamasın diye hata yutulur; tablo en yeni N kayıtla sınırlanır."""
+    try:
+        PanelLogin.objects.create(
+            username=username,
+            ip=_client_ip(request),
+            user_agent=(request.META.get('HTTP_USER_AGENT', '') or '')[:1000],
+        )
+        extra = PanelLogin.objects.count() - _PANEL_LOGIN_KEEP
+        if extra > 0:
+            old = list(PanelLogin.objects.order_by('created_at')
+                       .values_list('id', flat=True)[:extra])
+            PanelLogin.objects.filter(id__in=old).delete()
+    except Exception:   # noqa: BLE001 — denetim kaydı girişi bozmasın
+        logger.exception('panel giris denetim kaydi yazilamadi')
+
+
 def _valid_port(s):
     """1–65535 aralığında geçerli bir port değeri mi?"""
     try:
@@ -131,6 +154,7 @@ def setup(request):
             auth_login(request, user)
             request.session['panel_username'] = user.username
             request.session['is_admin'] = True
+            _record_panel_login(request, user.username)
             return redirect('dashboard:logs')
     return render(request, 'dashboard/login.html', {
         'mode_title': 'Kurulum', 'submit': 'Sahip hesabını oluştur',
@@ -160,6 +184,7 @@ def login_view(request):
                 auth_login(request, user)
                 request.session['panel_username'] = user.username
                 request.session['is_admin'] = True
+                _record_panel_login(request, user.username)
                 # Açık yönlendirme koruması: next YALNIZCA aynı-host/relatif ise izinli.
                 nxt = request.GET.get('next') or ''
                 if nxt and url_has_allowed_host_and_scheme(
@@ -707,6 +732,29 @@ def users(request):
     context = _base_ctx(request, 'users')
     context.update(users=ulist, msg=msg, me=str(request.session.get('_auth_user_id')))
     return render(request, 'dashboard/users.html', context)
+
+
+def devices(request):
+    """Cihazlar: web panele giriş yapan cihazların denetim kaydı (IP + tarayıcı/
+    OS/cihaz). Sync view — SQLite ORM (PanelLogin) kullanır. Yalnız yöneticiye."""
+    uid = request.session.get('_auth_user_id')
+    if not uid:
+        return redirect(f"{reverse('dashboard:login')}?next={request.path}")
+    if not User.objects.filter(id=uid, is_superuser=True).exists():
+        return redirect('dashboard:logs')
+
+    rows = list(PanelLogin.objects.order_by('-created_at')
+                .values('username', 'ip', 'user_agent', 'created_at')[:200])
+    for r in rows:
+        r.update(parse_user_agent(r['user_agent']))
+
+    context = _base_ctx(request, 'devices')
+    context.update(
+        logins=rows,
+        total=PanelLogin.objects.count(),
+        unique_ips=PanelLogin.objects.exclude(ip='').values('ip').distinct().count(),
+    )
+    return render(request, 'dashboard/devices.html', context)
 
 
 # --------------------------------------------------------------------------- #

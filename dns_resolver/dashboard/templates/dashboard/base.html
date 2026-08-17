@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}DNS Panel{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'dashboard/img/logo.png' %}?v={{ static_v }}">
     <script>/* Tema: FOUC önle — CSS'ten önce data-theme'i kur */
     (function(){try{var t=localStorage.getItem('theme');if(!t){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v={{ static_v }}">
@@ -14,19 +15,20 @@
 <body>
     <header class="topbar">
         <div class="topbar-in">
-            <div class="brand"><span class="dot"></span>dns.panel</div>
+            <div class="brand"><img class="brand-logo" src="{% static 'dashboard/img/logo.png' %}?v={{ static_v }}" alt="" width="26" height="21">dns.panel</div>
             <nav>
                 <a href="{% url 'dashboard:logs' %}" class="{% if active == 'logs' %}active{% endif %}">Genel Bakış</a>
                 <a href="{% url 'dashboard:queries' %}" class="{% if active == 'queries' %}active{% endif %}">Sorgu Geçmişi</a>
                 <a href="{% url 'dashboard:analytics' %}" class="{% if active == 'analytics' %}active{% endif %}">Analiz</a>
                 <div class="navdd">
-                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' %}active{% endif %}">DNS Ayarları ▾</button>
+                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' or active == 'devices' %}active{% endif %}">DNS Ayarları ▾</button>
                     <div class="ddmenu">
                         <a href="{% url 'dashboard:settings' %}">Genel</a>
                         <a href="{% url 'dashboard:query_settings' %}">Sorgu Ayarları</a>
                         <a href="{% url 'dashboard:servers' %}">Sunucular</a>
                         <a href="{% url 'dashboard:filters' %}">Filtreler</a>
                         <a href="{% url 'dashboard:certificate' %}">Sertifika</a>
+                        {% if is_admin %}<a href="{% url 'dashboard:devices' %}">Cihazlar</a>{% endif %}
                     </div>
                 </div>
                 {% if is_admin %}<a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">Kullanıcılar</a>{% endif %}

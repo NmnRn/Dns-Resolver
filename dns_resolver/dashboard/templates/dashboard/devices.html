@@ -1,0 +1,46 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Cihazlar · DNS Panel{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/devices.css' %}?v={{ static_v }}">{% endblock %}
+{% block content %}
+    <h1>Cihazlar</h1>
+    <p class="sub">Web <b>panele giriş yapan</b> cihazların denetim kaydı — başarılı her girişte IP,
+    tarayıcı ve işletim sistemi kaydedilir (en yeni {{ logins|length }} kayıt gösterilir).</p>
+
+    <div class="dstats">
+        <div class="dstat"><span class="k">Toplam giriş</span><span class="v">{{ total }}</span></div>
+        <div class="dstat"><span class="k">Benzersiz IP</span><span class="v">{{ unique_ips }}</span></div>
+    </div>
+
+    <div class="box">
+        <div class="tablescroll">
+            <table>
+                <thead><tr>
+                    <th>Zaman <span class="muted" style="font-weight:400;">(yerel)</span></th>
+                    <th>Kullanıcı</th><th>IP</th><th>Tarayıcı</th><th>OS</th><th>Cihaz</th><th>User-Agent</th>
+                </tr></thead>
+                <tbody>
+                    {% for l in logins %}
+                    <tr>
+                        <td class="muted num"><span class="lt" data-utc="{{ l.created_at|date:'Y-m-d H:i:s' }}">{{ l.created_at|date:'Y-m-d H:i:s' }}</span></td>
+                        <td><b>{{ l.username }}</b></td>
+                        <td class="mono">{{ l.ip|default:"—" }}</td>
+                        <td><span class="dchip br">{{ l.browser }}</span></td>
+                        <td><span class="dchip os">{{ l.os }}</span></td>
+                        <td><span class="dchip dev">{{ l.device }}</span></td>
+                        <td class="ua" title="{{ l.user_agent }}">{{ l.user_agent|default:"—"|truncatechars:60 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="empty">Henüz giriş kaydı yok.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="dnote">
+        🔎 <b>Ne kadarını görebiliriz?</b> HTTP yalnızca <b>IP adresi</b> + <b>User-Agent</b> verir;
+        tarayıcı/OS/cihaz bu metinden çıkarılır ve <b>istemci tarafından bildirilir</b> (taklit
+        edilebilir). Gerçek bir donanım fingerprint'i sunucu tarafında mümkün değildir.
+    </div>
+{% endblock %}

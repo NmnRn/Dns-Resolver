@@ -65,6 +65,7 @@ a { color: var(--accent-deep); text-decoration: none; }
 .topbar-in { max-width: 1160px; margin: 0 auto; display: flex; align-items: center; gap: 26px; padding: 0 22px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; font: 800 15px/1 var(--sans); letter-spacing: -.02em; white-space: nowrap; color: var(--text); }
 .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.brand .brand-logo { height: 21px; width: auto; display: block; border-radius: 5px; }
 .topbar nav { display: flex; align-items: center; gap: 22px; }
 .topbar nav a { position: relative; display: flex; align-items: center; color: var(--muted); font: 600 13.5px/1 var(--sans); letter-spacing: -.01em; padding: 8px 0; transition: color .18s ease; }
 .topbar nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 2.5px; border-radius: 2px; background: var(--accent); transform: scaleX(0); transform-origin: center; transition: transform .26s cubic-bezier(.4,0,.2,1); }
