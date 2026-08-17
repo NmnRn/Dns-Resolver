@@ -1,7 +1,7 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Kullanıcılar · DNS Panel{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/users.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/users.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <h1>Kullanıcılar</h1>
     <p class="sub">Panele giriş yapabilen hesaplar. Yönetici tüm ayarları değiştirebilir; kullanıcı yalnız görüntüler.</p>

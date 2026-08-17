@@ -1,7 +1,7 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Kurulum · DNS Panel{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/guide.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/guide.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
 
 <div style="margin-bottom:6px">

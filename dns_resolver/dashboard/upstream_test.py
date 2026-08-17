@@ -1,6 +1,7 @@
 """Panelden 'Sunucuları test et': her upstream'e örnek bir DNS sorgusu atıp
 yanıt + gecikme ölçer. Senkron (Django view'da asyncio.to_thread ile çağrılır).
-Protokol ön eke göre: düz IP/udp:// (UDP), https:// (DoH), tls:// (DoT).
+Protokol ön eke göre: düz IP/udp:// (UDP), tcp:// (TCP), https:// (DoH), tls:// (DoT),
+quic:// (DoQ — henüz desteklenmiyor).
 """
 import socket
 import ssl
@@ -35,6 +36,15 @@ def test_upstream(up, timeout=3):
             ctx = ssl.create_default_context()
             raw = socket.create_connection((host, int(port) if port else 853), timeout=timeout)
             s = ctx.wrap_socket(raw, server_hostname=host)
+            s.settimeout(timeout)
+            data = q.pack()
+            s.sendall(struct.pack("!H", len(data)) + data)
+            ln = struct.unpack("!H", _recv_exact(s, 2))[0]
+            DNSRecord.parse(_recv_exact(s, ln))
+            s.close()
+        elif low.startswith("tcp://"):
+            host, _, port = up[6:].partition(":")
+            s = socket.create_connection((host, int(port) if port.isdigit() else 53), timeout=timeout)
             s.settimeout(timeout)
             data = q.pack()
             s.sendall(struct.pack("!H", len(data)) + data)

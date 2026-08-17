@@ -1,7 +1,7 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Sertifika · DNS Panel{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/certificate.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/certificate.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
 
     <h1>Sertifika</h1>

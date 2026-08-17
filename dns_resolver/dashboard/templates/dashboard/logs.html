@@ -1,73 +1,89 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Genel Bakış · DNS Panel{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/logs.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/logs.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
-    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;">
-        <div><h1>Genel Bakış</h1><p class="sub" style="margin:2px 0 18px;">Özet istatistikler · zamanlar UTC</p></div>
+    <div class="head">
+        <div><h1>Genel Bakış</h1><p class="sub" style="margin:4px 0 0;">Özet istatistikler · zamanlar UTC</p></div>
         <a class="btn" href="{% url 'dashboard:queries' %}">Sorgu geçmişi →</a>
     </div>
 
     {% if error %}
         <div class="error">Veritabanına erişilemedi: {{ error }}</div>
     {% else %}
-        {% if spark %}
-        <div class="box" style="margin-bottom:16px;">
-            <div style="display:flex;align-items:center;gap:22px;padding:16px 18px;flex-wrap:wrap;">
-                <div style="min-width:150px;">
-                    <div style="font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);">Son 24 saat trafiği</div>
-                    <div style="font:700 30px/1.1 var(--mono);color:var(--accent);letter-spacing:-.02em;margin-top:8px;">{{ stats.last_24h }}</div>
-                    <div class="muted" style="font-size:12px;margin-top:4px;">tepe {{ peak }}/saat</div>
+    <div class="bento">
+        <!-- HERO: son 24 saat + grafik -->
+        <div class="b hero">
+            <div class="hero-top">
+                <div>
+                    <div class="lbl">Son 24 saat trafiği</div>
+                    <div class="big num">{{ stats.last_24h }}</div>
+                    <div class="hsub">tepe {{ peak }} / saat</div>
                 </div>
-                <div style="min-width:120px;border-left:1px solid var(--border);padding-left:20px;">
-                    <div style="font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);">Engellenen</div>
-                    <div style="font:700 30px/1.1 var(--mono);color:var(--err);letter-spacing:-.02em;margin-top:8px;">{{ stats.blocked }}</div>
-                    <div class="muted" style="font-size:12px;margin-top:4px;">toplam</div>
+                <div class="hero-mini">
+                    <div class="lbl">Engellenen (24s)</div>
+                    <div class="m2 num">{{ stats.blocked }}</div>
+                    <div class="hsub">%{{ blocked_pct }} oranında</div>
                 </div>
-                <svg viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" role="img" aria-label="Son 24 saatlik sorgu trendi" style="flex:1;min-width:200px;height:56px;">
-                    <defs><linearGradient id="sp" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0" stop-color="#4c82f0" stop-opacity=".32"/>
-                        <stop offset="1" stop-color="#4c82f0" stop-opacity="0"/>
-                    </linearGradient></defs>
-                    <path fill="url(#sp)" d="{{ spark.area }}"/>
-                    <polyline fill="none" stroke="#4c82f0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.line }}"/>
-                    <circle cx="{{ spark.dx }}" cy="{{ spark.dy }}" r="3" fill="#4c82f0" stroke="#161b22" stroke-width="2"/>
-                </svg>
             </div>
-        </div>
-        {% endif %}
-        <div class="cards">
-            <div class="card"><div class="n num">{{ stats.total }}</div><div class="l">Toplam Sorgu</div></div>
-            <div class="card"><div class="n num">{{ stats.last_24h }}</div><div class="l">Son 24 Saat</div></div>
-            <div class="card"><div class="n num">{{ stats.distinct_domains }}</div><div class="l">Farklı Alan Adı</div></div>
-            <div class="card"><div class="n num">{{ stats.distinct_clients }}</div><div class="l">Farklı İstemci</div></div>
+            {% if spark %}
+            <svg class="spark" viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" role="img" aria-label="Son 24 saatlik sorgu trendi">
+                <defs><linearGradient id="sp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/>
+                    <stop offset="1" stop-color="var(--accent)" stop-opacity="0"/>
+                </linearGradient></defs>
+                <path fill="url(#sp)" d="{{ spark.area }}"/>
+                <polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.line }}"/>
+                <circle cx="{{ spark.dx }}" cy="{{ spark.dy }}" r="3.5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>
+            </svg>
+            {% endif %}
         </div>
 
-        <div class="grid3">
-            <div class="box">
-                <h2>En Çok Sorgulananlar</h2>
-                <ul class="rowlist">
-                    {% for d in top_domains %}
-                    <li><span>{{ d.domain }}</span><span class="muted num">{{ d.cnt }}</span></li>
-                    {% empty %}<li class="muted">Veri yok</li>{% endfor %}
-                </ul>
-            </div>
-            <div class="box">
-                <h2>En Aktif İstemciler</h2>
-                <ul class="rowlist">
-                    {% for c in top_clients %}
-                    <li><span class="mono">{{ c.client_ip }}</span><span class="muted num">{{ c.cnt }}</span></li>
-                    {% empty %}<li class="muted">Veri yok</li>{% endfor %}
-                </ul>
-            </div>
-            <div class="box">
-                <h2>Yönteme Göre</h2>
-                <ul class="rowlist">
-                    {% for m in method_breakdown %}
-                    <li><span class="m-{{ m.method }}">{{ m.method|upper }}</span><span class="muted num">{{ m.cnt }}</span></li>
-                    {% empty %}<li class="muted">Veri yok</li>{% endfor %}
-                </ul>
+        <!-- ENGELLENEN donut -->
+        <div class="b blocked">
+            <div class="ring" style="--p:{{ blocked_pct }}"><div class="hole">%{{ blocked_pct }}</div></div>
+            <div class="binfo">
+                <div class="lbl">Engellenen toplam</div>
+                <div class="m2 num">{{ stats.blocked }}</div>
+                <div class="hsub">reklam · izleyici · kötücül</div>
             </div>
         </div>
+
+        <!-- İSTATİSTİK TILE'LARI -->
+        <div class="b tile"><div class="ic">📊</div><div><div class="tn num">{{ stats.total }}</div><div class="tl">Toplam Sorgu</div></div></div>
+        <div class="b tile"><div class="ic">🌐</div><div><div class="tn num">{{ stats.distinct_domains }}</div><div class="tl">Farklı Alan Adı</div></div></div>
+        <div class="b tile"><div class="ic">💻</div><div><div class="tn num">{{ stats.distinct_clients }}</div><div class="tl">Farklı İstemci</div></div></div>
+
+        <!-- EN ÇOK SORGULANANLAR (bar'lı) -->
+        <div class="b list">
+            <h3>En Çok Sorgulananlar</h3>
+            {% for d in top_domains %}
+            <div class="li"><span class="nm">{{ d.domain }}</span><span class="v num">{{ d.cnt }}</span><div class="bar"><i style="width:{{ d.pct }}%"></i></div></div>
+            {% empty %}<div class="li muted">Veri yok</div>{% endfor %}
+        </div>
+
+        <!-- EN AKTİF İSTEMCİLER -->
+        <div class="b list">
+            <h3>En Aktif İstemciler</h3>
+            {% for c in top_clients %}
+            <div class="li"><span class="nm ip">{{ c.client_ip }}</span><span class="v num">{{ c.cnt }}</span><div class="bar"><i style="width:{{ c.pct }}%"></i></div></div>
+            {% empty %}<div class="li muted">Veri yok</div>{% endfor %}
+        </div>
+
+        <!-- YÖNTEME GÖRE (segment bar + lejant) -->
+        <div class="b list">
+            <h3>Yönteme Göre</h3>
+            {% if methods %}
+            <div class="seg">
+                {% for m in methods %}<i class="b-{{ m.method }}" style="width:{{ m.share }}%"></i>{% endfor %}
+            </div>
+            <div class="leg">
+                {% for m in methods %}
+                <div class="row"><span class="swatch b-{{ m.method }}"></span>{{ m.method|upper }}<span class="v num">{{ m.cnt }}</span></div>
+                {% endfor %}
+            </div>
+            {% else %}<div class="li muted">Veri yok</div>{% endif %}
+        </div>
+    </div>
     {% endif %}
 {% endblock %}

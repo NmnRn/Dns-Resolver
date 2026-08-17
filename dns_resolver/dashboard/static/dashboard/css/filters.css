@@ -6,11 +6,11 @@
 .addf{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .addf input{flex:1}
 .xbtn{background:var(--panel-2);border:1px solid var(--border-strong);color:var(--muted);border-radius:6px;padding:4px 11px;cursor:pointer;font:600 12px var(--sans);box-shadow:inset 0 1px 0 rgba(255,255,255,.03);transition:all .15s ease}
-.xbtn:hover{color:var(--text);border-color:var(--muted-2);background:#232a37;transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 4px 11px -5px rgba(0,0,0,.55)}
+.xbtn:hover{color:var(--text);border-color:var(--muted-2);background:var(--accent-soft);transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 4px 11px -5px rgba(0,0,0,.55)}
 .xbtn:active{transform:translateY(0)}
 /* Sil = yıkıcı: üzerine gelince tehlike rengine döner */
-.xbtn.danger{color:var(--err);border-color:rgba(248,81,73,.38);background:rgba(248,81,73,.06)}
-.xbtn.danger:hover{color:#fff;background:var(--err);border-color:var(--err);box-shadow:0 7px 16px -6px rgba(248,81,73,.6)}
+.xbtn.danger{color:var(--err);border-color:color-mix(in srgb,var(--err) 38%,transparent);background:color-mix(in srgb,var(--err) 8%,transparent)}
+.xbtn.danger:hover{color:#fff;background:var(--err);border-color:var(--err);box-shadow:0 7px 16px -6px color-mix(in srgb,var(--err) 55%,transparent)}
 /* Hazır liste kataloğu — tıkla-ekle chip'ler */
 .catwrap{padding:16px;display:grid;gap:16px}
 .cathead{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.11em;color:var(--muted-2);margin-bottom:10px}
@@ -23,7 +23,7 @@
 .lchip.added .ok{color:var(--ok);font-weight:700}
 .custom{padding:14px 16px;border-top:1px solid var(--border);display:flex}
 /* Liste ekleme modal'ı (katalog seçici) */
-.modal-overlay{position:fixed;inset:0;background:rgba(6,9,14,.66);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:52px 16px;z-index:100}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:52px 16px;z-index:100}
 .modal-overlay[hidden]{display:none}
 .modal{width:100%;max-width:720px;max-height:82vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border-strong);border-radius:12px;box-shadow:0 40px 90px -34px rgba(0,0,0,.85);overflow:hidden;animation:modalin .18s cubic-bezier(.2,.7,.2,1) both}
 @keyframes modalin{from{opacity:0;transform:translateY(-8px) scale(.99)}to{opacity:1;transform:none}}
@@ -43,12 +43,12 @@
 .bulkbar{padding:10px 16px;border-top:1px solid var(--border);text-align:right}
 /* Kaynak durum rozeti (indirilemedi / bekliyor) */
 .lbadge{display:inline-block;padding:2px 9px;border-radius:999px;font:600 11px var(--sans);background:var(--panel-2);border:1px solid var(--border-strong);color:var(--muted)}
-.lbadge.err{background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.4);color:var(--err)}
+.lbadge.err{background:color-mix(in srgb,var(--err) 12%,transparent);border-color:color-mix(in srgb,var(--err) 40%,transparent);color:var(--err)}
 /* Gün seçme chip'leri (zamanlanmış engelleme): tıkla-seç toggle */
 .daychip{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:7px 12px;border:1px solid var(--border-strong);border-radius:999px;background:var(--panel-2);color:var(--muted);font:600 12.5px var(--sans);cursor:pointer;user-select:none;transition:all .15s ease}
 .daychip input{position:absolute;opacity:0;width:0;height:0;margin:0;pointer-events:none}
 .daychip:hover{color:var(--text);border-color:var(--muted-2);transform:translateY(-1px)}
-.daychip:has(input:checked){background:linear-gradient(180deg,#5c8ef3,var(--accent));border-color:#3f74e0;color:var(--accent-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 9px -3px rgba(76,130,240,.5)}
+.daychip:has(input:checked){background:var(--accent-deep);border-color:var(--accent-deep);color:var(--accent-ink);box-shadow:0 2px 9px -3px color-mix(in srgb,var(--accent-deep) 45%,transparent)}
 .daychip:has(input:checked):hover{filter:brightness(1.05)}
 .daychip:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 /* Ön tanımlı servisler ızgarası */

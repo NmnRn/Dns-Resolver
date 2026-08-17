@@ -1,7 +1,7 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Filtreler · DNS Panel{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/filters.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/filters.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <h1>Filtreler</h1>
     <p class="sub">Engelleme ve izin listelerini yönet — değişiklikleri resolver ~15 sn içinde uygular. İzin listesi engel listesinden önceliklidir; bir alanı engellemek alt alanlarını da engeller (ör. <span class="mono">doubleclick.net</span> → <span class="mono">ads.doubleclick.net</span>).</p>
@@ -272,13 +272,66 @@
               g.style.display = vis ? '' : 'none';
             });
           }
+          var added = 0;                        // modalde kaç liste eklendi
           function open(){ ov.hidden = false; if(si){ si.value=''; filt(); si.focus(); } }
-          function close(){ ov.hidden = true; }
+          function close(){
+            ov.hidden = true;
+            // Liste eklendiyse "Eklenen Listeler" tablosunu yenile (tam sayfa yenilemesiz).
+            if(added > 0){
+              added = 0;
+              if(window.ajaxNavigate){ window.ajaxNavigate(location.href, {headers:{'X-Requested-With':'fetch'}}, false, false); }
+              else { window.location.reload(); }
+            }
+          }
           document.querySelectorAll('[data-open="listmodal"]').forEach(function(b){ b.addEventListener('click', open); });
           ov.querySelectorAll('[data-close]').forEach(function(b){ b.addEventListener('click', close); });
           ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
           document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !ov.hidden) close(); });
           if(si) si.addEventListener('input', filt);
+
+          // Liste ekleme form'larını modal İÇİNDE hallet: arka planda ekle, MODALI KAPATMA.
+          // (Yoksa her seçimde ajax.js tüm sayfayı swap eder → modal kapanır; kullanıcı
+          //  üst üste liste seçemez.) stopPropagation ile ajax.js'in document dinleyicisini atlarız.
+          ov.addEventListener('submit', function(e){
+            if(!window.fetch) return;                 // fetch yoksa normal gönderim (geri düşüş)
+            var form = e.target;
+            if(!(form instanceof HTMLFormElement)) return;
+            var isChip = form.hasAttribute('data-name');   // katalog chip'i mi, elle-URL mi
+            if(!isChip){                                    // elle-URL: client-side doğrula
+              var u = (form.querySelector('input[name=url]').value || '').trim();
+              if(!/^https?:\/\//i.test(u)){
+                e.preventDefault(); e.stopPropagation();
+                alert('Geçersiz URL — http:// veya https:// ile başlamalı.');
+                return;
+              }
+            }
+            e.preventDefault();
+            e.stopPropagation();                            // ajax.js sayfayı swap etmesin
+            var btn = form.querySelector('[type=submit]');
+            var fd = new FormData(form);
+            if(btn) btn.disabled = true;
+            fetch(location.pathname, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}})
+              .then(function(r){ if(!r.ok) throw new Error('http'); added++;
+                if(isChip){
+                  // chip'i "eklendi ✓" rozetine çevir; modal açık kalır
+                  var nm = (form.querySelector('input[name=name]') || {}).value || '';
+                  var sp = document.createElement('span');
+                  sp.className = 'lchip added'; sp.title = 'Zaten ekli';
+                  sp.setAttribute('data-name', form.getAttribute('data-name'));
+                  sp.appendChild(document.createTextNode(nm + ' '));
+                  var ok = document.createElement('span'); ok.className = 'ok'; ok.textContent = '✓';
+                  sp.appendChild(ok);
+                  form.replaceWith(sp);
+                } else {
+                  // elle-URL form'u: temizle + kısa geri bildirim, modal açık kalır
+                  form.reset();
+                  if(btn){ var t = btn.textContent; btn.textContent = '✓ Eklendi';
+                           setTimeout(function(){ btn.textContent = t; btn.disabled = false; }, 1400); }
+                }
+              })
+              .catch(function(){ if(btn) btn.disabled = false;
+                                 alert('Liste eklenemedi — bağlantıyı kontrol edin.'); });
+          });
         })();
         </script>
     {% endif %}

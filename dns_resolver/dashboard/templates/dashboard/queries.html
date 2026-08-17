@@ -1,18 +1,24 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Sorgu Geçmişi · DNS Panel{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/queries.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/queries.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
-    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;">
-        <div><h1>Sorgu Geçmişi</h1><p class="sub" style="margin:2px 0 18px;">En yeni üstte · zamanlar UTC · aşağı kaydırdıkça sonraki 25’i otomatik yükler (yüklenenler tarayıcıda kalır)</p></div>
-        <div style="display:flex;gap:8px;">
+    <div class="qtop">
+        <div>
+            <h1>Sorgu Geçmişi</h1>
+            <p class="sub" style="margin:4px 0 0;">Canlı log akışı · en yeni üstte · zamanlar yerel · aşağı kaydırdıkça otomatik yüklenir</p>
+        </div>
+        <div class="qactions">
             <a class="btn ghost" href="{% url 'dashboard:queries_export' %}?q={{ q|urlencode }}&amp;method={{ method }}" data-no-ajax>⭳ CSV indir</a>
             <a class="btn ghost" href="{% url 'dashboard:queries' %}?q={{ q|urlencode }}&amp;method={{ method }}">↻ Yenile</a>
         </div>
     </div>
 
-    <form method="get" class="filter">
-        <input type="text" name="q" value="{{ q }}" placeholder="Alan adı ara (örn. google)">
+    <form method="get" class="qfilter">
+        <label class="qsearch">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.8 15.8 L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input type="text" name="q" value="{{ q }}" placeholder="Alan adı ara (örn. google)" autocomplete="off">
+        </label>
         <select name="method">
             <option value="">Tüm yöntemler</option>
             {% for m in methods %}<option value="{{ m }}" {% if m == method %}selected{% endif %}>{{ m|upper }}</option>{% endfor %}
@@ -24,46 +30,34 @@
     {% if error %}
         <div class="error">Veritabanına erişilemedi: {{ error }}</div>
     {% else %}
-        <div class="box">
-            <h2>Sorgular · <span id="qcount">{{ rows|length }}</span> gösteriliyor{% if pending_count %} · <span style="color:var(--accent);">{{ pending_count }} canlı (flush bekliyor)</span>{% endif %}</h2>
-            <div class="tablescroll">
-                <table>
-                    <thead>
-                        <tr><th>Alan Adı</th><th>Tip</th><th>İstemci</th><th>Yöntem</th><th>Kaynak</th><th>Kullanıcı</th><th>Zaman <span class="muted" style="font-weight:400;">(yerel)</span></th></tr>
-                    </thead>
-                    <tbody id="qrows">{% include "dashboard/_query_rows.html" with rows=rows first=True %}</tbody>
-                </table>
+        <div class="qpanel">
+            <div class="qhead">
+                <span id="qcount">{{ rows|length }}</span>&nbsp;kayıt gösteriliyor
+                {% if pending_count %}<span class="qlive"><span class="qdot live"></span>{{ pending_count }} canlı</span>{% endif %}
             </div>
-            <div id="qmore" style="padding:14px 16px;text-align:center;border-top:1px solid var(--border);"
-                 data-offset="{{ next_offset }}" data-q="{{ q }}" data-method="{{ method }}"
-                 data-more="{% if has_more %}1{% else %}0{% endif %}">
-                <span id="qspin" class="muted" style="display:none;font-size:13px;">Yükleniyor…</span>
-                <button type="button" class="btn" id="loadmore" {% if not has_more %}hidden{% endif %}>Daha fazla</button>
-                <span id="qdone" class="muted" style="{% if has_more %}display:none;{% endif %}font-size:13px;">Tümü yüklendi</span>
+            <div class="qfeed" id="qrows">{% include "dashboard/_query_rows.html" with rows=rows first=True %}</div>
+            <div id="qmore" class="qmore" data-offset="{{ next_offset }}" data-q="{{ q }}" data-method="{{ method }}" data-more="{% if has_more %}1{% else %}0{% endif %}">
+                <span id="qspin" class="muted" style="display:none;">Yükleniyor…</span>
+                <button type="button" class="btn ghost" id="loadmore" {% if not has_more %}hidden{% endif %}>Daha fazla yükle</button>
+                <span id="qdone" class="muted" style="{% if has_more %}display:none;{% endif %}">Tümü yüklendi</span>
             </div>
         </div>
 
         <script>
         (function () {
-            // İlk satırların yerel-saat çevrimini global localtime.js yapar.
             var wrap = document.getElementById('qmore');
             if (!wrap) return;
             var btn = document.getElementById('loadmore');
             var spin = document.getElementById('qspin');
             var done = document.getElementById('qdone');
-            var tbody = document.getElementById('qrows');
+            var box = document.getElementById('qrows');
             var counter = document.getElementById('qcount');
             var base = "{% url 'dashboard:queries' %}";
             var CHUNK = 25;
-            var loading = false;                     // istek sınırı: aynı anda tek istek (DB spam yok)
+            var loading = false, visible = false;
             var hasMore = wrap.dataset.more === '1';
-            var visible = false;                     // sentinel görünürde mi (kısa içerik için)
 
-            function finish() {
-                hasMore = false;
-                if (btn) btn.hidden = true;
-                if (done) done.style.display = 'inline';
-            }
+            function finish() { hasMore = false; if (btn) btn.hidden = true; if (done) done.style.display = 'inline'; }
 
             function loadMore() {
                 if (loading || !hasMore) return;
@@ -77,20 +71,16 @@
                 fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
                     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
                     .then(function (html) {
-                        var tmp = document.createElement('tbody');
+                        var tmp = document.createElement('div');
                         tmp.innerHTML = html.trim();
-                        var added = tmp.querySelectorAll('tr').length;
-                        while (tmp.firstChild) { tbody.appendChild(tmp.firstChild); }
-                        if (window.localizeTimes) window.localizeTimes(tbody);
+                        var added = tmp.querySelectorAll('.qrow').length;
+                        while (tmp.firstChild) { box.appendChild(tmp.firstChild); }
+                        if (window.localizeTimes) window.localizeTimes(box);
                         wrap.dataset.offset = parseInt(off, 10) + added;
-                        if (counter) counter.textContent = tbody.querySelectorAll('tr').length;
+                        if (counter) counter.textContent = box.querySelectorAll('.qrow').length;
                         if (spin) spin.style.display = 'none';
-                        if (added < CHUNK) {
-                            finish();
-                        } else if (visible) {
-                            // İçerik hâlâ ekranı doldurmadıysa devam et (yumuşak zincir)
-                            setTimeout(loadMore, 80);
-                        }
+                        if (added < CHUNK) { finish(); }
+                        else if (visible) { setTimeout(loadMore, 80); }
                     })
                     .catch(function () {
                         if (spin) spin.style.display = 'none';
@@ -99,12 +89,11 @@
                     .finally(function () { loading = false; });
             }
 
-            if (btn) btn.addEventListener('click', loadMore);   // JS/observer yoksa elle
-
+            if (btn) btn.addEventListener('click', loadMore);
             if ('IntersectionObserver' in window) {
                 var io = new IntersectionObserver(function (entries) {
                     visible = entries[0].isIntersecting;
-                    if (visible) loadMore();                    // dibe ~200px kala yükle
+                    if (visible) loadMore();
                 }, { rootMargin: '200px' });
                 io.observe(wrap);
             }

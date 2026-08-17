@@ -235,9 +235,17 @@ async def logs(request):
         context['error'] = _fail(exc, 'Veritabanına erişilemedi.')
         return render(request, 'dashboard/logs.html', context)
 
-    context.update(stats=stats, top_domains=top_domains, top_clients=top_clients,
-                   method_breakdown=method_breakdown, spark=_sparkline(hourly),
-                   peak=max(hourly) if hourly else 0)
+    m_total = sum(m['cnt'] for m in method_breakdown) or 1
+    total = stats.get('total', 0) or 1
+    context.update(
+        stats=stats,
+        top_domains=_with_pct(top_domains),
+        top_clients=_with_pct(top_clients),
+        methods=[{**m, 'share': round(m['cnt'] / m_total * 100, 1)} for m in method_breakdown],
+        blocked_pct=round(stats.get('blocked', 0) / total * 100),
+        spark=_sparkline(hourly),
+        peak=max(hourly) if hourly else 0,
+    )
     return render(request, 'dashboard/logs.html', context)
 
 
@@ -909,6 +917,55 @@ async def backup_export(request):
     return resp
 
 
+async def query_settings(request):
+    """Sorgu/çözümleme ayarları — kendi sayfası (recursion, upstream, strateji, koşullu
+    yönlendirme, bootstrap DNS). Upstream şema ön ekleri: udp:// tcp:// tls:// https:// quic://."""
+    gate = _gate(request)
+    if gate:
+        return gate
+
+    context = _base_ctx(request, 'query_settings')
+    msg = None
+    if request.method == 'POST':
+        try:
+            await db.set_setting('use_recursion', '1' if request.POST.get('use_recursion') else '0')
+            await db.set_setting('upstreams', request.POST.get('upstreams', '').strip())
+            _strat = request.POST.get('upstream_strategy', 'sequential')
+            await db.set_setting('upstream_strategy',
+                                 _strat if _strat in ('sequential', 'parallel', 'fastest') else 'sequential')
+            await db.set_setting('conditional_forwards', request.POST.get('conditional_forwards', '').strip())
+            _bs = request.POST.get('bootstrap_dns', '').strip()
+            if not _bs:
+                await db.set_setting('bootstrap_dns', '')
+                msg = ('ok', 'Sorgu ayarları kaydedildi — resolver ~10 sn içinde uygular.')
+            else:
+                try:
+                    ipaddress.ip_address(_bs)
+                    await db.set_setting('bootstrap_dns', _bs)
+                    msg = ('ok', 'Sorgu ayarları kaydedildi — resolver ~10 sn içinde uygular.')
+                except ValueError:
+                    msg = ('error', f'Geçersiz bootstrap DNS IP: {_bs}')
+        except Exception as exc:
+            msg = ('error', _fail(exc))
+
+    try:
+        s = await db.get_settings()
+    except Exception as exc:
+        context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
+        return render(request, 'dashboard/query_settings.html', context)
+
+    context.update(
+        msg=msg,
+        use_recursion=s.get('use_recursion', '1') != '0',
+        upstreams=s.get('upstreams', ''),
+        upstream_strategy=s.get('upstream_strategy', 'sequential'),
+        conditional_forwards=s.get('conditional_forwards', ''),
+        bootstrap_dns=s.get('bootstrap_dns', ''),
+        upstream_rows=_upstream_rows(s.get('upstreams', '')),
+    )
+    return render(request, 'dashboard/query_settings.html', context)
+
+
 async def settings_page(request):
     gate = _gate(request)
     if gate:
@@ -985,21 +1042,8 @@ async def settings_page(request):
                     await db.set_setting('cache_enabled', '1' if request.POST.get('cache_enabled') else '0')
                     await db.set_setting('cache_min_ttl', str(int(mn)))
                     await db.set_setting('cache_max_ttl', str(int(mx)))
-                    await db.set_setting('use_recursion', '1' if request.POST.get('use_recursion') else '0')
-                    await db.set_setting('upstreams', request.POST.get('upstreams', '').strip())
-                    _strat = request.POST.get('upstream_strategy', 'sequential')
-                    await db.set_setting('upstream_strategy',
-                                         _strat if _strat in ('sequential', 'parallel', 'fastest') else 'sequential')
-                    await db.set_setting('conditional_forwards', request.POST.get('conditional_forwards', '').strip())
-                    _bs = request.POST.get('bootstrap_dns', '').strip()
-                    if not _bs:
-                        await db.set_setting('bootstrap_dns', '')
-                    else:
-                        try:
-                            ipaddress.ip_address(_bs)
-                            await db.set_setting('bootstrap_dns', _bs)
-                        except ValueError:
-                            msg = ('error', f'Geçersiz bootstrap DNS IP: {_bs}')
+                    # Çözümleme ayarları (recursion/upstream/strateji/koşullu/bootstrap)
+                    # artık ayrı "Sorgu Ayarları" sayfasında (views.query_settings).
                     # Erişim kontrolü
                     _rl = request.POST.get('rate_limit', '0').strip()
                     await db.set_setting('rate_limit', _rl if _rl.isdigit() else '0')

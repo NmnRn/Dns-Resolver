@@ -4,7 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>404 · Sayfa bulunamadı · DNS Panel</title>
-    <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}">
+    <script>(function(){try{var t=localStorage.getItem('theme');if(!t){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
+    <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v={{ static_v }}">
     <style>
         body { min-height: 100vh; display: grid; place-items: center; padding: 24px; margin: 0; }
         .nf { text-align: center; max-width: 460px; animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
@@ -13,7 +14,7 @@
         .nf .code { font: 800 clamp(96px, 24vw, 168px)/.9 var(--mono); letter-spacing: -.05em;
                     background: linear-gradient(175deg, var(--text) 30%, var(--muted-2));
                     -webkit-background-clip: text; background-clip: text; color: transparent;
-                    text-shadow: 0 24px 60px rgba(76,130,240,.18); }
+                    text-shadow: 0 24px 60px color-mix(in srgb, var(--accent) 22%, transparent); }
         .nf .dig { display: inline-block; margin: 10px 0 26px; padding: 8px 15px; border-radius: 9px;
                    background: var(--panel); border: 1px solid var(--border-strong);
                    font: 12.5px var(--mono); color: var(--muted); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
@@ -21,12 +22,12 @@
         .nf h1 { font: 600 21px/1.3 var(--sans); margin: 0 0 9px; letter-spacing: -.01em; }
         .nf p { color: var(--muted); margin: 0 0 28px; font-size: 14px; line-height: 1.6; }
         .nf a.home { display: inline-block; text-decoration: none;
-                     background: linear-gradient(180deg, #5c8ef3, var(--accent)); border: 1px solid #3f74e0;
-                     color: var(--accent-ink); font: 600 13.5px var(--sans); border-radius: var(--r);
-                     padding: 11px 22px; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 2px 10px -3px rgba(76,130,240,.5);
-                     transition: transform .14s ease, box-shadow .2s ease; }
-        .nf a.home:hover { transform: translateY(-1px);
-                           box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 9px 22px -6px rgba(76,130,240,.62); }
+                     background: var(--accent-deep); border: 1px solid transparent;
+                     color: var(--accent-ink); font: 700 13.5px var(--sans); border-radius: var(--r-sm);
+                     padding: 12px 22px; box-shadow: 0 3px 12px -3px color-mix(in srgb, var(--accent-deep) 45%, transparent);
+                     transition: transform .14s ease, box-shadow .2s ease, filter .14s ease; }
+        .nf a.home:hover { transform: translateY(-1px); filter: brightness(1.04);
+                           box-shadow: 0 9px 22px -6px color-mix(in srgb, var(--accent-deep) 55%, transparent); }
     </style>
 </head>
 <body>

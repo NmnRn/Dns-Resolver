@@ -1,11 +1,11 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Genel Ayarlar · DNS Panel{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/settings.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/settings.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <div class="sethead">
         <h1>Genel Ayarlar</h1>
-        <p class="sub">Geçmiş, önbellek ve çözümleme davranışı. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok).</p>
+        <p class="sub">Geçmiş, önbellek ve erişim davranışı. Çözümleme (upstream / recursion / strateji) artık ayrı <b>Sorgu Ayarları</b> sayfasında. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok).</p>
     </div>
 
     <div class="setwrap">
@@ -36,72 +36,6 @@
                     <div class="ttlf"><label>Max TTL (sn)</label><input type="number" name="cache_max_ttl" value="{{ cache_max_ttl }}" min="1"></div>
                 </div>
                 <p class="setnote">Min TTL kısa süreli kayıtları en az bu kadar bellekte tutar (0 = dokunma); Max TTL üst sınırdır.</p>
-            </div>
-
-            <div class="box setcard" style="margin-top:16px;">
-                <div class="setrow">
-                    <div class="si">
-                        <div class="t">Kendi çekirdeğimizi kullan</div>
-                        <div class="d">Açık: recursive çözümleyici (root→TLD→yetkili sunucuları kendi yürür). Kapalı: sorguları aşağıdaki upstream sunuculara iletir (forwarding).</div>
-                    </div>
-                    <label class="sw"><input type="checkbox" name="use_recursion" {% if use_recursion %}checked{% endif %}><span></span></label>
-                </div>
-                <label class="modelbl">Upstream sunucular (satır başına bir tane)</label>
-                <textarea class="upst" name="upstreams" rows="4" spellcheck="false" placeholder="1.1.1.1&#10;8.8.8.8&#10;https://dns.quad9.net/dns-query&#10;tls://dns.google">{{ upstreams }}</textarea>
-                <p class="setnote">Desteklenen: düz IP (UDP/53) · <span class="mono">https://…</span> (DoH) · <span class="mono">tls://host</span> (DoT). Yalnız "Kendi çekirdeğimizi kullan" KAPALIYKEN devreye girer.</p>
-
-                <label class="modelbl">Sorgu stratejisi (forwarding)</label>
-                <div class="strat">
-                    <label class="stratopt"><input type="radio" name="upstream_strategy" value="sequential" {% if upstream_strategy == 'sequential' %}checked{% endif %}><span><b>Sıra sıra</b> — listedeki ilk yanıtlayanı kullan (en az trafik)</span></label>
-                    <label class="stratopt"><input type="radio" name="upstream_strategy" value="parallel" {% if upstream_strategy == 'parallel' %}checked{% endif %}><span><b>Paralel</b> — hepsine aynı anda sor, ilk gelen cevabı al (en düşük gecikme)</span></label>
-                    <label class="stratopt"><input type="radio" name="upstream_strategy" value="fastest" {% if upstream_strategy == 'fastest' %}checked{% endif %}><span><b>En hızlı</b> — ölçülen ortalamaya göre en hızlı upstream'i önce dene</span></label>
-                </div>
-
-                <label class="modelbl">Koşullu yönlendirme (son-ek → upstream)</label>
-                <textarea class="upst" name="conditional_forwards" rows="3" spellcheck="false" placeholder="home.arpa 192.168.1.1&#10;corp.local tls://10.0.0.53">{{ conditional_forwards }}</textarea>
-                <p class="setnote">Satır başına <span class="mono">son-ek&nbsp;upstream</span>. Eşleşen domain (ve tüm alt alanları) <b>her zaman</b> o upstream'e çözdürülür — "Kendi çekirdeğimizi kullan" açık olsa bile. Yerel/özel alanlar için (ör. <span class="mono">*.home.arpa → 192.168.1.1</span>). En uzun eşleşen son-ek kazanır.</p>
-
-                <label class="modelbl">Bootstrap DNS (isimli şifreli upstream'ler için)</label>
-                <input type="text" name="bootstrap_dns" value="{{ bootstrap_dns }}" placeholder="ör. 9.9.9.9  (boş = sistem çözümleyicisi)" style="width:100%;max-width:300px;" spellcheck="false" autocomplete="off">
-                <p class="setnote"><span class="mono">tls://dns.google</span> / <span class="mono">https://cloudflare-dns.com/…</span> gibi <b>isimli</b> şifreli upstream'lerin host adını bu düz-DNS IP'siyle çözer (IP'ye bağlanır; TLS doğrulaması yine host adına yapılır). Boşsa sistem DNS'i kullanılır. Düz-IP upstream'leri etkilemez.</p>
-
-                {% if upstream_rows %}
-                <label class="modelbl">Upstream tepki süreleri (ort.)</label>
-                <div class="upstats">
-                    {% for r in upstream_rows %}
-                    <div class="upstat"><span class="u">{{ r.up }}</span><span>{% if r.avg %}{{ r.avg }} ms · {{ r.count }} sorgu{% else %}— ölçüm yok{% endif %}</span></div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                <div style="margin-top:14px;"><button class="btn ghost" type="button" id="uptest-btn">Sunucuları test et</button></div>
-                <div id="uptest-out"></div>
-                <script>
-                (function(){
-                  var btn=document.getElementById('uptest-btn'); if(!btn) return;
-                  var out=document.getElementById('uptest-out');
-                  function esc(s){var d=document.createElement('div');d.textContent=(s==null?'':String(s));return d.innerHTML;}
-                  btn.addEventListener('click',function(){
-                    var ta=document.querySelector('textarea[name="upstreams"]');
-                    var tok=document.querySelector('[name=csrfmiddlewaretoken]').value;
-                    var orig=btn.textContent; btn.disabled=true; btn.textContent='Test ediliyor…'; out.innerHTML='';
-                    fetch('{% url "dashboard:test_upstreams" %}',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':tok},body:'upstreams='+encodeURIComponent(ta.value)})
-                      .then(function(r){return r.json();})
-                      .then(function(data){
-                        var rows=(data.results||[]).map(function(x){
-                          var s = x.ok===true ? '<span style="color:var(--ok);">✓ '+x.ms+' ms</span>'
-                                : x.ok===null ? '<span class="muted">'+esc(x.detail)+'</span>'
-                                : '<span style="color:var(--err);">✗ '+esc(x.detail)+' ('+x.ms+' ms)</span>';
-                          return '<div class="upstat"><span class="u">'+esc(x.up)+'</span><span>'+s+'</span></div>';
-                        }).join('');
-                        out.innerHTML = rows ? '<label class="modelbl">Test sonuçları</label><div class="upstats">'+rows+'</div>'
-                                             : '<p class="setnote">Test edilecek upstream yok — önce ekle.</p>';
-                      })
-                      .catch(function(){ out.innerHTML='<p class="setnote" style="color:var(--err);">Test başarısız.</p>'; })
-                      .finally(function(){ btn.disabled=false; btn.textContent=orig; });
-                  });
-                })();
-                </script>
             </div>
 
             <div class="box setcard" style="margin-top:16px;">

@@ -3,8 +3,8 @@
 .cfield{display:grid;gap:6px;margin-bottom:14px}
 .cfield label{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
 .cst{display:inline-flex;align-items:center;font:600 11px var(--sans);padding:3px 10px;border-radius:999px;border:1px solid;letter-spacing:.03em}
-.cst.VALID{color:var(--ok);background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.32)}
-.cst.EXPIRING{color:var(--dot);background:rgba(210,153,34,.12);border-color:rgba(210,153,34,.32)}
-.cst.EXPIRED,.cst.err{color:var(--err);background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.32)}
+.cst.VALID{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent);border-color:color-mix(in srgb,var(--ok) 32%,transparent)}
+.cst.EXPIRING{color:var(--dot);background:color-mix(in srgb,var(--dot) 14%,transparent);border-color:color-mix(in srgb,var(--dot) 32%,transparent)}
+.cst.EXPIRED,.cst.err{color:var(--err);background:color-mix(in srgb,var(--err) 14%,transparent);border-color:color-mix(in srgb,var(--err) 32%,transparent)}
 .crow{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;font-size:13.5px;padding:16px}
 .crow .k{color:var(--muted-2);font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;align-self:center;white-space:nowrap}

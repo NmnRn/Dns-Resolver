@@ -460,6 +460,10 @@ class DNSCore:
             if low.startswith("quic://"):
                 logger.warning("DoQ upstream henuz desteklenmiyor, atlaniyor.")
                 return None
+            if low.startswith("tcp://"):
+                host, _, port = u[6:].partition(":")
+                return self._query(domain, qtype, host, tcp=True,
+                                   port=int(port) if port.isdigit() else 53)
             if low.startswith("udp://"):
                 u = u[6:]
             host, _, port = u.partition(":")     # düz IP[:port] (port yoksa 53)

@@ -1,3 +1,5 @@
+.chart-hero{background:linear-gradient(150deg,var(--accent-soft),var(--panel) 55%);border-color:color-mix(in srgb,var(--accent) 26%,var(--border))}
+.chart-hero>h2{border-bottom-color:color-mix(in srgb,var(--accent) 20%,var(--border))}
 .an-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 @media(max-width:820px){.an-grid{grid-template-columns:1fr}}
 .bars{display:grid;gap:12px;padding:16px}
@@ -14,8 +16,8 @@
 /* ~5 satır göster, gerisi kaydırılabilir */
 .scroll5{max-height:238px;overflow-y:auto}
 /* engellenenler = ayrı kırmızı blok (mavi listelere karışmaz) */
-.redlist{border-color:rgba(248,81,73,.4)}
-.redlist>h2{color:var(--err);border-bottom-color:rgba(248,81,73,.25)}
+.redlist{border-color:color-mix(in srgb,var(--err) 40%,transparent)}
+.redlist>h2{color:var(--err);border-bottom-color:color-mix(in srgb,var(--err) 25%,transparent)}
 /* 24s grafik hover ipucu */
 .sparkwrap{position:relative}
 .sparkwrap svg{display:block;cursor:crosshair}
@@ -27,5 +29,5 @@
 .chartleg{display:flex;gap:18px;font-size:12px;color:var(--muted);margin-top:8px}
 .chartleg span{display:flex;align-items:center;gap:7px}
 .chartleg i{width:16px;height:3px;border-radius:2px;display:inline-block}
-.chartleg .lg-b{background:#4c82f0}
-.chartleg .lg-r{background:#f85149}
+.chartleg .lg-b{background:var(--accent)}
+.chartleg .lg-r{background:var(--err)}

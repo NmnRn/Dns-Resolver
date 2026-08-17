@@ -32,28 +32,38 @@
         catch (e) { window.location = url; return; }
         var neu = doc.querySelector('main.wrap');
         if (!neu) { window.location = url; return; }        // beklenmedik yanıt → normal git
-        // Yeni sayfanın stil dosyalarını (sayfa-özel extra_css) head'e ekle (yoksa) —
-        // yoksa başka bir sayfaya geçince o sayfanın CSS'i yüklenmez, stilsiz görünür.
+        // Yeni sayfanın stil dosyalarını (sayfa-özel extra_css) head'e ekle (yoksa) VE
+        // yüklenmelerini BEKLE — yoksa içerik bir an stilsiz görünür (FOUC: "bozulup düzeliyor").
         var have = {}, cur = document.head.querySelectorAll('link[rel="stylesheet"]');
         for (var k = 0; k < cur.length; k++) have[cur[k].getAttribute('href')] = 1;
         var css = doc.head ? doc.head.querySelectorAll('link[rel="stylesheet"]') : [];
+        var waits = [];
         for (var m = 0; m < css.length; m++) {
             var href = css[m].getAttribute('href');
             if (href && !have[href]) {
+                have[href] = 1;
                 var nl = document.createElement('link');
                 nl.rel = 'stylesheet'; nl.href = href;
+                waits.push(new Promise(function (res) {
+                    nl.onload = nl.onerror = res;          // yüklenince/hata → devam
+                    setTimeout(res, 2000);                 // güvenlik: takılırsa yine de göster
+                }));
                 document.head.appendChild(nl);
             }
         }
-        var y = window.scrollY;
-        main.innerHTML = neu.innerHTML;
-        runScripts(main);
-        if (window.localizeTimes) { try { window.localizeTimes(main); } catch (e) {} }
-        var title = doc.querySelector('title');
-        if (title) document.title = title.textContent;
-        var oldNav = document.querySelector('.topbar nav'), newNav = doc.querySelector('.topbar nav');
-        if (oldNav && newNav) oldNav.innerHTML = newNav.innerHTML; // aktif sekme güncelle
-        window.scrollTo(0, keepScroll ? y : 0);                // POST → yerinde kal; gezinme → başa
+        function commit() {
+            var y = window.scrollY;
+            main.innerHTML = neu.innerHTML;
+            runScripts(main);
+            if (window.localizeTimes) { try { window.localizeTimes(main); } catch (e) {} }
+            var title = doc.querySelector('title');
+            if (title) document.title = title.textContent;
+            var oldNav = document.querySelector('.topbar nav'), newNav = doc.querySelector('.topbar nav');
+            if (oldNav && newNav) oldNav.innerHTML = newNav.innerHTML; // aktif sekme güncelle
+            window.scrollTo(0, keepScroll ? y : 0);            // POST → yerinde kal; gezinme → başa
+        }
+        // Yeni CSS varsa yüklenmesini bekle (stilsiz an olmasın); yoksa hemen uygula.
+        if (waits.length) { Promise.all(waits).then(commit); } else { commit(); }
     }
 
     function go(url, opts, keepScroll, pushUrl) {
@@ -70,6 +80,9 @@
             .catch(function () { window.location = url; })         // ağ/hata → normal git
             .finally(function () { document.body.classList.remove('ajax-busy'); });
     }
+
+    // Başka scriptler (ör. liste modal'ı) yenilemesiz sayfa tazeleme için kullanabilsin.
+    window.ajaxNavigate = go;
 
     document.addEventListener('submit', function (e) {
         var form = e.target;

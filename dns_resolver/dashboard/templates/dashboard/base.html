@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}DNS Panel{% endblock %}</title>
+    <script>/* Tema: FOUC önle — CSS'ten önce data-theme'i kur */
+    (function(){try{var t=localStorage.getItem('theme');if(!t){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v={{ static_v }}">
     {% block extra_css %}{% endblock %}
     <script src="{% static 'dashboard/js/localtime.js' %}?v={{ static_v }}" defer></script>
@@ -18,9 +20,10 @@
                 <a href="{% url 'dashboard:queries' %}" class="{% if active == 'queries' %}active{% endif %}">Sorgu Geçmişi</a>
                 <a href="{% url 'dashboard:analytics' %}" class="{% if active == 'analytics' %}active{% endif %}">Analiz</a>
                 <div class="navdd">
-                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'servers' or active == 'filters' or active == 'certificate' %}active{% endif %}">DNS Ayarları ▾</button>
+                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' %}active{% endif %}">DNS Ayarları ▾</button>
                     <div class="ddmenu">
                         <a href="{% url 'dashboard:settings' %}">Genel</a>
+                        <a href="{% url 'dashboard:query_settings' %}">Sorgu Ayarları</a>
                         <a href="{% url 'dashboard:servers' %}">Sunucular</a>
                         <a href="{% url 'dashboard:filters' %}">Filtreler</a>
                         <a href="{% url 'dashboard:certificate' %}">Sertifika</a>
@@ -29,11 +32,31 @@
                 <a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">Kullanıcılar</a>
                 <a href="{% url 'dashboard:guide' %}" class="{% if active == 'guide' %}active{% endif %}">Kurulum</a>
             </nav>
-            <div class="user">{{ panel_username }} · <a href="{% url 'dashboard:logout' %}" data-no-ajax>Çıkış</a></div>
+            <div class="user">
+                <button type="button" class="themebtn" id="theme-toggle" data-no-ajax aria-label="Tema değiştir" title="Açık / koyu tema">🌙</button>
+                <span>{{ panel_username }} · <a href="{% url 'dashboard:logout' %}" data-no-ajax>Çıkış</a></span>
+            </div>
         </div>
     </header>
     <main class="wrap">
         {% block content %}{% endblock %}
     </main>
+    <script>/* Tema değiştirici — topbar main.wrap dışında, ajax gezinmede korunur */
+    (function(){
+        var btn=document.getElementById('theme-toggle'); if(!btn) return;
+        function icon(){ btn.textContent = document.documentElement.getAttribute('data-theme')==='dark' ? '☀️' : '🌙'; }
+        icon();
+        btn.addEventListener('click', function(){
+            var H = document.documentElement;
+            H.classList.add('theme-anim-off');            // geçişleri kapat → anında/temiz
+            var dark = H.getAttribute('data-theme')==='dark';
+            if(dark){ H.removeAttribute('data-theme'); }
+            else { H.setAttribute('data-theme','dark'); }
+            try{ localStorage.setItem('theme', dark?'light':'dark'); }catch(e){}
+            icon();
+            requestAnimationFrame(function(){ requestAnimationFrame(function(){ H.classList.remove('theme-anim-off'); }); });
+        });
+    })();
+    </script>
 </body>
 </html>

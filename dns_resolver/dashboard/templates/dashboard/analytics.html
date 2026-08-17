@@ -1,7 +1,7 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Analiz · DNS Panel{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/analytics.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/analytics.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <h1>Analiz</h1>
     <p class="sub">Trafik eğilimi ve dağılımlar · zamanlar UTC</p>
@@ -9,21 +9,21 @@
     {% if error %}
         <div class="error">Veritabanına erişilemedi: {{ error }}</div>
     {% else %}
-        <div class="box" style="margin-bottom:16px;">
+        <div class="box chart-hero" style="margin-bottom:16px;">
             <h2>Son 24 saat trafiği · toplam {{ stats.last_24h }} · tepe {{ peak }}/saat <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;">— üzerine gel: saatlik ayrıntı</span></h2>
             <div class="body">
                 {% if spark %}
                 <div class="sparkwrap">
                     <svg id="sparksvg" viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" width="100%" height="140" role="img" aria-label="Son 24 saat trafik grafiği (üzerine gelince saatlik ayrıntı)">
                         <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0" stop-color="#4c82f0" stop-opacity=".3"/><stop offset="1" stop-color="#4c82f0" stop-opacity="0"/>
+                            <stop offset="0" stop-color="var(--accent)" stop-opacity=".3"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/>
                         </linearGradient></defs>
                         <path fill="url(#ag)" d="{{ spark.area }}"/>
-                        <polyline fill="none" stroke="#4c82f0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.line }}"/>
-                        <polyline fill="none" stroke="#f85149" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.bline }}"/>
-                        <line id="sparkguide" y1="0" y2="{{ spark.h }}" stroke="#8b98a9" stroke-width="1" stroke-dasharray="3 3" opacity=".5" style="display:none"/>
-                        <circle id="sparkdot" r="4" fill="#4c82f0" stroke="#161b22" stroke-width="2" style="display:none"/>
-                        <circle id="sparkdotb" r="4" fill="#f85149" stroke="#161b22" stroke-width="2" style="display:none"/>
+                        <polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.line }}"/>
+                        <polyline fill="none" stroke="var(--err)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{{ spark.bline }}"/>
+                        <line id="sparkguide" y1="0" y2="{{ spark.h }}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity=".5" style="display:none"/>
+                        <circle id="sparkdot" r="4" fill="var(--accent)" stroke="var(--panel)" stroke-width="2" style="display:none"/>
+                        <circle id="sparkdotb" r="4" fill="var(--err)" stroke="var(--panel)" stroke-width="2" style="display:none"/>
                     </svg>
                     <div id="sparktip" class="chart-tip" style="display:none"></div>
                 </div>
