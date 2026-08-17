@@ -93,10 +93,12 @@ cert_file=$(ask "TLS sertifika dosyasi yolu (container ici)" "$(get_existing CER
 key_file=$(ask "TLS ozel anahtar dosyasi yolu (container ici)" "$(get_existing KEY_FILE /app/certificates/privkey.pem)")
 
 echo
-echo "-- DoH (DNS-over-HTTPS) --"
+echo "-- DoH (DNS-over-HTTPS) — DNS SUNUCUSU --"
 enable_https=$(ask_bool "DoH sunucusu acik olsun mu" "$(get_existing ENABLE_HTTPS_SERVER false)")
 container_https_port=$(ask "DoH sunucusunun container ici portu" "$(get_existing CONTAINER_HTTPS_PORT 44300)")
-allowed_host=$(ask "DoH icin izin verilecek domain (Host header kontrolu)" "$(get_existing ALLOWED_HOST dns.example.com)")
+echo "Asagidaki = DNS SUNUCUNUN domain'i (DoH istemcilerinin baglanacagi ad, or. dns.example.com)."
+echo "Bu, WEB PANELI domain'inden (asagida) FARKLI olabilir."
+allowed_host=$(ask "DoH / DNS sunucusu domain'i (Host kontrolu)" "$(get_existing ALLOWED_HOST dns.example.com)")
 
 echo
 echo "-- DoT (DNS-over-TLS) --"
@@ -125,11 +127,12 @@ if [ "$open_external" = "true" ]; then
 fi
 
 echo
-echo "-- Web paneli erisimi (domain / ters proxy / Cloudflare Tunnel) --"
-echo "Paneli bir HTTPS adresten aciyorsan (or. https://dns.example.com) YAZ — yoksa Django"
-echo "form gonderiminde 'CSRF verification failed (403)' verir (ilk kurulumda bile)."
+echo "-- WEB PANELI erisimi — DNS sunucusundan FARKLI domain olabilir --"
+echo "Panelin acildigi HTTPS adres (or. https://webpanel.example.com) — yukaridaki DNS/DoH"
+echo "domain'inden AYRI. Domain/Cloudflare Tunnel/ters proxy arkasindaysan ZORUNLU: yoksa panel"
+echo "form gonderimi 'CSRF verification failed (403)' verir (ilk kurulumda bile)."
 echo "Yalniz 127.0.0.1 / SSH tuneli kullaniyorsan bos birak. Coklu adres icin virgulle ayir."
-panel_origin=$(ask "Panel public URL(ler)i (https://..., bos = yerel)" "$(get_existing DJANGO_CSRF_TRUSTED_ORIGINS '')")
+panel_origin=$(ask "WEB PANELI public URL(ler)i (https://webpanel.example.com, bos = yerel)" "$(get_existing DJANGO_CSRF_TRUSTED_ORIGINS '')")
 if [ -n "$panel_origin" ]; then
     secure_cookies=true    # HTTPS domain -> panel cerezleri Secure
     # ALLOWED_HOSTS: origin(ler)den host adini cikar (sema/port/yol at) + yerel erisim
