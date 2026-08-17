@@ -133,6 +133,29 @@ if [ -f "$ENV_PATH" ]; then
     db_lines=$(grep '^DB_' "$ENV_PATH" || true)
 fi
 
+# --- Guvenlik anahtarlari: VARSA KORU, yoksa uret (yeniden calistirmada bozulmasin) ---
+# DJANGO_SECRET_KEY: 64 bayt (512-bit) hex -> .env-guvenli (ozel karakter yok).
+#   Dolu oldugunda Django _get_or_create_secret_key()'e hic girmez (oncelik env'de).
+django_secret=$(get_existing DJANGO_SECRET_KEY "")
+if [ -z "$django_secret" ]; then
+    django_secret=$(openssl rand -hex 64 2>/dev/null || head -c64 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    echo "DJANGO_SECRET_KEY uretildi (kapsamli, kalici)."
+fi
+# DNS_LOG_KEY: DNS gunlugunde client_ip + domain'i diskte AES-SIV ile sifreler (opsiyonel).
+dns_log_key=$(get_existing DNS_LOG_KEY "")
+echo
+echo "-- DNS log sifreleme (at-rest) --"
+echo "Acarsan sorgu gunlugundeki istemci IP + domain diskte sifreli tutulur (mahremiyet)."
+enable_logenc=$(ask_bool "DNS log sifreleme acik olsun mu" "$([ -n "$dns_log_key" ] && echo true || echo false)")
+if [ "$enable_logenc" = "true" ]; then
+    if [ -z "$dns_log_key" ]; then
+        dns_log_key=$(openssl rand -base64 64 2>/dev/null | tr -d '\n')
+        echo "DNS_LOG_KEY uretildi (AES-SIV). UYARI: kaybolursa eski kayitlar cozulemez -> yedekle."
+    fi
+else
+    dns_log_key=""
+fi
+
 cat > "$ENV_PATH" <<EOF
 BIND_ADDRESS=$bind_address
 CONTAINER_UDP_PORT=$container_udp_port
@@ -151,12 +174,15 @@ EXTERNAL_HTTPS_PORT=$external_https_port
 EXTERNAL_DOT_PORT=$external_dot_port
 EXTERNAL_DOQ_PORT=$external_doq_port
 LOG_DAYS=$log_days
+DJANGO_SECRET_KEY=$django_secret
+DNS_LOG_KEY=$dns_log_key
 EOF
 
 if [ -n "$db_lines" ]; then
     printf '%s\n' "$db_lines" >> "$ENV_PATH"
     echo "Mevcut DB_ ayarlari korundu."
 fi
+chmod 600 "$ENV_PATH"   # .env artik SECRET_KEY + DNS_LOG_KEY iceriyor -> yalniz sahibi okusun
 
 echo
 echo ".env dosyasi yazildi: $ENV_PATH"

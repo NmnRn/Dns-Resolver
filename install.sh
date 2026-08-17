@@ -87,6 +87,9 @@ fi
 systemctl enable --now docker 2>/dev/null || true
 command -v docker >/dev/null || \
     hata "Docker kurulamadı. Elle kurun: https://docs.docker.com/engine/install/"
+# Kurulu olmak yetmez: daemon gerçekten yanıt veriyor mu?
+docker info >/dev/null 2>&1 || \
+    hata "Docker daemon çalışmıyor. Başlatın: sudo systemctl start docker"
 
 # --- 2) Depo: klonla veya güncelle --------------------------------------------
 if [ -d "$INSTALL_DIR/.git" ]; then
@@ -186,8 +189,8 @@ else
 
     if sor_eh "$SORU"; then
         if [ -n "$BIND_CNF" ]; then
-            info "Mevcut bind-address düzenleniyor: $BIND_CNF -> $NEW_BIND"
-            sed -i -E "s|^([[:space:]]*bind[-_]address[[:space:]]*=[[:space:]]*).*|\1$NEW_BIND|" "$BIND_CNF"
+            info "Mevcut bind-address düzenleniyor: $BIND_CNF -> $NEW_BIND (yedek: $BIND_CNF.bak)"
+            sed -i.bak -E "s|^([[:space:]]*bind[-_]address[[:space:]]*=[[:space:]]*).*|\1$NEW_BIND|" "$BIND_CNF"
         else
             info "bind-address hiçbir dosyada tanımlı değil; $CNF_FILE dosyasına ekleniyor ($NEW_BIND)."
             printf 'bind-address = %s\n' "$NEW_BIND" >> "$CNF_FILE"
