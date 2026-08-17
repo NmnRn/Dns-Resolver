@@ -86,6 +86,10 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
+# Ters proxy / Cloudflare Tunnel TLS'i sonlandırıp container'a düz HTTP iletir; bu
+# başlıkla Django isteği HTTPS sayar (request.is_secure() doğru + güvenli çerez/HSTS
+# çalışır). Panel yalnız 127.0.0.1'e + tünele bağlı olduğundan başlık sahtelenemez.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Oturum imzalı çerezde tutulur (DB'siz) → async view'lardan request.session
 # erişimi SynchronousOnlyOperation üretmez. Kimlik doğrulamasız erişilemesin.

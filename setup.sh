@@ -124,6 +124,18 @@ if [ "$open_external" = "true" ]; then
     external_doq_port=$(ask "Disariya acilacak DoQ (QUIC/UDP) portu" "$external_doq_port")
 fi
 
+echo
+echo "-- Web paneli erisimi (domain / ters proxy / Cloudflare Tunnel) --"
+echo "Paneli bir HTTPS adresten aciyorsan (or. https://dns.example.com) YAZ — yoksa Django"
+echo "form gonderiminde 'CSRF verification failed (403)' verir (ilk kurulumda bile)."
+echo "Yalniz 127.0.0.1 / SSH tuneli kullaniyorsan bos birak. Coklu adres icin virgulle ayir."
+panel_origin=$(ask "Panel public URL(ler)i (https://..., bos = yerel)" "$(get_existing DJANGO_CSRF_TRUSTED_ORIGINS '')")
+if [ -n "$panel_origin" ]; then
+    secure_cookies=true    # HTTPS domain -> panel cerezleri Secure
+else
+    secure_cookies="$(get_existing DJANGO_SECURE_COOKIES false)"
+fi
+
 log_days="$(get_existing LOG_DAYS 90)"
 
 # install.sh'in yazdigi DB_ ayarlarini uzerine yazarken KAYBETME:
@@ -174,6 +186,8 @@ EXTERNAL_HTTPS_PORT=$external_https_port
 EXTERNAL_DOT_PORT=$external_dot_port
 EXTERNAL_DOQ_PORT=$external_doq_port
 LOG_DAYS=$log_days
+DJANGO_CSRF_TRUSTED_ORIGINS=$panel_origin
+DJANGO_SECURE_COOKIES=$secure_cookies
 DJANGO_SECRET_KEY=$django_secret
 DNS_LOG_KEY=$dns_log_key
 EOF

@@ -313,6 +313,14 @@ info "Veritabanı bağlantısı BAŞARILI."
 
 fi  # SKIP_MARIADB bloğu sonu
 
+# --- 7) Sahiplik: kurulum root (sudo) ile yapıldı → klasörü ÇAĞIRAN kullanıcıya
+#        devret ki setup.sh / .env düzenleme / git pull sudo'suz çalışsın.
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+    chown -R "$SUDO_USER":"$(id -gn "$SUDO_USER" 2>/dev/null || echo "$SUDO_USER")" "$INSTALL_DIR"
+    info "Klasör sahibi '$SUDO_USER' yapıldı (sudo'suz düzenleyebilirsin)."
+    echo "    Docker'ı sudo'suz kullanmak istersen: sudo usermod -aG docker $SUDO_USER  (sonra yeniden giriş)"
+fi
+
 echo
 info "Kurulum tamamlandı. Sonraki adımlar:"
 echo "    cd $INSTALL_DIR"

@@ -87,6 +87,12 @@ yönetici erişimlidir** — sonradan eklenen her hesap da yöneticidir.
 > Panel varsayılan olarak yalnız `127.0.0.1:8444`'e publish edilir (public **değil**). Uzaktan erişim
 > için SSH tüneli ya da Cloudflare Tunnel / ters proxy kullan.
 
+> **⚠️ Domain / Cloudflare Tunnel / ters proxy arkasındaysan** (paneli `https://dns.example.com` gibi
+> bir HTTPS adresten açıyorsan) — `.env`'de **`DJANGO_CSRF_TRUSTED_ORIGINS=https://dns.example.com`**
+> (şema şart, sonda `/` yok; çoklu için virgülle) ve **`DJANGO_SECURE_COOKIES=True`** olmalı. Yoksa
+> **ilk kurulumdaki** form gönderimi bile _"CSRF verification failed (403)"_ verir. `setup.sh` bunu sorar;
+> elle eklersen ardından `docker compose up -d`.
+
 ---
 
 ## Yapılandırma (`.env`)
@@ -101,6 +107,7 @@ Tüm değişkenler ve açıklamaları **`.env.example`** dosyasında. Gerçek `.
 | `CERT_FILE` / `KEY_FILE` | DoH/DoT/DoQ ortak TLS sertifikası (host'tan salt-okunur mount) |
 | `EXTERNAL_*` | Host'a (dışarı) açılacak portlar — **dikkat: açık resolver riski** |
 | `SITE_PORT` | Panel portu (127.0.0.1'e publish) |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Domain/tünel/proxy arkasında **zorunlu** (`https://dns.example.com`) — yoksa CSRF 403 |
 | `DJANGO_SECRET_KEY` | Panel gizli anahtarı (setup.sh 512-bit üretir) |
 | `DNS_LOG_KEY` | Sorgu günlüğü at-rest şifreleme (boş = kapalı) |
 | `DJANGO_SECURE_COOKIES` | Paneli **salt HTTPS**'te sunuyorsan `True` |
