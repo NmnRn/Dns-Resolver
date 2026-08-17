@@ -25,6 +25,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from project_control.blocklists import normalize_url
 from . import db
@@ -126,6 +127,7 @@ def setup(request):
             user = User.objects.create_superuser(username=username, password=password)
             auth_login(request, user)
             request.session['panel_username'] = user.username
+            request.session['is_admin'] = True
             return redirect('dashboard:logs')
     return render(request, 'dashboard/login.html', {
         'mode_title': 'Kurulum', 'submit': 'Sahip hesabını oluştur',
@@ -150,7 +152,13 @@ def login_view(request):
                 _login_reset(ip)
                 auth_login(request, user)
                 request.session['panel_username'] = user.username
-                return redirect(request.GET.get('next') or 'dashboard:logs')
+                request.session['is_admin'] = user.is_superuser
+                # Açık yönlendirme koruması: next YALNIZCA aynı-host/relatif ise izinli.
+                nxt = request.GET.get('next') or ''
+                if nxt and url_has_allowed_host_and_scheme(
+                        nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                    return redirect(nxt)
+                return redirect('dashboard:logs')
             _login_note_fail(ip)
             logger.warning('başarısız panel girişi: ip=%s', ip)
             error = 'Kullanıcı adı veya parola hatalı.'
@@ -173,7 +181,8 @@ def _gate(request):
 
 
 def _base_ctx(request, active):
-    return {'active': active, 'panel_username': request.session.get('panel_username', '')}
+    return {'active': active, 'panel_username': request.session.get('panel_username', ''),
+            'is_admin': request.session.get('is_admin', False)}
 
 
 def _sparkline(values, w=280, h=54, pad=6):
@@ -656,8 +665,13 @@ def _source_times():
 
 def users(request):
     """Panel kullanıcıları (Django auth). Sync view — ORM kullanır, oturumu session'dan kontrol eder."""
-    if not request.session.get('_auth_user_id'):
+    uid = request.session.get('_auth_user_id')
+    if not uid:
         return redirect(f"{reverse('dashboard:login')}?next={request.path}")
+    # YETKİ: kullanıcı yönetimi YALNIZCA yöneticiye (is_superuser). ORM ile doğrula
+    # (session bayrağına güvenme) — aksi halde normal kullanıcı admin hesabı açabilir.
+    if not User.objects.filter(id=uid, is_superuser=True).exists():
+        return redirect('dashboard:logs')
 
     msg = None
     if request.method == 'POST':

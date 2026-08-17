@@ -29,7 +29,7 @@
                         <a href="{% url 'dashboard:certificate' %}">Sertifika</a>
                     </div>
                 </div>
-                <a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">Kullanıcılar</a>
+                {% if is_admin %}<a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">Kullanıcılar</a>{% endif %}
                 <a href="{% url 'dashboard:guide' %}" class="{% if active == 'guide' %}active{% endif %}">Kurulum</a>
             </nav>
             <div class="user">
