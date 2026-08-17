@@ -114,6 +114,8 @@ MIDDLEWARE = [
     # DEBUG=False iken statik dosyaları (admin CSS vb.) uvicorn üstünden servis eder.
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    # Dil secimi: oturum/cerez/Accept-Language -> request dili (set_language ile degisir)
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -195,7 +197,17 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'tr'          # varsayilan dil (msgid'ler Turkce); en -> locale/en
+
+# Panel dilleri — topbar'daki dil degistirici (set_language) bunlari kullanir.
+LANGUAGES = [
+    ('tr', 'Turkce'),
+    ('en', 'English'),
+]
+
+# Ceviri dosyalari (.po/.mo) burada; .mo yerelde derlenip commit'lenir
+# (Docker imajina gettext gerekmesin).
+LOCALE_PATHS = [BASE_DIR / 'locale']
 
 TIME_ZONE = 'UTC'
 

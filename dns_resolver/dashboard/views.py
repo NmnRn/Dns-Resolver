@@ -9,6 +9,7 @@ erişimi async'te güvenlidir).
 """
 import asyncio
 import csv
+import hashlib
 import io
 import ipaddress
 import json
@@ -22,15 +23,17 @@ from datetime import datetime, timezone
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User
+from django.db.models import F
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import gettext as _
 
 from project_control.blocklists import normalize_url, check_link
 from . import db
 from .catalog import catalog_grouped
-from .models import PanelLogin
+from .models import PanelLogin, DeviceProfile
 from .useragent import parse_user_agent
 from .services import SERVICES, services_list, CATEGORIES, categories_list, SAFESEARCH_ENGINES
 from .upstream_test import test_upstream
@@ -148,7 +151,7 @@ def setup(request):
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
         if not username or len(password) < 8:
-            error = 'Kullanıcı adı gerekli ve parola en az 8 karakter olmalı.'
+            error = _('Kullanıcı adı gerekli ve parola en az 8 karakter olmalı.')
         else:
             user = User.objects.create_superuser(username=username, password=password)
             auth_login(request, user)
@@ -157,8 +160,8 @@ def setup(request):
             _record_panel_login(request, user.username)
             return redirect('dashboard:logs')
     return render(request, 'dashboard/login.html', {
-        'mode_title': 'Kurulum', 'submit': 'Sahip hesabını oluştur',
-        'hint': 'İlk açılış — panel sahibi hesabını oluştur.',
+        'mode_title': _('Kurulum'), 'submit': _('Sahip hesabını oluştur'),
+        'hint': _('İlk açılış — panel sahibi hesabını oluştur.'),
         'pw_autocomplete': 'new-password', 'error': error, 'username': username,
     })
 
@@ -171,14 +174,14 @@ def login_view(request):
         ip = _client_ip(request)
         if _login_locked(ip):
             logger.warning('giriş kilitli (çok deneme): ip=%s', ip)
-            error = 'Çok fazla başarısız deneme. Lütfen bir süre sonra tekrar deneyin.'
+            error = _('Çok fazla başarısız deneme. Lütfen bir süre sonra tekrar deneyin.')
         else:
             username = request.POST.get('username', '').strip()
             user = authenticate(request, username=username, password=request.POST.get('password', ''))
             if user is not None and not user.is_superuser:
                 # Panel YALNIZ yoneticilere: parola dogru ama yetkisiz → kilit sayaci ARTMAZ.
                 logger.warning('yonetici olmayan giris denemesi: kullanici=%s ip=%s', username, ip)
-                error = 'Bu panele yalnızca yöneticiler erişebilir.'
+                error = _('Bu panele yalnızca yöneticiler erişebilir.')
             elif user is not None:
                 _login_reset(ip)
                 auth_login(request, user)
@@ -194,9 +197,9 @@ def login_view(request):
             else:
                 _login_note_fail(ip)
                 logger.warning('başarısız panel girişi: ip=%s', ip)
-                error = 'Kullanıcı adı veya parola hatalı.'
+                error = _('Kullanıcı adı veya parola hatalı.')
     return render(request, 'dashboard/login.html', {
-        'mode_title': 'Giriş', 'submit': 'Giriş yap', 'hint': 'Panele erişmek için giriş yap.',
+        'mode_title': _('Giriş'), 'submit': _('Giriş yap'), 'hint': _('Panele erişmek için giriş yap.'),
         'pw_autocomplete': 'current-password', 'error': error, 'username': username,
     })
 
@@ -755,6 +758,76 @@ def devices(request):
         unique_ips=PanelLogin.objects.exclude(ip='').values('ip').distinct().count(),
     )
     return render(request, 'dashboard/devices.html', context)
+
+
+def device_record(request):
+    """AJAX: her sayfa açılışında JS'in gönderdiği cihaz fingerprint'ini DEDUP'layarak
+    kaydeder. Aynı cihaz (fp_hash = IP + UA + fingerprint alanları) zaten varsa YENİSİ
+    yazılmaz; yalnız last_seen/hits güncellenir. Yalnız girişli oturum."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'method'}, status=405)
+    if not request.session.get('_auth_user_id'):
+        return JsonResponse({'error': 'auth'}, status=403)
+    try:
+        data = json.loads((request.body or b'').decode('utf-8') or '{}')
+    except (ValueError, UnicodeDecodeError):
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+
+    ip = _client_ip(request)
+    ua = (request.META.get('HTTP_USER_AGENT', '') or '')[:1000]
+    parsed = parse_user_agent(ua)
+
+    def s(key, n):
+        v = data.get(key, '')
+        return ('' if v is None else str(v))[:n]
+
+    f = dict(
+        screen=s('screen', 40), viewport=s('viewport', 40), timezone=s('timezone', 64),
+        platform=s('platform', 64), languages=s('languages', 128), color_depth=s('colorDepth', 8),
+        cpu=s('cpu', 8), memory=s('memory', 8), gpu=s('gpu', 200), canvas_hash=s('canvas', 64),
+    )
+    touch = bool(data.get('touch'))
+
+    key = '|'.join([ip, ua, f['screen'], f['timezone'], f['platform'], f['gpu'],
+                    f['languages'], f['color_depth'], f['cpu'], f['memory'], f['canvas_hash']])
+    fp_hash = hashlib.sha256(key.encode('utf-8', 'ignore')).hexdigest()
+
+    now = datetime.now(timezone.utc)
+    username = request.session.get('panel_username', '')
+    try:
+        obj, created = DeviceProfile.objects.get_or_create(
+            fp_hash=fp_hash,
+            defaults=dict(ip=ip, user_agent=ua, browser=parsed['browser'], os=parsed['os'],
+                          device=parsed['device'], touch=touch, username=username,
+                          extra=json.dumps(data)[:4000], last_seen=now, hits=1, **f),
+        )
+        if not created:
+            DeviceProfile.objects.filter(pk=obj.pk).update(
+                last_seen=now, hits=F('hits') + 1, ip=ip, username=username,
+                viewport=f['viewport'])
+    except Exception:   # noqa: BLE001 — kayıt sayfayı bozmasın
+        logger.exception('cihaz fingerprint kaydi yazilamadi')
+        return JsonResponse({'ok': False}, status=200)
+    return JsonResponse({'ok': True, 'new': created})
+
+
+def device_details(request):
+    """Cihaz Özellikleri: panele erişen benzersiz cihazlar + tam fingerprint
+    (son görülene göre = 'son giriş yapılan yerler'). Yalnız yöneticiye."""
+    uid = request.session.get('_auth_user_id')
+    if not uid:
+        return redirect(f"{reverse('dashboard:login')}?next={request.path}")
+    if not User.objects.filter(id=uid, is_superuser=True).exists():
+        return redirect('dashboard:logs')
+    devs = list(DeviceProfile.objects.order_by('-last_seen')[:200].values(
+        'ip', 'browser', 'os', 'device', 'screen', 'viewport', 'timezone', 'platform',
+        'languages', 'color_depth', 'cpu', 'memory', 'gpu', 'touch', 'canvas_hash',
+        'username', 'first_seen', 'last_seen', 'hits', 'user_agent'))
+    context = _base_ctx(request, 'device_details')
+    context.update(devices=devs, total=DeviceProfile.objects.count())
+    return render(request, 'dashboard/device_details.html', context)
 
 
 # --------------------------------------------------------------------------- #

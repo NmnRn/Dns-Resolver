@@ -1,0 +1,299 @@
+# DNS Panel — English translation.
+# Copyright (C) 2026.
+# This file is distributed under the same license as the project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: dns-panel\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-17 21:30+0000\n"
+"PO-Revision-Date: 2026-08-18 00:00+0000\n"
+"Last-Translator: NmnRn\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: dashboard/templates/dashboard/base.html:21
+msgid "Genel Bakış"
+msgstr "Overview"
+
+#: dashboard/templates/dashboard/base.html:22
+msgid "Sorgu Geçmişi"
+msgstr "Query History"
+
+#: dashboard/templates/dashboard/base.html:23
+msgid "Analiz"
+msgstr "Analytics"
+
+#: dashboard/templates/dashboard/base.html:25
+msgid "DNS Ayarları"
+msgstr "DNS Settings"
+
+#: dashboard/templates/dashboard/base.html:27
+msgid "Genel"
+msgstr "General"
+
+#: dashboard/templates/dashboard/base.html:28
+msgid "Sorgu Ayarları"
+msgstr "Query Settings"
+
+#: dashboard/templates/dashboard/base.html:29
+msgid "Sunucular"
+msgstr "Servers"
+
+#: dashboard/templates/dashboard/base.html:30
+msgid "Filtreler"
+msgstr "Filters"
+
+#: dashboard/templates/dashboard/base.html:31
+msgid "Sertifika"
+msgstr "Certificate"
+
+#: dashboard/templates/dashboard/base.html:32
+#: dashboard/templates/dashboard/devices.html:3
+#: dashboard/templates/dashboard/devices.html:6
+msgid "Cihazlar"
+msgstr "Devices"
+
+#: dashboard/templates/dashboard/base.html:33
+#: dashboard/templates/dashboard/device_details.html:3
+#: dashboard/templates/dashboard/device_details.html:6
+msgid "Cihaz Özellikleri"
+msgstr "Device Properties"
+
+#: dashboard/templates/dashboard/base.html:36
+msgid "Kullanıcılar"
+msgstr "Users"
+
+#: dashboard/templates/dashboard/base.html:37 dashboard/views.py:163
+msgid "Kurulum"
+msgstr "Setup"
+
+#: dashboard/templates/dashboard/base.html:42
+msgid "Dil"
+msgstr "Language"
+
+#: dashboard/templates/dashboard/base.html:47
+msgid "Tema değiştir"
+msgstr "Toggle theme"
+
+#: dashboard/templates/dashboard/base.html:47
+msgid "Açık / koyu tema"
+msgstr "Light / dark theme"
+
+#: dashboard/templates/dashboard/base.html:48
+msgid "Çıkış"
+msgstr "Log out"
+
+#: dashboard/templates/dashboard/device_details.html:7
+#, python-format
+msgid ""
+"Panele erişen <b>benzersiz cihazlar</b> — her sayfa açılışında tarayıcı "
+"fingerprint'i toplanır ve <b>tekilleştirilir</b> (aynı cihaz tekrar "
+"yazılmaz, yalnız son görülme güncellenir). Son görülene göre sıralı = <b>son "
+"giriş yapılan yerler</b>. Toplam: %(total)s cihaz."
+msgstr ""
+"<b>Unique devices</b> that accessed the panel — a browser fingerprint is "
+"collected on every page load and <b>deduplicated</b> (the same device is not "
+"stored again, only last-seen is updated). Sorted by last seen = <b>recent "
+"access locations</b>. Total: %(total)s devices."
+
+#: dashboard/templates/dashboard/device_details.html:18
+msgid "Görülme sayısı"
+msgstr "Times seen"
+
+#: dashboard/templates/dashboard/device_details.html:21
+msgid "Ekran"
+msgstr "Screen"
+
+#: dashboard/templates/dashboard/device_details.html:22
+msgid "Görünüm (viewport)"
+msgstr "Viewport"
+
+#: dashboard/templates/dashboard/device_details.html:23
+msgid "Saat dilimi"
+msgstr "Timezone"
+
+#: dashboard/templates/dashboard/device_details.html:24
+msgid "Platform"
+msgstr "Platform"
+
+#: dashboard/templates/dashboard/device_details.html:25
+msgid "Diller"
+msgstr "Languages"
+
+#: dashboard/templates/dashboard/device_details.html:26
+msgid "Renk derinliği"
+msgstr "Color depth"
+
+#: dashboard/templates/dashboard/device_details.html:27
+msgid "CPU çekirdek"
+msgstr "CPU cores"
+
+#: dashboard/templates/dashboard/device_details.html:28
+msgid "Bellek (GB)"
+msgstr "Memory (GB)"
+
+#: dashboard/templates/dashboard/device_details.html:29
+msgid "GPU (WebGL)"
+msgstr "GPU (WebGL)"
+
+#: dashboard/templates/dashboard/device_details.html:30
+msgid "evet,hayır"
+msgstr "yes,no"
+
+#: dashboard/templates/dashboard/device_details.html:30
+msgid "Dokunmatik"
+msgstr "Touch"
+
+#: dashboard/templates/dashboard/device_details.html:31
+msgid "Canvas fp"
+msgstr "Canvas fp"
+
+#: dashboard/templates/dashboard/device_details.html:32
+#: dashboard/templates/dashboard/devices.html:19
+msgid "Kullanıcı"
+msgstr "User"
+
+#: dashboard/templates/dashboard/device_details.html:33
+msgid "İlk görülme"
+msgstr "First seen"
+
+#: dashboard/templates/dashboard/device_details.html:34
+#: dashboard/templates/dashboard/devices.html:19
+msgid "User-Agent"
+msgstr "User-Agent"
+
+#: dashboard/templates/dashboard/device_details.html:38
+msgid ""
+"Henüz cihaz kaydı yok — bir sayfa aç (fingerprint arka planda toplanır)."
+msgstr ""
+"No device records yet — open a page (the fingerprint is collected in the "
+"background)."
+
+#: dashboard/templates/dashboard/device_details.html:43
+msgid ""
+"Fingerprint verileri tarayıcı tarafından <b>bildirilir</b> (JS ile toplanır) "
+"ve <b>taklit edilebilir</b>; kesin donanım kimliği değildir. Panel yalnız "
+"yönetici erişimlidir."
+msgstr ""
+"Fingerprint data is <b>reported by the browser</b> (collected via JS) and "
+"<b>can be spoofed</b>; it is not a definitive hardware identity. The panel is "
+"admin-only."
+
+#: dashboard/templates/dashboard/devices.html:7
+#, python-format
+msgid ""
+"Web <b>panele giriş yapan</b> cihazların denetim kaydı — başarılı her "
+"girişte IP, tarayıcı ve işletim sistemi kaydedilir (en yeni %(n)s kayıt "
+"gösterilir)."
+msgid_plural ""
+"Web <b>panele giriş yapan</b> cihazların denetim kaydı — başarılı her "
+"girişte IP, tarayıcı ve işletim sistemi kaydedilir (en yeni %(n)s kayıt "
+"gösterilir)."
+msgstr[0] ""
+"Audit log of devices that <b>logged into the panel</b> — on each successful "
+"login the IP, browser and OS are recorded (showing the %(n)s most recent "
+"record)."
+msgstr[1] ""
+"Audit log of devices that <b>logged into the panel</b> — on each successful "
+"login the IP, browser and OS are recorded (showing the %(n)s most recent "
+"records)."
+
+#: dashboard/templates/dashboard/devices.html:10
+msgid "Toplam giriş"
+msgstr "Total logins"
+
+#: dashboard/templates/dashboard/devices.html:11
+msgid "Benzersiz IP"
+msgstr "Unique IPs"
+
+#: dashboard/templates/dashboard/devices.html:18
+msgid "Zaman"
+msgstr "Time"
+
+#: dashboard/templates/dashboard/devices.html:18
+msgid "yerel"
+msgstr "local"
+
+#: dashboard/templates/dashboard/devices.html:19
+msgid "IP"
+msgstr "IP"
+
+#: dashboard/templates/dashboard/devices.html:19
+msgid "Tarayıcı"
+msgstr "Browser"
+
+#: dashboard/templates/dashboard/devices.html:19
+msgid "OS"
+msgstr "OS"
+
+#: dashboard/templates/dashboard/devices.html:19
+msgid "Cihaz"
+msgstr "Device"
+
+#: dashboard/templates/dashboard/devices.html:33
+msgid "Henüz giriş kaydı yok."
+msgstr "No login records yet."
+
+#: dashboard/templates/dashboard/devices.html:41
+msgid "Ne kadarını görebiliriz?"
+msgstr "How much can we see?"
+
+#: dashboard/templates/dashboard/devices.html:41
+msgid ""
+"HTTP yalnızca <b>IP adresi</b> + <b>User-Agent</b> verir; tarayıcı/OS/cihaz "
+"bu metinden çıkarılır ve <b>istemci tarafından bildirilir</b> (taklit "
+"edilebilir). Gerçek bir donanım fingerprint'i sunucu tarafında mümkün "
+"değildir."
+msgstr ""
+"HTTP only provides the <b>IP address</b> + <b>User-Agent</b>; browser/OS/"
+"device are inferred from that text and <b>reported by the client</b> (can be "
+"spoofed). A true hardware fingerprint is not possible server-side."
+
+#: dashboard/templates/dashboard/login.html:17
+msgid "Kullanıcı adı"
+msgstr "Username"
+
+#: dashboard/templates/dashboard/login.html:19
+msgid "Parola"
+msgstr "Password"
+
+#: dashboard/views.py:154
+msgid "Kullanıcı adı gerekli ve parola en az 8 karakter olmalı."
+msgstr "Username is required and the password must be at least 8 characters."
+
+#: dashboard/views.py:163
+msgid "Sahip hesabını oluştur"
+msgstr "Create owner account"
+
+#: dashboard/views.py:164
+msgid "İlk açılış — panel sahibi hesabını oluştur."
+msgstr "First run — create the panel owner account."
+
+#: dashboard/views.py:177
+msgid "Çok fazla başarısız deneme. Lütfen bir süre sonra tekrar deneyin."
+msgstr "Too many failed attempts. Please try again later."
+
+#: dashboard/views.py:184
+msgid "Bu panele yalnızca yöneticiler erişebilir."
+msgstr "Only administrators can access this panel."
+
+#: dashboard/views.py:200
+msgid "Kullanıcı adı veya parola hatalı."
+msgstr "Incorrect username or password."
+
+#: dashboard/views.py:202
+msgid "Giriş"
+msgstr "Log in"
+
+#: dashboard/views.py:202
+msgid "Giriş yap"
+msgstr "Log in"
+
+#: dashboard/views.py:202
+msgid "Panele erişmek için giriş yap."
+msgstr "Log in to access the panel."

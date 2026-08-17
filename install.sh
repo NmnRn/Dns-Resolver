@@ -35,6 +35,19 @@ DB_PORT="3306"
 info() { echo -e "\e[1;34m[BILGI]\e[0m $*"; }
 hata() { echo -e "\e[1;31m[HATA]\e[0m $*" >&2; exit 1; }
 
+# Dil / Language: INSTALL_LANG=en|tr ; verilmezse /dev/tty'den sorar (curl|bash'te
+# bile calisir); tty yoksa (tam otomasyon) varsayilan Turkce. Ayrintili adim
+# loglari Turkce kalir; interaktif ayar sihirbazi (setup.sh) tamamen iki dillidir.
+L_I="${INSTALL_LANG:-}"
+if [ -z "$L_I" ]; then
+    if { printf 'Language / Dil [1=English, 2=Turkce] (default 2): ' > /dev/tty; read -r _li < /dev/tty; } 2>/dev/null; then
+        case "$_li" in 1|en|EN|english|English) L_I=en ;; *) L_I=tr ;; esac
+    else
+        L_I=tr
+    fi
+fi
+[ "$L_I" = en ] || L_I=tr
+
 # Evet/hayır sorusu; varsayılan HAYIR. "curl | bash" akışında stdin betiğin
 # kendisi olduğundan soruyu /dev/tty'den okur; tty yoksa (ör. otomasyon)
 # soru sormadan varsayılanla devam eder.
@@ -317,12 +330,24 @@ fi  # SKIP_MARIADB bloğu sonu
 #        devret ki setup.sh / .env düzenleme / git pull sudo'suz çalışsın.
 if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
     chown -R "$SUDO_USER":"$(id -gn "$SUDO_USER" 2>/dev/null || echo "$SUDO_USER")" "$INSTALL_DIR"
-    info "Klasör sahibi '$SUDO_USER' yapıldı (sudo'suz düzenleyebilirsin)."
-    echo "    Docker'ı sudo'suz kullanmak istersen: sudo usermod -aG docker $SUDO_USER  (sonra yeniden giriş)"
+    if [ "$L_I" = en ]; then
+        info "Folder owner set to '$SUDO_USER' (you can edit without sudo)."
+        echo "    To use Docker without sudo: sudo usermod -aG docker $SUDO_USER  (then re-login)"
+    else
+        info "Klasör sahibi '$SUDO_USER' yapıldı (sudo'suz düzenleyebilirsin)."
+        echo "    Docker'ı sudo'suz kullanmak istersen: sudo usermod -aG docker $SUDO_USER  (sonra yeniden giriş)"
+    fi
 fi
 
 echo
-info "Kurulum tamamlandı. Sonraki adımlar:"
-echo "    cd $INSTALL_DIR"
-echo "    ./setup.sh                     # sunucu ayarları (.env) sihirbazı"
-echo "    docker compose up -d --build   # çözümleyiciyi başlat"
+if [ "$L_I" = en ]; then
+    info "Installation complete. Next steps:"
+    echo "    cd $INSTALL_DIR"
+    echo "    sudo ./setup.sh                # server settings (.env) wizard — asks language, can start & print the URL"
+    echo "    sudo docker compose up -d --build   # start the resolver (if you didn't start it in setup.sh)"
+else
+    info "Kurulum tamamlandı. Sonraki adımlar:"
+    echo "    cd $INSTALL_DIR"
+    echo "    sudo ./setup.sh                # sunucu ayarları (.env) sihirbazı — dil sorar, başlatıp URL'i yazar"
+    echo "    sudo docker compose up -d --build   # çözümleyiciyi başlat (setup.sh'te başlatmadıysan)"
+fi

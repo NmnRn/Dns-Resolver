@@ -1,9 +1,10 @@
-{% load static %}<!DOCTYPE html>
-<html lang="tr">
+{% load static i18n %}{% get_current_language as CUR_LANG %}<!DOCTYPE html>
+<html lang="{{ CUR_LANG }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}DNS Panel{% endblock %}</title>
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <link rel="icon" type="image/png" href="{% static 'dashboard/img/logo.png' %}?v={{ static_v }}">
     <script>/* Tema: FOUC önle — CSS'ten önce data-theme'i kur */
     (function(){try{var t=localStorage.getItem('theme');if(!t){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
@@ -17,26 +18,34 @@
         <div class="topbar-in">
             <div class="brand"><img class="brand-logo" src="{% static 'dashboard/img/logo.png' %}?v={{ static_v }}" alt="" width="26" height="21">dns.panel</div>
             <nav>
-                <a href="{% url 'dashboard:logs' %}" class="{% if active == 'logs' %}active{% endif %}">Genel Bakış</a>
-                <a href="{% url 'dashboard:queries' %}" class="{% if active == 'queries' %}active{% endif %}">Sorgu Geçmişi</a>
-                <a href="{% url 'dashboard:analytics' %}" class="{% if active == 'analytics' %}active{% endif %}">Analiz</a>
+                <a href="{% url 'dashboard:logs' %}" class="{% if active == 'logs' %}active{% endif %}">{% trans "Genel Bakış" %}</a>
+                <a href="{% url 'dashboard:queries' %}" class="{% if active == 'queries' %}active{% endif %}">{% trans "Sorgu Geçmişi" %}</a>
+                <a href="{% url 'dashboard:analytics' %}" class="{% if active == 'analytics' %}active{% endif %}">{% trans "Analiz" %}</a>
                 <div class="navdd">
-                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' or active == 'devices' %}active{% endif %}">DNS Ayarları ▾</button>
+                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' or active == 'devices' or active == 'device_details' %}active{% endif %}">{% trans "DNS Ayarları" %} ▾</button>
                     <div class="ddmenu">
-                        <a href="{% url 'dashboard:settings' %}">Genel</a>
-                        <a href="{% url 'dashboard:query_settings' %}">Sorgu Ayarları</a>
-                        <a href="{% url 'dashboard:servers' %}">Sunucular</a>
-                        <a href="{% url 'dashboard:filters' %}">Filtreler</a>
-                        <a href="{% url 'dashboard:certificate' %}">Sertifika</a>
-                        {% if is_admin %}<a href="{% url 'dashboard:devices' %}">Cihazlar</a>{% endif %}
+                        <a href="{% url 'dashboard:settings' %}">{% trans "Genel" %}</a>
+                        <a href="{% url 'dashboard:query_settings' %}">{% trans "Sorgu Ayarları" %}</a>
+                        <a href="{% url 'dashboard:servers' %}">{% trans "Sunucular" %}</a>
+                        <a href="{% url 'dashboard:filters' %}">{% trans "Filtreler" %}</a>
+                        <a href="{% url 'dashboard:certificate' %}">{% trans "Sertifika" %}</a>
+                        {% if is_admin %}<a href="{% url 'dashboard:devices' %}">{% trans "Cihazlar" %}</a>{% endif %}
+                        {% if is_admin %}<a href="{% url 'dashboard:device_details' %}">{% trans "Cihaz Özellikleri" %}</a>{% endif %}
                     </div>
                 </div>
-                {% if is_admin %}<a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">Kullanıcılar</a>{% endif %}
-                <a href="{% url 'dashboard:guide' %}" class="{% if active == 'guide' %}active{% endif %}">Kurulum</a>
+                {% if is_admin %}<a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">{% trans "Kullanıcılar" %}</a>{% endif %}
+                <a href="{% url 'dashboard:guide' %}" class="{% if active == 'guide' %}active{% endif %}">{% trans "Kurulum" %}</a>
             </nav>
             <div class="user">
-                <button type="button" class="themebtn" id="theme-toggle" data-no-ajax aria-label="Tema değiştir" title="Açık / koyu tema">🌙</button>
-                <span>{{ panel_username }} · <a href="{% url 'dashboard:logout' %}" data-no-ajax>Çıkış</a></span>
+                <form action="{% url 'set_language' %}" method="post" class="langform" data-no-ajax>
+                    {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+                    <select name="language" onchange="this.form.submit()" aria-label="{% trans 'Dil' %}">
+                        {% get_available_languages as LANGS %}
+                        {% for code, name in LANGS %}<option value="{{ code }}"{% if code == CUR_LANG %} selected{% endif %}>{{ name }}</option>{% endfor %}
+                    </select>
+                </form>
+                <button type="button" class="themebtn" id="theme-toggle" data-no-ajax aria-label="{% trans 'Tema değiştir' %}" title="{% trans 'Açık / koyu tema' %}">🌙</button>
+                <span>{{ panel_username }} · <a href="{% url 'dashboard:logout' %}" data-no-ajax>{% trans "Çıkış" %}</a></span>
             </div>
         </div>
     </header>
@@ -58,6 +67,43 @@
             icon();
             requestAnimationFrame(function(){ requestAnimationFrame(function(){ H.classList.remove('theme-anim-off'); }); });
         });
+    })();
+    </script>
+    <script>/* Cihaz fingerprint — her tam sayfa acilisinda topla + gonder (server dedup'lar) */
+    (function(){
+        if(!window.fetch) return;
+        var meta = document.querySelector('meta[name=csrf-token]');
+        if(!meta || !meta.content) return;                 // token yoksa (or. anonim) atla
+        function gpu(){ try{
+            var c=document.createElement('canvas'); var gl=c.getContext('webgl')||c.getContext('experimental-webgl');
+            if(!gl) return ''; var e=gl.getExtension('WEBGL_debug_renderer_info');
+            return e ? (gl.getParameter(e.UNMASKED_RENDERER_WEBGL)||'') : '';
+        }catch(e){ return ''; } }
+        function canvasHash(){ try{
+            var c=document.createElement('canvas'); c.width=200; c.height=40; var x=c.getContext('2d');
+            x.textBaseline='top'; x.font="14px 'Arial'"; x.fillStyle='#f60'; x.fillRect(0,0,100,20);
+            x.fillStyle='#069'; x.fillText('dns.panel fp ❤️',2,15);
+            var d=c.toDataURL(); var h=0; for(var i=0;i<d.length;i++){ h=(h*31 + d.charCodeAt(i))|0; }
+            return (h>>>0).toString(16);
+        }catch(e){ return ''; } }
+        try{
+            var fp = {
+                screen: screen.width+'x'+screen.height,
+                viewport: window.innerWidth+'x'+window.innerHeight,
+                timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone||''),
+                platform: navigator.platform||'',
+                languages: (navigator.languages||[]).join(','),
+                colorDepth: screen.colorDepth,
+                cpu: navigator.hardwareConcurrency||'',
+                memory: navigator.deviceMemory||'',
+                gpu: gpu(),
+                touch: ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0,
+                canvas: canvasHash()
+            };
+            fetch('{% url "dashboard:device_record" %}', { method:'POST', keepalive:true,
+                headers:{'Content-Type':'application/json','X-CSRFToken':meta.content,'X-Requested-With':'fetch'},
+                body: JSON.stringify(fp) }).catch(function(){});
+        }catch(e){}
     })();
     </script>
 </body>
