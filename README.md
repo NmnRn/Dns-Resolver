@@ -147,10 +147,21 @@ hiçbir DNS portu host'a açılmaz** — sadece dns-net iç ağı.
 
 ## Güncelleme
 
+> **`git pull` TEK BAŞINA YETMEZ.** Uygulama Docker **imajından** çalışır — kod değişikliğinin
+> etkin olması için imaj **yeniden derlenmeli** (`--build`). En kolayı `upgrade.sh`:
+
 ```bash
 cd /opt/DNS_RESOLVER
-./upgrade.sh        # depoyu çeker, imajı yeniden derler, override/.env korunur
+./upgrade.sh        # git reset origin/<dal> + imajı yeniden derler; .env/override/certificates KORUNUR
 ```
+
+Elle yapmak istersen:
+```bash
+git pull --ff-only               # 1) kodu çek
+docker compose up -d --build     # 2) imajı yeniden derle + başlat  ← BU ŞART
+```
+`upgrade.sh` çalışan daldan (`git rev-parse HEAD`) çeker; izlenmeyen dosyalarına (`.env`,
+`docker-compose.override.yml`, `certificates/`) dokunmaz.
 
 ## Geliştirme
 
