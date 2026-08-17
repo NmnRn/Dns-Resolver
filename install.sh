@@ -3,7 +3,7 @@
 # DNS Resolver kurulum betiği (Debian/Ubuntu; Arch tabanlılar da desteklenir)
 #
 # Kullanım (root olarak):
-#   curl -fsSL https://raw.githubusercontent.com/NmnRn/Dns-Resolver/main/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/NmnRn/Dns-Resolver/dns-python-website/install.sh | sudo bash
 #
 # MariaDB'yi betik yönetmesin, kendim yapılandıracağım dersen:
 #   curl -fsSL .../install.sh | sudo SKIP_MARIADB=1 bash
@@ -22,6 +22,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/NmnRn/Dns-Resolver.git"
+REPO_BRANCH="dns-python-website"   # panelli TAM surum (main = panelsiz/site-siz resolver)
 INSTALL_DIR="/opt/DNS_RESOLVER"
 DNS_NET_NAME="dns-net"
 DNS_NET_SUBNET="172.27.17.0/24"
@@ -93,11 +94,13 @@ docker info >/dev/null 2>&1 || \
 
 # --- 2) Depo: klonla veya güncelle --------------------------------------------
 if [ -d "$INSTALL_DIR/.git" ]; then
-    info "Depo zaten mevcut, güncelleniyor..."
-    git -C "$INSTALL_DIR" pull --ff-only
+    info "Depo zaten mevcut, güncelleniyor ($REPO_BRANCH)..."
+    git -C "$INSTALL_DIR" fetch origin "$REPO_BRANCH"
+    git -C "$INSTALL_DIR" checkout "$REPO_BRANCH"   # main'den geçişte de doğru dala al
+    git -C "$INSTALL_DIR" pull --ff-only origin "$REPO_BRANCH"
 else
-    info "Depo klonlanıyor: $INSTALL_DIR"
-    git clone "$REPO_URL" "$INSTALL_DIR"
+    info "Depo klonlanıyor ($REPO_BRANCH): $INSTALL_DIR"
+    git clone -b "$REPO_BRANCH" "$REPO_URL" "$INSTALL_DIR"
 fi
 cd "$INSTALL_DIR"
 

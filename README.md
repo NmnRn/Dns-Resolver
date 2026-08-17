@@ -4,6 +4,9 @@ Sıfırdan yazılmış, **recursive** (kök → TLD → yetkili sunucuları kend
 DNS çözümleyici + **web yönetim paneli**. AdGuard Home / Pi-hole tarzı reklam-izleyici
 engelleme, ama **UDP/TCP + DoH + DoT + DoQ** dört transportu ve modern bir Django paneliyle.
 
+> **Dal notu:** Bu dal (`dns-python-website`) **panelli TAM sürümdür**; `main` dalı panelsiz
+> (yalnız çözümleyici) sürümü tutar. Kurulum/güncelleme betikleri bu dalı kullanır.
+
 - **Çözümleme:** recursive (kendi çözer) *veya* forwarding (upstream'e iletir) — anlık seçilebilir
 - **Şifreli DNS:** DNS-over-HTTPS, DNS-over-TLS, DNS-over-QUIC (ortak sertifika)
 - **Engelleme:** hazır blocklist katalogu + özel liste + izin listesi + DNS rewrite + koşullu
@@ -53,7 +56,8 @@ Tek konteyner, iki süreç (`run_all.py` yönetir):
 
 ```bash
 # 1) Kurulum betiği: Docker + MariaDB + dns-net ağı + .env (DB) — root olarak
-curl -fsSL https://raw.githubusercontent.com/NmnRn/Dns-Resolver/main/install.sh | sudo bash
+#    (dns-python-website = panelli tam sürüm; main = panelsiz resolver)
+curl -fsSL https://raw.githubusercontent.com/NmnRn/Dns-Resolver/dns-python-website/install.sh | sudo bash
 
 # 2) Sunucu ayarları sihirbazı (.env: portlar, şifreli sunucular, güvenlik anahtarları)
 cd /opt/DNS_RESOLVER
