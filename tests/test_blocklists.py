@@ -5,6 +5,8 @@ domain-olmayan satırları elemeli, domainleri normalize + tekilleştirmeli.
 download_and_parse ağa çıkmadan (urlopen sahte) ve boyut sınırına uyarak test
 edilir.
 """
+import pytest
+
 import project_control.blocklists as bl
 from project_control.blocklists import parse_blocklist, download_and_parse, normalize_url
 
@@ -85,13 +87,39 @@ class _FakeResp:
 
 def test_download_and_parse(monkeypatch):
     resp = _FakeResp(b"0.0.0.0 ad.com\n||track.net^\n# yorum\n")
+    monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)   # SSRF ağ kontrolünü atla
     monkeypatch.setattr(bl.urllib.request, "urlopen", lambda req, timeout=None: resp)
     assert download_and_parse("http://x/list.txt") == {"ad.com", "track.net"}
 
 
 def test_download_respects_size_cap(monkeypatch):
     resp = _FakeResp(b"0.0.0.0 ad.com\n")
+    monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
     monkeypatch.setattr(bl.urllib.request, "urlopen", lambda req, timeout=None: resp)
     download_and_parse("http://x/list.txt")
     # read çağrısı en fazla _MAX_BYTES ister → sınırsız bellek tüketimi engellenir
     assert resp.read_n == bl._MAX_BYTES
+
+
+# --- SSRF: iç/metadata adresleri reddet, LAN + public izin ------------------
+def _fake_gai(ip):
+    """socket.getaddrinfo yerine tek IP döndüren sahte (ağa çıkmadan test)."""
+    return lambda host, port, **kw: [(2, 1, 6, "", (ip, port))]
+
+
+def test_assert_safe_url_blocks_internal(monkeypatch):
+    # loopback / link-local (bulut-metadata) / unspecified → RED
+    for bad in ("127.0.0.1", "169.254.169.254", "0.0.0.0"):
+        monkeypatch.setattr(bl.socket, "getaddrinfo", _fake_gai(bad))
+        with pytest.raises(ValueError):
+            bl._assert_safe_url("http://evil.example/x")
+    # http/https dışı şema → RED (getaddrinfo'ya bile gitmez)
+    with pytest.raises(ValueError):
+        bl._assert_safe_url("ftp://x/y")
+
+
+def test_assert_safe_url_allows_public_and_lan(monkeypatch):
+    monkeypatch.setattr(bl.socket, "getaddrinfo", _fake_gai("1.2.3.4"))
+    bl._assert_safe_url("https://ok.example/list.txt")     # public → raise YOK
+    monkeypatch.setattr(bl.socket, "getaddrinfo", _fake_gai("192.168.1.10"))
+    bl._assert_safe_url("http://lan.example/list.txt")     # özel LAN aynası → izin

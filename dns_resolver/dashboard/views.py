@@ -148,20 +148,25 @@ def login_view(request):
         else:
             username = request.POST.get('username', '').strip()
             user = authenticate(request, username=username, password=request.POST.get('password', ''))
-            if user is not None:
+            if user is not None and not user.is_superuser:
+                # Panel YALNIZ yoneticilere: parola dogru ama yetkisiz → kilit sayaci ARTMAZ.
+                logger.warning('yonetici olmayan giris denemesi: kullanici=%s ip=%s', username, ip)
+                error = 'Bu panele yalnızca yöneticiler erişebilir.'
+            elif user is not None:
                 _login_reset(ip)
                 auth_login(request, user)
                 request.session['panel_username'] = user.username
-                request.session['is_admin'] = user.is_superuser
+                request.session['is_admin'] = True
                 # Açık yönlendirme koruması: next YALNIZCA aynı-host/relatif ise izinli.
                 nxt = request.GET.get('next') or ''
                 if nxt and url_has_allowed_host_and_scheme(
                         nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
                     return redirect(nxt)
                 return redirect('dashboard:logs')
-            _login_note_fail(ip)
-            logger.warning('başarısız panel girişi: ip=%s', ip)
-            error = 'Kullanıcı adı veya parola hatalı.'
+            else:
+                _login_note_fail(ip)
+                logger.warning('başarısız panel girişi: ip=%s', ip)
+                error = 'Kullanıcı adı veya parola hatalı.'
     return render(request, 'dashboard/login.html', {
         'mode_title': 'Giriş', 'submit': 'Giriş yap', 'hint': 'Panele erişmek için giriş yap.',
         'pw_autocomplete': 'current-password', 'error': error, 'username': username,
@@ -174,9 +179,13 @@ def logout_view(request):
 
 
 def _gate(request):
-    """Async view'lar için ORM'siz oturum kontrolü; yoksa girişe yönlendirir."""
+    """Panel YALNIZ yöneticilere. Async view'lar için ORM'siz oturum kontrolü:
+    giriş yoksa login'e; giriş var ama yönetici değilse (is_admin bayrağı) çıkışa
+    yönlendirir (yetkisiz/eski oturumu temizler)."""
     if not request.session.get('_auth_user_id'):
         return redirect(f"{reverse('dashboard:login')}?next={request.path}")
+    if not request.session.get('is_admin'):
+        return redirect('dashboard:logout')
     return None
 
 
@@ -679,15 +688,15 @@ def users(request):
         if action == 'add':
             username = request.POST.get('username', '').strip()
             password = request.POST.get('password', '')
-            is_admin = request.POST.get('is_admin') == '1'
             if not username or len(password) < 8:
                 msg = ('error', 'Kullanıcı adı gerekli ve parola en az 8 karakter olmalı.')
             elif User.objects.filter(username=username).exists():
                 msg = ('error', f'"{username}" zaten var.')
             else:
+                # Tek rol: tüm panel kullanıcıları yönetici (is_superuser).
                 User.objects.create_user(username=username, password=password,
-                                         is_staff=is_admin, is_superuser=is_admin)
-                msg = ('ok', f'"{username}" eklendi.')
+                                         is_staff=True, is_superuser=True)
+                msg = ('ok', f'"{username}" eklendi (yönetici).')
         elif action == 'del':
             uid = request.POST.get('user_id', '')
             if str(request.session.get('_auth_user_id')) == str(uid):

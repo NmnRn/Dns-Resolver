@@ -4,7 +4,7 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/users.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <h1>Kullanıcılar</h1>
-    <p class="sub">Panele giriş yapabilen hesaplar. Yönetici tüm ayarları değiştirebilir; kullanıcı yalnız görüntüler.</p>
+    <p class="sub">Panele giriş yapabilen yönetici hesapları. Panel yalnızca yöneticilere açıktır — eklenen her hesap tam yetkilidir.</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
@@ -47,7 +47,7 @@
                 <input type="hidden" name="action" value="add">
                 <div class="ufield"><label>Kullanıcı adı</label><input type="text" name="username" autocomplete="off" spellcheck="false"></div>
                 <div class="ufield"><label>Parola</label><input type="password" name="password" autocomplete="new-password" placeholder="en az 8 karakter"></div>
-                <label class="chk"><input type="checkbox" name="is_admin" value="1" style="width:auto;"> Yönetici yetkisi ver</label>
+                <p class="sub" style="margin:0;font-size:12px;">Eklenen her hesap <b>yönetici</b> olur (panel yalnız yöneticilere açıktır).</p>
                 <button class="btn" type="submit">Oluştur</button>
             </form>
         </div>

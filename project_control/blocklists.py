@@ -9,8 +9,11 @@ formatlar:
   - adblock: `||reklam.com^`
 Yorumlar (`#`, `!`) ve domain olmayan satırlar atlanır.
 """
+import ipaddress
 import re
+import socket
 import urllib.request
+from urllib.parse import urlsplit
 
 _ADBLOCK = re.compile(r'^\|\|([a-z0-9.\-_]+)\^')
 _HOSTS_IPS = {"0.0.0.0", "127.0.0.1", "::", "::1"}
@@ -57,9 +60,32 @@ def parse_blocklist(text: str) -> set[str]:
     return domains
 
 
+def _assert_safe_url(url: str) -> None:
+    """SSRF önlemi: yalnız http/https ve host'un çözdüğü TÜM IP'ler iç/tehlikeli
+    olmamalı — loopback (127.x/::1), link-local (bulut-metadata 169.254.169.254),
+    unspecified, multicast, reserved reddedilir. Özel LAN (192.168/10/172.16) İZİNLİ
+    (yerel liste aynaları çalışsın diye)."""
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https"):
+        raise ValueError(f"desteklenmeyen şema: {parts.scheme!r}")
+    host = parts.hostname
+    if not host:
+        raise ValueError("URL'de host yok")
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    try:
+        infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as e:
+        raise ValueError(f"host çözülemedi: {host}") from e
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if ip.is_loopback or ip.is_link_local or ip.is_unspecified or ip.is_multicast or ip.is_reserved:
+            raise ValueError(f"engellenen iç adres (SSRF): {ip}")
+
+
 def download_and_parse(url: str, timeout: float = 30) -> set[str]:
     """URL'yi indirir (senkron; executor'da çağır) ve domain kümesi döndürür."""
     url = normalize_url(url)   # GitHub blob linki yapıştırıldıysa ham linke çevir
+    _assert_safe_url(url)      # SSRF: iç/metadata adreslerini reddet
     req = urllib.request.Request(url, headers={"User-Agent": "dns-resolver-blocklist/1.0"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = resp.read(_MAX_BYTES)
