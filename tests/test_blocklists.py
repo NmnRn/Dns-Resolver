@@ -123,3 +123,60 @@ def test_assert_safe_url_allows_public_and_lan(monkeypatch):
     bl._assert_safe_url("https://ok.example/list.txt")     # public → raise YOK
     monkeypatch.setattr(bl.socket, "getaddrinfo", _fake_gai("192.168.1.10"))
     bl._assert_safe_url("http://lan.example/list.txt")     # özel LAN aynası → izin
+
+
+# --- check_link: erişilebilirlik (listeyi indirmeden, HEAD/küçük-GET) -------
+class _Resp:
+    """urlopen bağlam-yöneticisi taklidi (status alanlı)."""
+    def __init__(self, status): self.status = status
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+def _http_error(code, reason="err"):
+    return bl.urllib.error.HTTPError("http://x", code, reason, {}, None)
+
+
+def test_check_link_ssrf_returns_error_not_raise(monkeypatch):
+    # SSRF iç adres → istisna FIRLATMAZ, {ok:False,warn:False} döner
+    monkeypatch.setattr(bl.socket, "getaddrinfo", _fake_gai("127.0.0.1"))
+    r = bl.check_link("http://evil.example/x")
+    assert r["ok"] is False and r["warn"] is False
+
+
+def test_check_link_ok_2xx(monkeypatch):
+    monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
+    monkeypatch.setattr(bl.urllib.request, "urlopen", lambda req, timeout=None: _Resp(200))
+    r = bl.check_link("https://ok.example/list.txt")
+    assert r["ok"] is True and r["status"] == 200
+
+
+def test_check_link_404_is_broken(monkeypatch):
+    monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
+    def _op(req, timeout=None): raise _http_error(404, "Not Found")
+    monkeypatch.setattr(bl.urllib.request, "urlopen", _op)
+    r = bl.check_link("https://x.example/gone.txt")
+    assert r["ok"] is False and r["warn"] is False and r["status"] == 404
+
+
+def test_check_link_429_is_warn(monkeypatch):
+    # GitHub raw HEAD'e 429 döndürebilir → kırık DEĞİL, uyarı
+    monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
+    def _op(req, timeout=None): raise _http_error(429, "Too Many Requests")
+    monkeypatch.setattr(bl.urllib.request, "urlopen", _op)
+    r = bl.check_link("https://raw.example/list.txt")
+    assert r["ok"] is False and r["warn"] is True and r["status"] == 429
+
+
+def test_check_link_head_403_falls_back_to_get(monkeypatch):
+    # HEAD 403 → GET'e düş; GET 200 → erişilebilir
+    monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
+    calls = []
+    def _op(req, timeout=None):
+        calls.append(req.get_method())
+        if req.get_method() == "HEAD":
+            raise _http_error(403, "Forbidden")
+        return _Resp(200)
+    monkeypatch.setattr(bl.urllib.request, "urlopen", _op)
+    r = bl.check_link("https://x.example/list.txt")
+    assert r["ok"] is True and "HEAD" in calls and "GET" in calls

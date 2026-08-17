@@ -10,6 +10,7 @@ urlpatterns = [
     path('gecmis/disa-aktar/', views.queries_export, name='queries_export'),
     path('sunucular/', views.servers, name='servers'),
     path('filtreler/', views.filters, name='filters'),
+    path('filtreler/link-kontrol/', views.check_sources_ajax, name='check_sources'),
     path('analiz/', views.analytics, name='analytics'),
     path('sertifika/', views.certificate, name='certificate'),
     path('domain/', views.guide, name='guide'),

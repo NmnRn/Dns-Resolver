@@ -68,6 +68,7 @@
             <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
                 <span>Eklenen Listeler — {{ source_count }} liste · {{ total_list_domains }} domain</span>
                 <span style="display:flex;gap:8px;">
+                    {% if sources %}<button type="button" id="checklinks" class="btn ghost" style="padding:6px 13px;font-size:12px;text-transform:none;">🔗 Linkleri kontrol et</button>{% endif %}
                     {% if sources %}<form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="source_refresh_all"><button type="submit" class="btn ghost" style="padding:6px 13px;font-size:12px;text-transform:none;">↻ Hepsini yenile</button></form>{% endif %}
                     <button type="button" class="btn" data-open="listmodal" style="padding:6px 13px;font-size:12px;text-transform:none;">+ Liste Ekle</button>
                 </span>
@@ -77,8 +78,8 @@
                     <thead><tr><th>Liste</th><th>Domain</th><th>Güncellendi <span class="muted" style="font-weight:400;">(yerel)</span></th><th>Açık</th><th></th></tr></thead>
                     <tbody>
                         {% for s in sources %}
-                        <tr>
-                            <td><b title="{{ s.name }}">{{ s.name|truncatechars:44 }}</b><br><span class="muted mono" style="font-size:11px;">{{ s.url|truncatechars:64 }}</span></td>
+                        <tr data-src-id="{{ s.id }}">
+                            <td><b title="{{ s.name }}">{{ s.name|truncatechars:44 }}</b> <span class="linkstat"></span><br><a class="srcurl" href="{{ s.url }}" target="_blank" rel="noopener noreferrer" title="{{ s.url }}" data-no-ajax>{{ s.url|truncatechars:64 }}</a></td>
                             <td class="num">{% if s.count %}{{ s.count }}{% elif s.updated_at %}<span class="lbadge err" title="İndirilemedi (0 domain) — URL kırık ya da erişilemiyor">indirilemedi</span>{% else %}<span class="lbadge" title="Henüz indirilmedi">bekliyor</span>{% endif %}</td>
                             <td class="muted num"><span class="lt" data-utc="{{ s.updated_at|date:'Y-m-d H:i:s' }}">{{ s.updated_at|date:"Y-m-d H:i:s"|default:"—" }}</span></td>
                             <td>
@@ -331,6 +332,37 @@
               })
               .catch(function(){ if(btn) btn.disabled = false;
                                  alert('Liste eklenemedi — bağlantıyı kontrol edin.'); });
+          });
+        })();
+
+        // --- "Linkleri kontrol et": eklenen liste URL'lerini erişilebilirlik için sına ---
+        (function(){
+          var btn = document.getElementById('checklinks');
+          if(!btn) return;
+          function setStat(s, cls, text, title){ s.className = 'linkstat' + (cls ? ' ' + cls : ''); s.textContent = text; s.title = title || ''; }
+          btn.addEventListener('click', function(){
+            if(!window.fetch) return;
+            document.querySelectorAll('tr[data-src-id] .linkstat').forEach(function(s){ setStat(s, 'wait', '…', 'kontrol ediliyor'); });
+            var orig = btn.textContent; btn.disabled = true; btn.textContent = 'Kontrol ediliyor…';
+            var tok = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            fetch('{% url "dashboard:check_sources" %}', {method:'POST', headers:{'X-CSRFToken':tok,'X-Requested-With':'fetch'}})
+              .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
+              .then(function(d){
+                var byId = {}; (d.results || []).forEach(function(x){ byId[x.id] = x; });
+                document.querySelectorAll('tr[data-src-id]').forEach(function(r){
+                  var s = r.querySelector('.linkstat'); if(!s) return;
+                  var res = byId[r.getAttribute('data-src-id')];
+                  if(!res){ setStat(s, '', '', ''); return; }
+                  if(res.ok) setStat(s, 'ok', '✓', 'Erişilebilir' + (res.status ? ' (HTTP ' + res.status + ')' : ''));
+                  else if(res.warn) setStat(s, 'warn', '⚠', res.detail || 'erişildi, içerik alınamadı');
+                  else setStat(s, 'err', '✗', res.detail || 'erişilemedi');
+                });
+              })
+              .catch(function(){
+                document.querySelectorAll('tr[data-src-id] .linkstat').forEach(function(s){ setStat(s, '', '', ''); });
+                alert('Link kontrolü başarısız — oturum/bağlantıyı kontrol edin.');
+              })
+              .then(function(){ btn.disabled = false; btn.textContent = orig; });
           });
         })();
         </script>

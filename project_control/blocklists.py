@@ -12,6 +12,7 @@ Yorumlar (`#`, `!`) ve domain olmayan satırlar atlanır.
 import ipaddress
 import re
 import socket
+import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
@@ -90,3 +91,52 @@ def download_and_parse(url: str, timeout: float = 30) -> set[str]:
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = resp.read(_MAX_BYTES)
     return parse_blocklist(data.decode("utf-8", errors="ignore"))
+
+
+def check_link(url: str, timeout: float = 12) -> dict:
+    """URL erişilebilir mi — hafif kontrol (listeyi İNDİRMEDEN). Önce HEAD
+    dener; HEAD kapalıysa (400/403/405/501) 1 baytlık Range'li GET'e düşer.
+    Üç durum döndürür (senkron; asyncio.to_thread ile çağır):
+      ok=True                → 2xx/3xx, erişilebilir (✓)
+      ok=False, warn=True    → 401/403/429/5xx: sunucu yanıt verdi ama içerik
+                               alınamadı (throttle/blok/geçici) — link muhtemelen
+                               sağlam (⚠). GitHub raw HEAD'e 429 döndürebilir.
+      ok=False, warn=False   → 404/410 (liste yok) veya DNS/bağlantı hatası (✗)
+    {'ok', 'warn', 'status', 'detail'} döndürür."""
+    try:
+        url = normalize_url(url)   # GitHub blob → raw
+        _assert_safe_url(url)      # SSRF: iç/metadata adresleri reddet
+    except ValueError as e:
+        return {"ok": False, "warn": False, "status": None, "detail": str(e)}
+
+    def _classify(code: int, reason: str) -> dict:
+        if code in (404, 410):
+            return {"ok": False, "warn": False, "status": code,
+                    "detail": f"HTTP {code} — liste bulunamadı"}
+        return {"ok": False, "warn": True, "status": code,
+                "detail": f"HTTP {code} {reason} — erişildi, içerik alınamadı"}
+
+    def _try(method: str) -> dict:
+        req = urllib.request.Request(
+            url, method=method,
+            headers={"User-Agent": "dns-resolver-blocklist/1.0", "Range": "bytes=0-0"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            code = getattr(resp, "status", None) or resp.getcode()
+            return {"ok": True, "warn": False, "status": code, "detail": "erişilebilir"}
+
+    try:
+        return _try("HEAD")
+    except urllib.error.HTTPError as e:
+        if e.code in (400, 403, 405, 501):   # HEAD desteklenmiyor olabilir → GET
+            try:
+                return _try("GET")
+            except urllib.error.HTTPError as e2:
+                return _classify(e2.code, e2.reason)
+            except Exception as e2:  # noqa: BLE001
+                return {"ok": False, "warn": False, "status": None, "detail": f"erişilemedi: {e2}"}
+        return _classify(e.code, e.reason)
+    except urllib.error.URLError as e:
+        return {"ok": False, "warn": False, "status": None, "detail": f"erişilemedi: {e.reason}"}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "warn": False, "status": None, "detail": f"erişilemedi: {e}"}

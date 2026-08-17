@@ -27,7 +27,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from project_control.blocklists import normalize_url
+from project_control.blocklists import normalize_url, check_link
 from . import db
 from .catalog import catalog_grouped
 from .services import SERVICES, services_list, CATEGORIES, categories_list, SAFESEARCH_ENGINES
@@ -900,6 +900,27 @@ async def test_upstreams_ajax(request):
         return JsonResponse({'results': []})
     ups = ups[:20]   # üst sınır (uzun bekleme / kötüye kullanım önle)
     results = list(await asyncio.gather(*[asyncio.to_thread(test_upstream, u) for u in ups]))
+    return JsonResponse({'results': results})
+
+
+async def check_sources_ajax(request):
+    """AJAX: eklenen liste URL'lerinin erişilebilirliğini kontrol et → JSON.
+    Listeleri İNDİRMEZ; her URL'ye HEAD (gerekirse küçük GET) atar. Sayfa
+    yenilenmez; sonuç satır satır işaretlenir."""
+    if not request.session.get('is_admin'):
+        return JsonResponse({'error': 'auth'}, status=403)
+    try:
+        sources = await db.get_sources()
+    except Exception:  # noqa: BLE001
+        return JsonResponse({'error': 'db'}, status=500)
+    sources = sources[:80]   # üst sınır
+    checks = await asyncio.gather(
+        *[asyncio.to_thread(check_link, s['url']) for s in sources]
+    )
+    results = [
+        {'id': s['id'], 'name': s['name'], 'url': s['url'], **c}
+        for s, c in zip(sources, checks)
+    ]
     return JsonResponse({'results': results})
 
 
