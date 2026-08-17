@@ -14,3 +14,5 @@ certificates/*.crt
 dns_resolver/staticfiles/
 *.sqlite3
 secret_key.txt
+pending.json
+design/
