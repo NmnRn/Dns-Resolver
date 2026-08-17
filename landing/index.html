@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Kendi DNS çözücün — Reklamları engelle, sorguları kendin çöz</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#141414; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ font-size: min(calc(95vw / 1374), calc(94vh / 666)); }
+  body{
+    font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    color:var(--ink); background:#f0f0f0;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; min-height:100dvh; overflow:hidden;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+
+  /* ===== STAGE ===== */
+  .stage{
+    width:1374rem; height:666rem; display:grid;
+    grid-template-columns:339rem 627rem 388rem;
+    grid-template-rows:149rem 343rem 156rem;
+    column-gap:10rem; row-gap:9rem;
+  }
+  .card{
+    border-radius:22rem; border:1.6rem solid rgba(255,255,255,.92);
+    overflow:hidden; box-shadow:0 2rem 16rem rgba(24,30,45,.05); position:relative;
+  }
+  .notif   { grid-column:1; grid-row:1; }
+  .connect { grid-column:1; grid-row:2 / span 2; }
+  .automate{ grid-column:2; grid-row:1 / span 2; }
+  .insights{ grid-column:3; grid-row:1 / span 2; }
+  .search  { grid-column:2 / span 2; grid-row:3; }
+
+  /* ===== CARD 1 · NOTIF (engelleme) ===== */
+  .notif{
+    background:
+      radial-gradient(120% 140% at 92% 100%, rgba(255,231,241,.95) 0%, rgba(255,231,241,0) 62%),
+      linear-gradient(135deg,#f9d7e4 0%,#fbdcea 55%,#fce4f0 100%);
+    padding:37rem 12rem 0 11rem;
+  }
+  .toast-wrap{ position:relative; height:70rem; }
+  .toast-ledge{
+    position:absolute; left:24rem; right:20rem; top:55rem; height:23rem; border-radius:14rem;
+    background:linear-gradient(100deg,#e6e6e6 0%,#e6e3e2 42%,#e5d6d6 74%,#e4cdcf 100%);
+    box-shadow:0 3rem 9rem rgba(120,80,100,.09);
+  }
+  .toast{
+    position:absolute; inset:0; height:70rem; border-radius:16rem;
+    background:linear-gradient(105deg,#ffffff 34%,#fdeef4 78%,#fce8f0 100%);
+    box-shadow:0 3rem 10rem rgba(122,86,106,.10);
+    display:flex; align-items:center; gap:11rem; padding:0 12rem 0 13rem;
+  }
+  .toast .txt{ flex:1; }
+  .toast .t-title{ font-size:11.2rem; font-weight:800; letter-spacing:-.012em; line-height:1.1; color:#0d0d0d; }
+  .toast .t-sub{ font-size:10rem; font-weight:400; line-height:1.28; letter-spacing:-.005em; color:#2b2b2b; max-width:118rem; margin-top:3.6rem; }
+  .toast .t-time{ font-size:7.4rem; font-weight:500; color:#8b8489; align-self:flex-start; margin-top:12rem; letter-spacing:.005em; }
+
+  /* ===== CARD 2 · CONNECT (protokoller) ===== */
+  .connect{
+    background:linear-gradient(180deg,#fcfdfd 0%,#f4f7f9 30%,#e6ebf2 66%,#d5d8ec 100%);
+    padding:32rem 0 0 20rem;
+  }
+  .connect h2{ font-size:28rem; font-weight:800; line-height:1.1; letter-spacing:-.028em; color:#0c0c0c; }
+  .connect .sub{ margin-top:14rem; font-size:17rem; font-weight:400; line-height:1.3; letter-spacing:-.013em; color:#1c1c1c; }
+  .chips{ position:absolute; left:11rem; right:16rem; bottom:13rem; display:flex; flex-direction:column; gap:8rem; z-index:2; }
+  .chip-row{ display:flex; gap:14rem; }
+  .chip-row.r2{ padding-left:10rem; }
+  .chip{
+    height:42rem; display:inline-flex; align-items:center; gap:10rem; padding:0 17rem; border-radius:999rem;
+    background:linear-gradient(180deg,rgba(247,251,255,.97) 0%,rgba(240,246,254,.93) 100%);
+    box-shadow:0 0 0 3rem rgba(0,0,0,.047); backdrop-filter:blur(7rem);
+    font-size:18rem; font-weight:500; letter-spacing:-.018em; color:#131313; white-space:nowrap;
+  }
+  .chip svg{ width:21rem; height:21rem; flex:none; }
+  .chip-slack{ position:absolute; right:6rem; bottom:124rem; transform:rotate(-20deg); z-index:3; box-shadow:0 0 0 3.2rem rgba(0,0,0,.052); }
+
+  /* ===== CARD 3 · HERO (recursive) ===== */
+  .automate{
+    background:
+      radial-gradient(90% 70% at 6% 0%, rgba(214,201,246,.9) 0%, rgba(214,201,246,0) 70%),
+      linear-gradient(168deg,#e5dcf5 0%,#e9e2f6 48%,#efe8fb 78%,#f2edfd 100%);
+  }
+  .copy{ position:relative; z-index:3; padding:37rem 0 0 45rem; }
+  .copy h2{ font-size:35rem; font-weight:800; line-height:1.15; letter-spacing:-.03em; color:#1a1526; }
+  .copy h2 .g{ color:#7c3aed; }
+  .copy .sub{ margin-top:13rem; font-size:17rem; font-weight:400; line-height:1.3; letter-spacing:-.014em; color:#241b2e; max-width:300rem; }
+
+  .illo{ position:absolute; inset:0; width:627rem; height:501rem; z-index:2; }
+  .win{ position:absolute; border-radius:11rem; border:3rem solid #fff; overflow:hidden; box-shadow:0 12rem 28rem rgba(54,44,74,.16); }
+  .win .bar{ height:13.4rem; background:#242424; display:flex; align-items:center; gap:4.6rem; padding-left:4.9rem; }
+  .win .dot{ width:6rem; height:6rem; border-radius:50%; background:linear-gradient(150deg,#fff 0%,#f6f6f6 50%,#dcdcdc 100%); }
+  .win .body{ display:flex; height:100%; }
+  .win .strip{ height:100%; }
+  .win-back{ left:121.2rem; top:245.2rem; width:324rem; height:250rem; transform:rotate(-7.02deg); }
+  .win-back .body{ background:#e7e0f2; }
+  .win-back .strip{ width:23.7%; background:#c6b8e2; }
+  .win-front{ left:180.4rem; top:283.3rem; width:322rem; height:250rem; transform:rotate(4.23deg); border-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; box-shadow:0 14rem 32rem rgba(54,44,74,.18); }
+  .win-front .body{ background:#f6edfb; }
+  .win-front .strip{ width:16%; background:#e4d3fb; }
+
+  .pill-wf{
+    position:absolute; left:395rem; top:349rem; height:30rem; display:flex; align-items:center; gap:7rem;
+    padding:0 14rem 0 6rem; border-radius:999rem; background:#fff; box-shadow:0 0 0 2.8rem rgba(0,0,0,.045);
+    transform:rotate(-1.2deg); z-index:4;
+  }
+  .pill-wf .lbl{ font-size:11.5rem; font-weight:600; letter-spacing:-.014em; color:#151515; }
+  .pill-wf .disc{ width:20rem; height:20rem; border-radius:50%;
+    background:radial-gradient(80% 80% at 30% 25%, #ffffff 0%, rgba(255,255,255,0) 55%),
+      linear-gradient(145deg,#ece1f8 0%,#cdb8ec 47%,#b49bd8 100%);
+    display:flex; align-items:center; justify-content:center; }
+  .pill-ai{
+    position:absolute; left:68rem; top:404rem; width:150rem; height:52rem; border-radius:10rem; background:#fff;
+    box-shadow:0 0 0 2.8rem rgba(0,0,0,.045); display:flex; align-items:center; gap:9rem; padding:0 16rem;
+    transform:rotate(-1deg); z-index:4;
+  }
+  .pill-ai .lines{ display:flex; flex-direction:column; gap:8rem; flex:1; }
+  .pill-ai .ln{ height:6.5rem; border-radius:99rem; background:#dcd6ea; }
+  .pill-ai .ln.short{ width:64%; }
+  .cursor{ position:absolute; left:490rem; top:454rem; width:30rem; height:35rem; z-index:5; }
+
+  /* ===== CARD 4 · INSIGHTS (istatistik) ===== */
+  .insights{
+    background:
+      radial-gradient(115% 70% at 22% 0%, #fdf2e5 0%, rgba(253,242,229,0) 68%),
+      linear-gradient(180deg,#f9f1e8 0%,#f7efe6 100%);
+    padding:29rem 25rem 23rem 21rem; display:flex; flex-direction:column;
+  }
+  .tag{
+    align-self:flex-start; height:31rem; display:inline-flex; align-items:center; padding:0 17rem; border-radius:999rem; margin-left:4rem;
+    background:linear-gradient(100deg,#ffffff 18%,#fdeadb 100%); border:1.2rem solid rgba(255,255,255,.9);
+    box-shadow:0 3rem 9rem rgba(160,120,80,.09); font-size:12rem; font-weight:700; letter-spacing:-.01em; color:#111;
+  }
+  .insights h2{ margin-top:22rem; font-size:37rem; font-weight:800; letter-spacing:-.035em; line-height:1; color:#0b0b0b; }
+  .insights .sub{ margin-top:12rem; font-size:14.5rem; font-weight:400; letter-spacing:-.012em; color:#1d1d1d; }
+  .chart{ margin-top:auto; height:294rem; display:flex; align-items:flex-end; gap:13rem; }
+  .col{ flex:1; display:flex; flex-direction:column; align-items:center; }
+  .bar{ width:100%; background:#e9e3da; border-radius:7rem; display:flex; justify-content:center; padding-top:9rem; }
+  .bar .v{ font-size:13rem; font-weight:500; color:#a1978a; }
+  .col.sun .bar{ background:linear-gradient(180deg,#7c3aed 0%,#8b5cf6 24%,#7a86c0 50%,#5f9a5a 76%,#3d7a3e 100%); box-shadow:0 4rem 12rem rgba(90,60,180,.22); }
+  .col.sun .bar .v{ color:#fff; font-weight:600; }
+  .day{ font-size:10.4rem; font-weight:500; letter-spacing:.05em; color:#a79c8e; margin-top:10rem; }
+
+  /* ===== CARD 5 · SEARCH ===== */
+  .search{
+    background:linear-gradient(103deg,#eae9f5 0%,#e3e0f3 34%,#d2cfec 72%,#c6c2ea 100%);
+    display:flex; align-items:center; padding-left:46rem; padding-right:25rem;
+  }
+  .search h2{ font-size:23rem; font-weight:800; line-height:1.39; letter-spacing:-.028em; color:#0d0d10; }
+  .bar-search{
+    margin-left:auto; width:612rem; height:64rem; border-radius:999rem; background:#fff;
+    box-shadow:0 4rem 14rem rgba(70,66,120,.10); display:flex; align-items:center; padding:0 22rem 0 10rem; gap:16rem;
+  }
+  .bar-search .mag{ width:44rem; height:44rem; border-radius:50%; background:#f1f1f5; display:flex; align-items:center; justify-content:center; flex:none; }
+  .bar-search .ph{ flex:1; font-size:16.5rem; font-weight:400; letter-spacing:-.015em; color:#8c8c99; }
+  .bar-search .mic{ flex:none; }
+
+  /* ===== ENTRANCE ANIMATION ===== */
+  .motion-pending .card{ opacity:0; visibility:hidden; }
+  .entrance-run .card{ will-change:opacity,translate,scale,clip-path; }
+
+  @keyframes panel-settle{ 0%{opacity:0; translate:0 12rem; scale:.988; clip-path:inset(3% round 22rem);} 62%{opacity:1;} 100%{opacity:1; translate:0 0; scale:1; clip-path:inset(0 round 22rem);} }
+  @keyframes type-unmask{ 0%{opacity:0; translate:0 16rem; clip-path:inset(0 0 96% 0);} 100%{opacity:1; translate:0 0; clip-path:inset(0 0 0 0);} }
+  @keyframes content-rise{ 0%{opacity:0; translate:0 9rem;} 100%{opacity:1; translate:0 0;} }
+  @keyframes interface-settle{ 0%{opacity:0; translate:0 16rem; scale:.975;} 100%{opacity:1; translate:0 0; scale:1;} }
+  @keyframes detail-settle{ 0%{opacity:0; translate:0 8rem; scale:.97;} 100%{opacity:1; translate:0 0; scale:1;} }
+  @keyframes toast-arrive{ 0%{opacity:0; translate:0 10rem; scale:.982;} 100%{opacity:1; translate:0 0; scale:1;} }
+  @keyframes chip-row-arrive{ 0%{opacity:0; translate:0 11rem;} 100%{opacity:1; translate:0 0;} }
+  @keyframes chart-unmask{ 0%{opacity:0; translate:0 10rem; clip-path:inset(100% 0 0 0);} 100%{opacity:1; translate:0 0; clip-path:inset(0 0 0 0);} }
+  @keyframes search-resolve{ 0%{opacity:0; translate:12rem 0; scale:.975 1;} 100%{opacity:1; translate:0 0; scale:1 1;} }
+
+  .entrance-run .automate{ animation:panel-settle .82s cubic-bezier(.16,1,.3,1) .04s backwards; }
+  .entrance-run .notif   { animation:panel-settle .66s cubic-bezier(.16,1,.3,1) .10s backwards; }
+  .entrance-run .insights{ animation:panel-settle .74s cubic-bezier(.16,1,.3,1) .14s backwards; }
+  .entrance-run .connect { animation:panel-settle .74s cubic-bezier(.16,1,.3,1) .20s backwards; }
+  .entrance-run .search  { animation:panel-settle .68s cubic-bezier(.16,1,.3,1) .28s backwards; }
+  .entrance-run .copy h2 { animation:type-unmask .78s cubic-bezier(.22,1,.36,1) .20s backwards; }
+  .entrance-run .copy .sub{ animation:content-rise .54s cubic-bezier(.16,1,.3,1) .48s backwards; }
+  .entrance-run .win-back{ animation:interface-settle .84s cubic-bezier(.16,1,.3,1) .42s backwards; }
+  .entrance-run .win-front{ animation:interface-settle .94s cubic-bezier(.16,1,.3,1) .50s backwards; }
+  .entrance-run .pill-ai { animation:detail-settle .60s cubic-bezier(.16,1,.3,1) .72s backwards; }
+  .entrance-run .pill-wf { animation:detail-settle .58s cubic-bezier(.16,1,.3,1) .78s backwards; }
+  .entrance-run .cursor  { animation:detail-settle .54s cubic-bezier(.16,1,.3,1) .96s backwards; }
+  .entrance-run .toast-wrap{ animation:toast-arrive .62s cubic-bezier(.16,1,.3,1) .38s backwards; }
+  .entrance-run .connect h2{ animation:type-unmask .64s cubic-bezier(.22,1,.36,1) .54s backwards; }
+  .entrance-run .connect .sub{ animation:content-rise .48s cubic-bezier(.16,1,.3,1) .73s backwards; }
+  .entrance-run .chip-row.r1{ animation:chip-row-arrive .62s cubic-bezier(.16,1,.3,1) .86s backwards; }
+  .entrance-run .chip-row.r2{ animation:chip-row-arrive .62s cubic-bezier(.16,1,.3,1) .91s backwards; }
+  .entrance-run .chip-row.r3{ animation:chip-row-arrive .62s cubic-bezier(.16,1,.3,1) .96s backwards; }
+  .entrance-run .chip-slack{ animation:detail-settle .58s cubic-bezier(.16,1,.3,1) 1.02s backwards; }
+  .entrance-run .tag     { animation:content-rise .46s cubic-bezier(.16,1,.3,1) .44s backwards; }
+  .entrance-run .insights h2{ animation:type-unmask .62s cubic-bezier(.22,1,.36,1) .56s backwards; }
+  .entrance-run .insights .sub{ animation:content-rise .44s cubic-bezier(.16,1,.3,1) .75s backwards; }
+  .entrance-run .chart   { animation:chart-unmask .86s cubic-bezier(.16,1,.3,1) .72s backwards; }
+  .entrance-run .search h2{ animation:type-unmask .56s cubic-bezier(.22,1,.36,1) .72s backwards; }
+  .entrance-run .bar-search{ animation:search-resolve .70s cubic-bezier(.16,1,.3,1) .88s backwards; transform-origin:right center; }
+
+  @media (prefers-reduced-motion: reduce){
+    .motion-pending .card{ opacity:1; visibility:visible; }
+    .entrance-run *{ animation:none !important; }
+  }
+
+  /* ===== TABLET ===== */
+  @media (min-width:701px) and (max-width:1040px) and (max-aspect-ratio:3/2){
+    html{ font-size: min(calc(95vw / 1025), calc(94vh / 918)); }
+    .stage{ width:1025rem; height:918rem; grid-template-columns:627rem 388rem; grid-template-rows:505rem 194rem 201rem; }
+    .automate{ grid-column:1; grid-row:1; height:505rem; }
+    .notif{ grid-column:1; grid-row:2; }
+    .search{ grid-column:1; grid-row:3; }
+    .insights{ grid-column:2; grid-row:1; }
+    .connect{ grid-column:2; grid-row:2 / span 2; }
+    .search{ display:flex; flex-direction:column; align-items:flex-start; justify-content:center; }
+    .bar-search{ width:100%; margin-left:0; margin-top:22rem; }
+    .toast-wrap{ width:380rem; max-width:calc(100% - 24rem); margin:0 auto; }
+  }
+
+  /* ===== MOBILE ===== */
+  @media (max-width:700px){
+    html{ font-size: calc((min(100vw,560px) - 30px) / 375); }
+    body{ display:block; overflow-y:auto; padding:15px 0; }
+    .stage{ width:375rem; height:auto; display:flex; flex-direction:column; row-gap:13rem; margin:0 auto; }
+    .card{ width:100%; }
+    .notif{ height:149rem; } .connect{ height:508rem; } .insights{ height:500rem; } .automate{ height:298rem; } .search{ height:auto; }
+    .illo{ transform:scale(.5981); transform-origin:0 0; }
+    .copy h2{ font-size:30rem; } .copy .sub{ font-size:15rem; }
+    .search{ display:flex; flex-direction:column; align-items:flex-start; justify-content:center; padding:24rem; }
+    .bar-search{ width:100%; height:58rem; margin-left:0; margin-top:16rem; }
+    .motion-pending .insights, .motion-pending .search{ opacity:1 !important; visibility:visible !important; }
+    .entrance-run .insights, .entrance-run .search, .entrance-run .insights *, .entrance-run .search *{ animation:none !important; }
+  }
+</style>
+<script>
+  (function(){
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches){
+      document.documentElement.classList.add('motion-pending');
+      window.__failSafe = setTimeout(function(){ document.documentElement.classList.remove('motion-pending'); }, 2400);
+    }
+  })();
+</script>
+</head>
+<body>
+  <main class="stage" role="main" aria-label="DNS çözücü özellik özeti">
+
+    <!-- CARD 1 · NOTIF -->
+    <section class="card notif" aria-label="Engelleme bildirimi">
+      <div class="toast-wrap">
+        <div class="toast-ledge"></div>
+        <div class="toast">
+          <svg width="27" height="27" viewBox="0 0 24 24" aria-hidden="true">
+            <defs><mask id="spk"><rect width="24" height="24" fill="#fff"/>
+              <path d="M12 4 L13.4 10.6 L20 12 L13.4 13.4 L12 20 L10.6 13.4 L4 12 L10.6 10.6 Z" fill="#000"/></mask></defs>
+            <circle cx="12" cy="12" r="12" fill="#0d0d0d" mask="url(#spk)"/>
+            <path d="M12 6.5 L12.9 10.9 L17.5 12 L12.9 13.1 L12 17.5 L11.1 13.1 L6.5 12 L11.1 10.9 Z" fill="#0d0d0d"/>
+          </svg>
+          <div class="txt">
+            <div class="t-title">Reklam engellendi!</div>
+            <div class="t-sub">doubleclick.net otomatik engellendi</div>
+          </div>
+          <div class="t-time">14:34</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CARD 2 · CONNECT -->
+    <section class="card connect" aria-label="Upstream sağlayıcılar ve protokoller">
+      <h2>Her yöntemi<br>konuşur.</h2>
+      <div class="sub">DoH · DoT · DoQ · UDP · TCP</div>
+      <div class="chips">
+        <div class="chip-row r1">
+          <span class="chip">Cloudflare
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 15.5c.2-.7.1-1.3-.3-1.8-.4-.4-1-.7-1.6-.7l-8.4-.1c-.1 0-.1 0-.1-.1-.1 0 0-.1 0-.2 0-.1.1-.1.2-.1l8.5-.1c1 0 2.1-.8 2.5-1.8l.5-1.3v-.2C17.7 6.6 15.5 5 13 5c-2.3 0-4.3 1.5-5 3.6-.4-.3-1-.5-1.6-.5C5.3 8.2 4.3 9.2 4.2 10.5c0 .3 0 .6.1.9C2.5 11.5 1.4 13 1.5 14.6H16c.2 0 .4-.2.5-.4z" fill="#f38020"/><path d="M18.6 9.8h-.2c-.1 0-.2.1-.2.2l-.3 1c-.2.7-.1 1.3.3 1.8.4.4 1 .7 1.6.7l1.8.1c.1 0 .1 0 .1.1.1 0 0 .1 0 .2 0 .1-.1.1-.2.1l-1.9.1c-1 0-2.1.8-2.5 1.8l-.1.4c0 .1 0 .2.1.2h6.4c.1 0 .2-.1.2-.2.1-.4.2-.9.2-1.4 0-3-2.4-5.4-5.4-5.4z" fill="#faae40"/></svg>
+          </span>
+          <span class="chip">Google
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 12.2c0-.6-.1-1.2-.2-1.8H12v3.4h5.4c-.2 1.2-.9 2.2-2 2.9v2.4h3.2c1.9-1.7 3-4.3 3-6.9z" fill="#4285F4"/><path d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.4c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.7-5.6-4.1H3.1v2.5C4.7 19.9 8.1 22 12 22z" fill="#34A853"/><path d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.5H3.1C2.4 8.8 2 10.4 2 12s.4 3.2 1.1 4.5L6.4 14z" fill="#FBBC05"/><path d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 2.9 14.7 2 12 2 8.1 2 4.7 4.1 3.1 7.5L6.4 10c.8-2.4 3-4.1 5.6-4.1z" fill="#EA4335"/></svg>
+          </span>
+        </div>
+        <div class="chip-row r2">
+          <span class="chip">Quad9
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="#5b3f97"/><path d="M13.4 6.4c-2.3 0-3.9 1.5-3.9 3.6 0 2 1.4 3.3 3.4 3.3.7 0 1.3-.2 1.8-.5-.2 1.6-1 2.6-2.3 2.6-.7 0-1.3-.3-1.7-.7l-1.3 1.6c.8.7 1.9 1.1 3.1 1.1 2.7 0 4.5-2.2 4.5-5.7 0-3.4-1.5-5.9-3.6-5.9zm-.1 4.9c-.8 0-1.4-.6-1.4-1.4 0-.8.6-1.4 1.4-1.4.9 0 1.5.7 1.5 1.5 0 .7-.6 1.3-1.5 1.3z" fill="#fff"/></svg>
+          </span>
+          <span class="chip">AdGuard
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C8.9 3.6 5.9 4 3 4c0 8.3 2.9 14.5 9 16 6.1-1.5 9-7.7 9-16-2.9 0-5.9-.4-9-2z" fill="#68bc71"/><path d="M12 2v18c6.1-1.5 9-7.7 9-16-2.9 0-5.9-.4-9-2z" fill="#67b279"/><path d="M10.7 14.6 8 11.9l1.2-1.2 1.5 1.5 3.6-3.7L15.5 9.7z" fill="#fff"/></svg>
+          </span>
+        </div>
+        <div class="chip-row r3">
+          <span class="chip">NextDNS
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="#111"/><path d="M7 17V7h1.9l4.2 6.1V7H15v10h-1.9L8.9 10.9V17z" fill="#fff"/></svg>
+          </span>
+          <span class="chip">UDP · 53
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="#8b5cf6"/><path d="M8 8v4.5a4 4 0 0 0 8 0V8h-2v4.5a2 2 0 0 1-4 0V8z" fill="#fff"/></svg>
+          </span>
+        </div>
+      </div>
+      <span class="chip chip-slack">1.1.1.1
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="#f38020"/><path d="M12 6.5c-2.5 0-4.5 1.7-5.2 4h2.2c.5-1.1 1.6-1.9 3-1.9 1.8 0 3.2 1.3 3.2 3.3s-1.4 3.5-3.2 3.5c-1.4 0-2.5-.8-3-1.9H6.8c.7 2.3 2.7 4 5.2 4 3 0 5.3-2.4 5.3-5.6 0-3-2.3-5.4-5.3-5.4z" fill="#fff"/></svg>
+      </span>
+    </section>
+
+    <!-- CARD 3 · HERO -->
+    <section class="card automate" aria-label="Recursive çözümleme">
+      <div class="copy">
+        <h2><span class="g">Recursive</span> çözer.<br>Kendine ait, kurallarınla.</h2>
+        <div class="sub">Kök → TLD → yetkili sunucuları kendi yürür. İstersen forwarding, istersen tam çözüm — reklam ve izleyiciler otomatik engelli.</div>
+      </div>
+      <div class="illo" aria-hidden="true">
+        <div class="win win-back"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="body"><div class="strip"></div></div></div>
+        <div class="win win-front"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="body"><div class="strip"></div></div></div>
+        <div class="pill-wf">
+          <span class="disc">
+            <svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="#161616" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="lbl">Sorgu çözüldü</span>
+        </div>
+        <div class="pill-ai">
+          <svg width="23" height="23" viewBox="0 0 24 24">
+            <path d="M9 3 L10 8 L15 9 L10 10 L9 15 L8 10 L3 9 L8 8 Z" fill="#efeafb" stroke="#7c3aed" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M17 12 L17.7 15.3 L21 16 L17.7 16.7 L17 20 L16.3 16.7 L13 16 L16.3 15.3 Z" fill="#efeafb" stroke="#7c3aed" stroke-width="2.25" stroke-linejoin="round"/>
+          </svg>
+          <div class="lines"><div class="ln"></div><div class="ln short"></div></div>
+        </div>
+        <svg class="cursor" viewBox="0 0 24 28" aria-hidden="true"><path d="M5 3 L5 22 L10 17.5 L13 24 L15.5 23 L12.5 16.5 L19 16 Z" fill="#fff" stroke="#2b2b2b" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      </div>
+    </section>
+
+    <!-- CARD 4 · INSIGHTS -->
+    <section class="card insights" aria-label="Sorgu istatistikleri">
+      <span class="tag">Sorgu İstatistikleri</span>
+      <h2>48.2K</h2>
+      <div class="sub">bu hafta çözüldü · 12.4K engellendi</div>
+      <div class="chart" role="img" aria-label="Günlük çözülen sorgu (bin): Pzt 12, Sal 22, Çar 34, Per 41, Cum 55, Cmt 60, Paz 68">
+        <div class="col"><div class="bar" style="height:43.2rem"><span class="v">12</span></div><div class="day">PZT</div></div>
+        <div class="col"><div class="bar" style="height:80.9rem"><span class="v">22</span></div><div class="day">SAL</div></div>
+        <div class="col"><div class="bar" style="height:131.7rem"><span class="v">34</span></div><div class="day">ÇAR</div></div>
+        <div class="col"><div class="bar" style="height:165.5rem"><span class="v">41</span></div><div class="day">PER</div></div>
+        <div class="col"><div class="bar" style="height:203.2rem"><span class="v">55</span></div><div class="day">CUM</div></div>
+        <div class="col"><div class="bar" style="height:235.2rem"><span class="v">60</span></div><div class="day">CMT</div></div>
+        <div class="col sun"><div class="bar" style="height:265rem"><span class="v">68</span></div><div class="day">PAZ</div></div>
+      </div>
+    </section>
+
+    <!-- CARD 5 · SEARCH -->
+    <section class="card search" aria-label="Alan adı arama">
+      <h2>Alan adını<br>anında bul</h2>
+      <div class="bar-search">
+        <div class="mag">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7.1" fill="none" stroke="#121212" stroke-width="2.2"/><path d="M15.8 15.8 L21 21" stroke="#121212" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </div>
+        <div class="ph">google.com, sorgu geçmişini ara…</div>
+        <svg class="mic" width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><rect x="5" y="1" width="6" height="10" rx="3" fill="#141414"/><path d="M2.5 9 a5.5 5.5 0 0 0 11 0" fill="none" stroke="#141414" stroke-width="1.6" stroke-linecap="round"/><path d="M8 14.5 L8 18 M5 18.5 L11 18.5" stroke="#141414" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </div>
+    </section>
+
+  </main>
+  <script>
+    (function(){
+      var H = document.documentElement;
+      function clearFail(){ if (window.__failSafe) clearTimeout(window.__failSafe); }
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches || window.__entrancePlayed){
+        clearFail(); H.classList.remove('motion-pending','entrance-run'); return;
+      }
+      window.__entrancePlayed = true;
+      function run(){
+        clearFail();
+        H.classList.remove('motion-pending'); H.classList.add('entrance-run');
+        setTimeout(function(){ H.classList.remove('entrance-run'); }, 1850);
+      }
+      var done = false, go = function(){ if (done) return; done = true; run(); };
+      if (document.fonts && document.fonts.ready){ document.fonts.ready.then(go); }
+      setTimeout(go, 700);
+    })();
+  </script>
+</body>
+</html>
