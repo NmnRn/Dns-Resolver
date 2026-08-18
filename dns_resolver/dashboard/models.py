@@ -21,12 +21,16 @@ class PanelLogin(models.Model):
 
 
 class DeviceProfile(models.Model):
-    """Panele erişen benzersiz cihaz — her sayfa açılışında JS ile toplanan
-    tarayıcı fingerprint'i (ekran/tz/platform/GPU/canvas...). Dedup: aynı
-    fp_hash (IP + UA + fingerprint alanları) varsa YENİSİ yazılmaz, yalnız
-    last_seen/hits güncellenir. 'Cihaz Özellikleri' sayfasını besler."""
-    fp_hash = models.CharField(max_length=64, unique=True, db_index=True)
-    ip = models.CharField(max_length=64, blank=True)
+    """Panele erişen benzersiz cihaz. Kimlik = istemcinin <b>localStorage</b>'daki
+    kalıcı id'si (farble-proof, oturumlar arası sabit; tarayıcı bunu rastgelemez);
+    localStorage kapalıysa oturum-içi fallback id. Aynı cihaz her açılışta/beacon'da
+    YENİ satır yerine BU satırı günceller. fingerprint alanları betimleyicidir; açılışlar
+    arası DEĞİŞEN alanlar `volatile`'a düşer (tarayıcı onları rastgeliyor). Görülen tüm
+    IP'ler `ips`'te (VPN/ağ değişimi burada görünür)."""
+    fp_hash = models.CharField(max_length=64, unique=True, db_index=True)  # = istemci kimliği
+    ip = models.CharField(max_length=64, blank=True)                       # son görülen IP
+    ips = models.TextField(blank=True)                                     # görülen tüm IP'ler (virgülle)
+    volatile = models.CharField(max_length=200, blank=True)                # oynak/rastgeleşen alanlar
     user_agent = models.TextField(blank=True)
     browser = models.CharField(max_length=40, blank=True)
     os = models.CharField(max_length=40, blank=True)

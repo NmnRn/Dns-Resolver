@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dns-panel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-18 21:37+0000\n"
+"POT-Creation-Date: 2026-08-18 22:17+0000\n"
 "PO-Revision-Date: 2026-08-18 00:00+0000\n"
 "Last-Translator: NmnRn\n"
 "Language-Team: English\n"
@@ -246,7 +246,7 @@ msgid "Kullanıcılar"
 msgstr "Users"
 
 #: dashboard/templates/dashboard/base.html:47
-#: dashboard/templates/dashboard/guide.html:3 dashboard/views.py:163
+#: dashboard/templates/dashboard/guide.html:3 dashboard/views.py:164
 msgid "Kurulum"
 msgstr "Setup"
 
@@ -363,17 +363,13 @@ msgid "bulunamadı"
 msgstr "not found"
 
 #: dashboard/templates/dashboard/devices.html:7
-#| msgid ""
-#| "Panele erişen <b>benzersiz cihazlar</b> — her yeni girişte (oturum başına "
-#| "bir kez) tarayıcı fingerprint'i toplanıp <b>tekilleştirilir</b>. Bir "
-#| "cihaza <b>tıkla</b> → tüm özelliklerini (ekran/GPU/canvas...) gör. Son "
-#| "görülene göre sıralı = son giriş."
 msgid ""
-"Panele erişen <b>benzersiz cihazlar</b> — fingerprint oturum başına, "
-"<b>değiştikçe</b> kaydedilir (aynı cihaz+IP tekrar yazılmaz; <b>VPN/IP "
-"değişince</b> yeni cihaz görünür). Bir cihaza <b>tıkla</b> → tüm "
-"özelliklerini gör."
-msgstr "<b>Unique devices</b> that accessed the panel — the fingerprint is recorded once per session, <b>whenever it changes</b> (the same device+IP isn't re-written; a <b>new device appears when the IP changes</b>, e.g. VPN). <b>Click</b> a device → see all its properties."
+"Panele erişen <b>benzersiz cihazlar</b> — kimlik tarayıcının kalıcı "
+"<b>localStorage</b> id'si (yenileme/geçiş aynı cihaz kalır, ikiz olmaz). "
+"<b>IP/ağ değişimi</b> (VPN) o cihazın <b>Görülen IP'ler</b>'ine eklenir (~5 "
+"dk arka plan kontrolüyle de); tarayıcının rastgelediği alanlar <b>Oynak</b> "
+"işaretlenir. Bir cihaza <b>tıkla</b> → tüm özelliklerini gör."
+msgstr "<b>Unique devices</b> that accessed the panel — identity is the browser's persistent <b>localStorage</b> id (refresh/navigation stays the same device, no duplicates). An <b>IP/network change</b> (VPN) is added to that device's <b>Seen IPs</b> (also via a ~5-min background check); fields the browser randomizes are flagged <b>Volatile</b>. <b>Click</b> a device → see all its properties."
 
 #: dashboard/templates/dashboard/devices.html:12
 msgid "Cihaz"
@@ -386,7 +382,8 @@ msgstr "Unique IPs"
 #: dashboard/templates/dashboard/devices.html:14
 msgid ""
 "Tüm cihaz kayıtları silinsin mi? (bir sonraki açılışta yeniden toplanır)"
-msgstr "Delete all device records? (they'll be collected again on the next visit)"
+msgstr ""
+"Delete all device records? (they'll be collected again on the next visit)"
 
 #: dashboard/templates/dashboard/devices.html:14
 msgid "Kayıtları temizle"
@@ -409,84 +406,93 @@ msgid "Oturum (giriş) sayısı"
 msgstr "Session (login) count"
 
 #: dashboard/templates/dashboard/devices.html:30
-msgid "Ekran"
-msgstr "Screen"
+msgid "Görülen IP'ler"
+msgstr "Seen IPs"
 
 #: dashboard/templates/dashboard/devices.html:31
-msgid "Görünüm (viewport)"
-msgstr "Viewport"
+msgid "Oynak (rastgele) alanlar"
+msgstr "Volatile (randomized) fields"
 
-#: dashboard/templates/dashboard/devices.html:32
-msgid "Saat dilimi"
-msgstr "Timezone"
-
-#: dashboard/templates/dashboard/devices.html:33
-msgid "Platform"
-msgstr "Platform"
-
-#: dashboard/templates/dashboard/devices.html:34
-msgid "Diller"
-msgstr "Languages"
-
-#: dashboard/templates/dashboard/devices.html:35
-msgid "Renk derinliği"
-msgstr "Color depth"
-
-#: dashboard/templates/dashboard/devices.html:36
-msgid "CPU çekirdek"
-msgstr "CPU cores"
-
-#: dashboard/templates/dashboard/devices.html:37
-msgid "Bellek (GB)"
-msgstr "Memory (GB)"
-
-#: dashboard/templates/dashboard/devices.html:38
-msgid "GPU (WebGL)"
-msgstr "GPU (WebGL)"
-
-#: dashboard/templates/dashboard/devices.html:39
-msgid "evet,hayır"
-msgstr "yes,no"
-
-#: dashboard/templates/dashboard/devices.html:39
-msgid "Dokunmatik"
-msgstr "Touch"
-
-#: dashboard/templates/dashboard/devices.html:40
-msgid "Canvas fp"
-msgstr "Canvas fp"
-
-#: dashboard/templates/dashboard/devices.html:40
-msgid "rastgele — anahtara dahil değil"
-msgstr "randomized — not part of the key"
-
-#: dashboard/templates/dashboard/devices.html:41
-msgid "Fingerprint koruması"
-msgstr "Fingerprint protection"
-
-#: dashboard/templates/dashboard/devices.html:41
-msgid "aktif (canvas rastgele)"
-msgstr "active (canvas randomized)"
-
-#: dashboard/templates/dashboard/devices.html:41
+#: dashboard/templates/dashboard/devices.html:31
+#: dashboard/templates/dashboard/devices.html:43
 msgid "yok"
 msgstr "none"
 
+#: dashboard/templates/dashboard/devices.html:32
+msgid "Ekran"
+msgstr "Screen"
+
+#: dashboard/templates/dashboard/devices.html:33
+msgid "Görünüm (viewport)"
+msgstr "Viewport"
+
+#: dashboard/templates/dashboard/devices.html:34
+msgid "Saat dilimi"
+msgstr "Timezone"
+
+#: dashboard/templates/dashboard/devices.html:35
+msgid "Platform"
+msgstr "Platform"
+
+#: dashboard/templates/dashboard/devices.html:36
+msgid "Diller"
+msgstr "Languages"
+
+#: dashboard/templates/dashboard/devices.html:37
+msgid "Renk derinliği"
+msgstr "Color depth"
+
+#: dashboard/templates/dashboard/devices.html:38
+msgid "CPU çekirdek"
+msgstr "CPU cores"
+
+#: dashboard/templates/dashboard/devices.html:39
+msgid "Bellek (GB)"
+msgstr "Memory (GB)"
+
+#: dashboard/templates/dashboard/devices.html:40
+msgid "GPU (WebGL)"
+msgstr "GPU (WebGL)"
+
+#: dashboard/templates/dashboard/devices.html:41
+msgid "evet,hayır"
+msgstr "yes,no"
+
+#: dashboard/templates/dashboard/devices.html:41
+msgid "Dokunmatik"
+msgstr "Touch"
+
 #: dashboard/templates/dashboard/devices.html:42
+msgid "Canvas fp"
+msgstr "Canvas fp"
+
+#: dashboard/templates/dashboard/devices.html:42
+msgid "rastgele — anahtara dahil değil"
+msgstr "randomized — not part of the key"
+
+#: dashboard/templates/dashboard/devices.html:43
+msgid "Fingerprint koruması"
+msgstr "Fingerprint protection"
+
+#: dashboard/templates/dashboard/devices.html:43
+msgid "aktif (canvas rastgele)"
+msgstr "active (canvas randomized)"
+
+#: dashboard/templates/dashboard/devices.html:44
 #: dashboard/templates/dashboard/users.html:16
 msgid "Kullanıcı"
 msgstr "User"
 
-#: dashboard/templates/dashboard/devices.html:43
+#: dashboard/templates/dashboard/devices.html:45
 #: dashboard/templates/dashboard/dns_devices.html:21
 msgid "İlk görülme"
 msgstr "First seen"
 
-#: dashboard/templates/dashboard/devices.html:44
+#: dashboard/templates/dashboard/devices.html:46
 msgid "User-Agent"
 msgstr "User-Agent"
 
-#: dashboard/templates/dashboard/devices.html:47
+#: dashboard/templates/dashboard/devices.html:49
 #: dashboard/templates/dashboard/filters.html:93
 #: dashboard/templates/dashboard/filters.html:120
 #: dashboard/templates/dashboard/filters.html:143
@@ -496,14 +502,14 @@ msgstr "User-Agent"
 msgid "Sil"
 msgstr "Delete"
 
-#: dashboard/templates/dashboard/devices.html:51
+#: dashboard/templates/dashboard/devices.html:53
 msgid ""
 "Henüz cihaz kaydı yok — bir sayfa aç (fingerprint arka planda toplanır)."
 msgstr ""
 "No device records yet — open a page (the fingerprint is collected in the "
 "background)."
 
-#: dashboard/templates/dashboard/devices.html:56
+#: dashboard/templates/dashboard/devices.html:58
 msgid ""
 "Fingerprint verileri tarayıcı tarafından <b>bildirilir</b> (JS ile toplanır) "
 "ve <b>taklit edilebilir</b>; kesin donanım kimliği değildir. Panel yalnız "
@@ -1897,50 +1903,66 @@ msgstr "Every account added becomes an <b>admin</b> (the panel is admin-only)."
 msgid "Oluştur"
 msgstr "Create"
 
-#: dashboard/views.py:154
+#: dashboard/views.py:155
 msgid "Kullanıcı adı gerekli ve parola en az 8 karakter olmalı."
 msgstr "Username is required and the password must be at least 8 characters."
 
-#: dashboard/views.py:163
+#: dashboard/views.py:164
 msgid "Sahip hesabını oluştur"
 msgstr "Create owner account"
 
-#: dashboard/views.py:164
+#: dashboard/views.py:165
 msgid "İlk açılış — panel sahibi hesabını oluştur."
 msgstr "First run — create the panel owner account."
 
-#: dashboard/views.py:177
+#: dashboard/views.py:178
 msgid "Çok fazla başarısız deneme. Lütfen bir süre sonra tekrar deneyin."
 msgstr "Too many failed attempts. Please try again later."
 
-#: dashboard/views.py:184
+#: dashboard/views.py:185
 msgid "Bu panele yalnızca yöneticiler erişebilir."
 msgstr "Only administrators can access this panel."
 
-#: dashboard/views.py:200
+#: dashboard/views.py:201
 msgid "Kullanıcı adı veya parola hatalı."
 msgstr "Incorrect username or password."
 
-#: dashboard/views.py:202
+#: dashboard/views.py:203
 msgid "Giriş"
 msgstr "Log in"
 
-#: dashboard/views.py:202
+#: dashboard/views.py:203
 msgid "Giriş yap"
 msgstr "Log in"
 
-#: dashboard/views.py:202
+#: dashboard/views.py:203
 msgid "Panele erişmek için giriş yap."
 msgstr "Log in to access the panel."
 
-#: dashboard/views.py:757
+#: dashboard/views.py:758
 #, python-format
 msgid "%(n)s cihaz kaydı silindi."
 msgstr "%(n)s device records deleted."
 
-#: dashboard/views.py:760
+#: dashboard/views.py:761
 msgid "Cihaz silindi."
 msgstr "Device deleted."
+
+#~| msgid ""
+#~| "Panele erişen <b>benzersiz cihazlar</b> — her yeni girişte (oturum "
+#~| "başına bir kez) tarayıcı fingerprint'i toplanıp <b>tekilleştirilir</b>. "
+#~| "Bir cihaza <b>tıkla</b> → tüm özelliklerini (ekran/GPU/canvas...) gör. "
+#~| "Son görülene göre sıralı = son giriş."
+#~ msgid ""
+#~ "Panele erişen <b>benzersiz cihazlar</b> — fingerprint oturum başına, "
+#~ "<b>değiştikçe</b> kaydedilir (aynı cihaz+IP tekrar yazılmaz; <b>VPN/IP "
+#~ "değişince</b> yeni cihaz görünür). Bir cihaza <b>tıkla</b> → tüm "
+#~ "özelliklerini gör."
+#~ msgstr ""
+#~ "<b>Unique devices</b> that accessed the panel — the fingerprint is "
+#~ "recorded once per session, <b>whenever it changes</b> (the same device+IP "
+#~ "isn't re-written; a <b>new device appears when the IP changes</b>, e.g. "
+#~ "VPN). <b>Click</b> a device → see all its properties."
 
 #~ msgid "Cihaz Özellikleri"
 #~ msgstr "Device Properties"

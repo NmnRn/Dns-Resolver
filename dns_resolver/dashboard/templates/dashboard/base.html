@@ -79,13 +79,22 @@
         });
     })();
     </script>
-    <script>/* Cihaz fingerprint — her tam sayfa acilisinda topla + gonder (server dedup'lar).
-    Brave/Tor canvas'i her okumada rastgeleleştirir → tespit et; server canvas'i
-    dedup ANAHTARINA koymaz, boylece her sekmede yeni cihaz olusmaz. */
-    (async function(){
+    <script>/* Cihaz izleme — SADECE bu panele (same-origin) gonderir; ucuncu tarafa
+    hicbir sey gitmez, harici kaynak yuklemez (kendimizi disariya belli etmeyiz).
+    Kimlik = localStorage'daki KALICI id (tarayici bunu rastgelemez → yenileme/gecis/
+    beacon hep ayni cihaz). Beacon: IP/ag degisimini yakalamak icin sekme GORUNURKEN
+    ~5 dk'da bir. */
+    (function(){
         if(!window.fetch) return;
         var meta = document.querySelector('meta[name=csrf-token]');
         if(!meta || !meta.content) return;                 // token yoksa (or. anonim) atla
+        var URL = '{% url "dashboard:device_record" %}';   // relatif → same-origin
+        // Kalici cihaz kimligi (localStorage; farble-proof, oturumlar arasi sabit)
+        var devId = '';
+        try{ devId = localStorage.getItem('dns_dev_id') || '';
+             if(!devId){ devId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                                 : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+                         localStorage.setItem('dns_dev_id', devId); } }catch(e){ devId = ''; }
         function gpu(){ try{
             var c=document.createElement('canvas'); var gl=c.getContext('webgl')||c.getContext('experimental-webgl');
             if(!gl) return ''; var e=gl.getExtension('WEBGL_debug_renderer_info');
@@ -98,32 +107,35 @@
             var d=c.toDataURL(); var h=0; for(var i=0;i<d.length;i++){ h=(h*31 + d.charCodeAt(i))|0; }
             return (h>>>0).toString(16);
         }catch(e){ return ''; } }
-        // Brave: kendi API'siyle kesin tespit
-        var brave = false;
-        try{ if(navigator.brave && navigator.brave.isBrave){ brave = await navigator.brave.isBrave(); } }catch(e){}
-        // Canvas rastgele mi: ard arda iki okuma FARKLIYSA farbling aktif (Brave/Tor/RFP)
-        var cv1 = canvasHash(), cv2 = canvasHash();
-        var canvasProtected = (cv1 !== cv2);
-        try{
-            var fp = {
-                screen: screen.width+'x'+screen.height,
-                viewport: window.innerWidth+'x'+window.innerHeight,
-                timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone||''),
-                platform: navigator.platform||'',
-                languages: (navigator.languages||[]).join(','),
-                colorDepth: screen.colorDepth,
-                cpu: navigator.hardwareConcurrency||'',
-                memory: navigator.deviceMemory||'',
-                gpu: gpu(),
-                touch: ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0,
-                canvas: cv1,
-                brave: brave,
-                canvasProtected: canvasProtected
-            };
-            fetch('{% url "dashboard:device_record" %}', { method:'POST', keepalive:true,
-                headers:{'Content-Type':'application/json','X-CSRFToken':meta.content,'X-Requested-With':'fetch'},
-                body: JSON.stringify(fp) }).catch(function(){});
-        }catch(e){}
+        async function collect(){
+            var brave = false;
+            try{ if(navigator.brave && navigator.brave.isBrave){ brave = await navigator.brave.isBrave(); } }catch(e){}
+            var cv1 = canvasHash(), cv2 = canvasHash();   // iki okuma farkliysa canvas farbling
+            try{
+                var fp = {
+                    devId: devId,
+                    screen: screen.width+'x'+screen.height,
+                    viewport: window.innerWidth+'x'+window.innerHeight,
+                    timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone||''),
+                    platform: navigator.platform||'',
+                    languages: (navigator.languages||[]).join(','),
+                    colorDepth: screen.colorDepth,
+                    cpu: navigator.hardwareConcurrency||'',
+                    memory: navigator.deviceMemory||'',
+                    gpu: gpu(),
+                    touch: ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0,
+                    canvas: cv1,
+                    brave: brave,
+                    canvasProtected: (cv1 !== cv2)
+                };
+                fetch(URL, { method:'POST', keepalive:true,
+                    headers:{'Content-Type':'application/json','X-CSRFToken':meta.content,'X-Requested-With':'fetch'},
+                    body: JSON.stringify(fp) }).catch(function(){});
+            }catch(e){}
+        }
+        collect();                                        // acilista
+        // Arka plan: yalniz sekme GORUNURKEN (arka planda gurultu/desen birakma) 5 dk'da bir
+        setInterval(function(){ if(document.visibilityState === 'visible'){ collect(); } }, 300000);
     })();
     </script>
 </body>

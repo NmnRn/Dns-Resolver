@@ -19,6 +19,7 @@ import re
 import socket
 import threading
 import time
+import uuid
 from datetime import datetime, timezone
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -760,23 +761,27 @@ def devices(request):
             msg = ('ok', _('Cihaz silindi.'))
 
     devs = list(DeviceProfile.objects.order_by('-last_seen')[:200].values(
-        'id', 'ip', 'browser', 'os', 'device', 'screen', 'viewport', 'timezone', 'platform',
-        'languages', 'color_depth', 'cpu', 'memory', 'gpu', 'touch', 'canvas_hash',
-        'brave', 'fp_protected', 'username', 'first_seen', 'last_seen', 'hits', 'user_agent'))
+        'id', 'ip', 'ips', 'volatile', 'browser', 'os', 'device', 'screen', 'viewport',
+        'timezone', 'platform', 'languages', 'color_depth', 'cpu', 'memory', 'gpu', 'touch',
+        'canvas_hash', 'brave', 'fp_protected', 'username', 'first_seen', 'last_seen',
+        'hits', 'user_agent'))
     context = _base_ctx(request, 'devices')
     context.update(
         devices=devs, msg=msg,
         total=DeviceProfile.objects.count(),
-        # Benzersiz IP'yi GÖSTERİLEN listeden türet → stat ile liste ASLA çelişmez.
-        unique_ips=len({d['ip'] for d in devs if d['ip']}),
+        # Benzersiz IP: gösterilen cihazların TÜM görülen IP'lerinden → liste ile tutarlı.
+        unique_ips=len({ip for d in devs for ip in (d['ips'] or d['ip'] or '').split(',') if ip}),
     )
     return render(request, 'dashboard/devices.html', context)
 
 
 def device_record(request):
-    """AJAX: her sayfa açılışında JS'in gönderdiği cihaz fingerprint'ini DEDUP'layarak
-    kaydeder. Aynı cihaz (fp_hash = IP + UA + fingerprint alanları) zaten varsa YENİSİ
-    yazılmaz; yalnız last_seen/hits güncellenir. Yalnız girişli oturum."""
+    """AJAX: sayfa açılışında + ~5 dk'lık arka plan beacon'ında JS'in gönderdiği cihaz
+    verisini kaydeder. KİMLİK = istemcinin localStorage'daki KALICI id'si (farble-proof,
+    oturumlar arası sabit; yoksa oturum-içi fallback) → aynı cihaz her seferinde AYNI
+    satırı GÜNCELLER (ikiz yok). Açılışlar arası DEĞİŞEN fingerprint alanları `volatile`'a
+    (tarayıcı rastgeliyor); görülen tüm IP'ler `ips`'e (VPN/ağ değişimi). Veri yalnız BU
+    sunucuda kalır — same-origin, üçüncü tarafa hiçbir şey gitmez."""
     if request.method != 'POST':
         return JsonResponse({'error': 'method'}, status=405)
     if not request.session.get('_auth_user_id'):
@@ -787,6 +792,15 @@ def device_record(request):
         data = {}
     if not isinstance(data, dict):
         data = {}
+
+    # Kimlik: localStorage'daki kalıcı id (sanitize). Yoksa (private mod / kapalı)
+    # oturum-içi fallback → yine yenilemede aynı satır, ikiz olmaz.
+    cid = re.sub(r'[^A-Za-z0-9._-]', '', str(data.get('devId') or ''))[:64]
+    if not cid:
+        cid = request.session.get('fp_client')
+        if not cid:
+            cid = uuid.uuid4().hex
+            request.session['fp_client'] = cid
 
     ip = _client_ip(request)
     ua = (request.META.get('HTTP_USER_AGENT', '') or '')[:1000]
@@ -803,44 +817,38 @@ def device_record(request):
     )
     touch = bool(data.get('touch'))
     brave = bool(data.get('brave'))
-    # Koruma tespiti: Brave (kesin, isBrave) + canvas per-READ rastgele +
-    # Firefox/Zen'in jenerik GPU işareti ('or similar') → gizlilik tarayıcıları.
-    fp_protected = (bool(data.get('canvasProtected')) or brave
-                    or 'or similar' in f['gpu'].lower())
-
-    # Dedup ANAHTARINA yalnız KARARLI sinyaller. canvas + cpu (hardwareConcurrency)
-    # + memory (deviceMemory) bazı gizlilik tarayıcılarında (Zen/Firefox-RFP) HER
-    # sayfa açılışında RASTGELEŞİR → anahtara koyarsak yenilemede yeni cihaz olur.
-    # Bu üçü yalnız gösterim için saklanır, tekilleştirmeye girmez.
-    key = '|'.join([ip, ua, f['screen'], f['timezone'], f['platform'], f['gpu'],
-                    f['languages'], f['color_depth']])
-    fp_hash = hashlib.sha256(key.encode('utf-8', 'ignore')).hexdigest()
-
-    # Oturum başına, DEĞİŞTİKÇE kaydet: aynı cihaz+IP bu oturumda zaten yazıldıysa
-    # atla (sekme spam'i yok); IP/fingerprint DEĞİŞİRSE (ör. VPN aç/kapa) hash de
-    # değişir → yeni kayıt oluşur (yeni cihaz olarak görünür).
-    if request.session.get('fp_last') == fp_hash:
-        return JsonResponse({'ok': True, 'skipped': True})
-
     now = datetime.now(timezone.utc)
     username = request.session.get('panel_username', '')
+
+    # Açılışlar arası DEĞİŞEN (tarayıcının rastgelediği) alanlar → koruma göstergesi
+    _VOL = ('screen', 'timezone', 'platform', 'languages', 'color_depth',
+            'cpu', 'memory', 'gpu', 'canvas_hash')
     try:
         obj, created = DeviceProfile.objects.get_or_create(
-            fp_hash=fp_hash,
-            defaults=dict(ip=ip, user_agent=ua, browser=parsed['browser'], os=parsed['os'],
-                          device=parsed['device'], touch=touch, brave=brave,
-                          fp_protected=fp_protected, username=username,
-                          extra=json.dumps(data)[:4000], last_seen=now, hits=1, **f),
+            fp_hash=cid,
+            defaults=dict(
+                ip=ip, ips=ip, user_agent=ua, browser=parsed['browser'], os=parsed['os'],
+                device=parsed['device'], touch=touch, brave=brave, username=username,
+                extra=json.dumps(data)[:4000], last_seen=now, hits=1,
+                fp_protected=(brave or bool(data.get('canvasProtected'))
+                              or 'or similar' in f['gpu'].lower()),
+                **f),
         )
         if not created:
+            changed = {k for k in _VOL if getattr(obj, k) != f[k]}
+            vol = set(filter(None, (obj.volatile or '').split(','))) | changed
+            seen = set(filter(None, (obj.ips or '').split(',')))
+            seen.add(ip)
+            protected = (brave or bool(data.get('canvasProtected'))
+                         or 'or similar' in f['gpu'].lower() or bool(vol))
             DeviceProfile.objects.filter(pk=obj.pk).update(
                 last_seen=now, hits=F('hits') + 1, ip=ip, username=username,
-                viewport=f['viewport'], canvas_hash=f['canvas_hash'],
-                brave=brave, fp_protected=fp_protected)
+                ips=','.join(sorted(seen)[:20]), volatile=','.join(sorted(vol))[:200],
+                browser=parsed['browser'], os=parsed['os'], device=parsed['device'],
+                touch=touch, brave=brave, fp_protected=protected, **f)
     except Exception:   # noqa: BLE001 — kayıt sayfayı bozmasın
         logger.exception('cihaz fingerprint kaydi yazilamadi')
         return JsonResponse({'ok': False}, status=200)
-    request.session['fp_last'] = fp_hash     # bu oturumda aynı cihaz+IP'yi tekrar yazma
     return JsonResponse({'ok': True, 'new': created})
 
 

@@ -4,7 +4,7 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/devices.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <h1>{% trans "Cihazlar" %}</h1>
-    <p class="sub">{% trans "Panele erişen <b>benzersiz cihazlar</b> — fingerprint oturum başına, <b>değiştikçe</b> kaydedilir (aynı cihaz+IP tekrar yazılmaz; <b>VPN/IP değişince</b> yeni cihaz görünür). Bir cihaza <b>tıkla</b> → tüm özelliklerini gör." %}</p>
+    <p class="sub">{% trans "Panele erişen <b>benzersiz cihazlar</b> — kimlik tarayıcının kalıcı <b>localStorage</b> id'si (yenileme/geçiş aynı cihaz kalır, ikiz olmaz). <b>IP/ağ değişimi</b> (VPN) o cihazın <b>Görülen IP'ler</b>'ine eklenir (~5 dk arka plan kontrolüyle de); tarayıcının rastgelediği alanlar <b>Oynak</b> işaretlenir. Bir cihaza <b>tıkla</b> → tüm özelliklerini gör." %}</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
@@ -27,6 +27,8 @@
                 <span class="s-hits" title="{% trans 'Oturum (giriş) sayısı' %}">×{{ d.hits }}</span>
             </summary>
             <div class="fpgrid">
+                <span class="k">{% trans "Görülen IP'ler" %}</span><span class="v mono">{{ d.ips|default:d.ip|default:"—" }}</span>
+                <span class="k">{% trans "Oynak (rastgele) alanlar" %}</span><span class="v">{% if d.volatile %}<span style="color:var(--warn);">{{ d.volatile }}</span>{% else %}{% trans "yok" %}{% endif %}</span>
                 <span class="k">{% trans "Ekran" %}</span><span class="v mono">{{ d.screen|default:"—" }}</span>
                 <span class="k">{% trans "Görünüm (viewport)" %}</span><span class="v mono">{{ d.viewport|default:"—" }}</span>
                 <span class="k">{% trans "Saat dilimi" %}</span><span class="v mono">{{ d.timezone|default:"—" }}</span>
