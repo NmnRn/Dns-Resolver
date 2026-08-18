@@ -4,7 +4,7 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/devices.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <h1>{% trans "Cihazlar" %}</h1>
-    <p class="sub">{% trans "Panele erişen <b>benzersiz cihazlar</b> — kimlik tarayıcının kalıcı <b>localStorage</b> id'si (yenileme/geçiş aynı cihaz kalır, ikiz olmaz). <b>IP/ağ değişimi</b> (VPN) o cihazın <b>Görülen IP'ler</b>'ine eklenir (~5 dk arka plan kontrolüyle de); tarayıcının rastgelediği alanlar <b>Oynak</b> işaretlenir. Bir cihaza <b>tıkla</b> → tüm özelliklerini gör." %}</p>
+    <p class="sub">{% trans "Panele erişen benzersiz cihazlar — bir cihaza tıkla, tüm özelliklerini gör." %}</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
