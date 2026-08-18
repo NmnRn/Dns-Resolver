@@ -748,15 +748,27 @@ def devices(request):
     if not User.objects.filter(id=uid, is_superuser=True).exists():
         return redirect('dashboard:logs')
 
+    msg = None
+    if request.method == 'POST':
+        act = request.POST.get('action', '')
+        if act == 'clear_devices':
+            n = DeviceProfile.objects.all().delete()[0]
+            request.session.pop('fp_last', None)     # sonraki açılışta yeniden kaydedilsin
+            msg = ('ok', _('%(n)s cihaz kaydı silindi.') % {'n': n})
+        elif act == 'del_device':
+            DeviceProfile.objects.filter(id=request.POST.get('id', '')).delete()
+            msg = ('ok', _('Cihaz silindi.'))
+
     devs = list(DeviceProfile.objects.order_by('-last_seen')[:200].values(
-        'ip', 'browser', 'os', 'device', 'screen', 'viewport', 'timezone', 'platform',
+        'id', 'ip', 'browser', 'os', 'device', 'screen', 'viewport', 'timezone', 'platform',
         'languages', 'color_depth', 'cpu', 'memory', 'gpu', 'touch', 'canvas_hash',
-        'username', 'first_seen', 'last_seen', 'hits', 'user_agent'))
+        'brave', 'fp_protected', 'username', 'first_seen', 'last_seen', 'hits', 'user_agent'))
     context = _base_ctx(request, 'devices')
     context.update(
-        devices=devs,
+        devices=devs, msg=msg,
         total=DeviceProfile.objects.count(),
-        unique_ips=DeviceProfile.objects.exclude(ip='').values('ip').distinct().count(),
+        # Benzersiz IP'yi GÖSTERİLEN listeden türet → stat ile liste ASLA çelişmez.
+        unique_ips=len({d['ip'] for d in devs if d['ip']}),
     )
     return render(request, 'dashboard/devices.html', context)
 
@@ -769,11 +781,6 @@ def device_record(request):
         return JsonResponse({'error': 'method'}, status=405)
     if not request.session.get('_auth_user_id'):
         return JsonResponse({'error': 'auth'}, status=403)
-    # Oturum başına BİR kez kaydet: her sayfa/sekme açılışında değil, yeni giriş
-    # (oturum) başına. Çıkışta oturum sıfırlanır → yeni girişte tekrar kaydedilir.
-    # (dedup ile aynı cihaz tek satır; hits = oturum/giriş sayısı.)
-    if request.session.get('fp_recorded'):
-        return JsonResponse({'ok': True, 'skipped': True})
     try:
         data = json.loads((request.body or b'').decode('utf-8') or '{}')
     except (ValueError, UnicodeDecodeError):
@@ -805,6 +812,12 @@ def device_record(request):
                     f['languages'], f['color_depth'], f['cpu'], f['memory']])
     fp_hash = hashlib.sha256(key.encode('utf-8', 'ignore')).hexdigest()
 
+    # Oturum başına, DEĞİŞTİKÇE kaydet: aynı cihaz+IP bu oturumda zaten yazıldıysa
+    # atla (sekme spam'i yok); IP/fingerprint DEĞİŞİRSE (ör. VPN aç/kapa) hash de
+    # değişir → yeni kayıt oluşur (yeni cihaz olarak görünür).
+    if request.session.get('fp_last') == fp_hash:
+        return JsonResponse({'ok': True, 'skipped': True})
+
     now = datetime.now(timezone.utc)
     username = request.session.get('panel_username', '')
     try:
@@ -823,7 +836,7 @@ def device_record(request):
     except Exception:   # noqa: BLE001 — kayıt sayfayı bozmasın
         logger.exception('cihaz fingerprint kaydi yazilamadi')
         return JsonResponse({'ok': False}, status=200)
-    request.session['fp_recorded'] = True    # bu oturumda tekrar kaydetme
+    request.session['fp_last'] = fp_hash     # bu oturumda aynı cihaz+IP'yi tekrar yazma
     return JsonResponse({'ok': True, 'new': created})
 
 

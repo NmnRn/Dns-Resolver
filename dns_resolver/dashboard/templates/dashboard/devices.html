@@ -4,11 +4,14 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/devices.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <h1>{% trans "Cihazlar" %}</h1>
-    <p class="sub">{% trans "Panele erişen <b>benzersiz cihazlar</b> — her yeni girişte (oturum başına bir kez) tarayıcı fingerprint'i toplanıp <b>tekilleştirilir</b>. Bir cihaza <b>tıkla</b> → tüm özelliklerini (ekran/GPU/canvas...) gör. Son görülene göre sıralı = son giriş." %}</p>
+    <p class="sub">{% trans "Panele erişen <b>benzersiz cihazlar</b> — fingerprint oturum başına, <b>değiştikçe</b> kaydedilir (aynı cihaz+IP tekrar yazılmaz; <b>VPN/IP değişince</b> yeni cihaz görünür). Bir cihaza <b>tıkla</b> → tüm özelliklerini gör." %}</p>
 
-    <div class="dstats">
+    {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
+
+    <div class="dstats" style="align-items:center;">
         <div class="dstat"><span class="k">{% trans "Cihaz" %}</span><span class="v">{{ total }}</span></div>
         <div class="dstat"><span class="k">{% trans "Benzersiz IP" %}</span><span class="v">{{ unique_ips }}</span></div>
+        {% if devices %}<form method="post" style="margin-left:auto;">{% csrf_token %}<input type="hidden" name="action" value="clear_devices"><button type="submit" class="btn ghost" style="padding:8px 14px;font-size:12px;text-transform:none;" onclick="return confirm('{% trans "Tüm cihaz kayıtları silinsin mi? (bir sonraki açılışta yeniden toplanır)" %}')">🗑 {% trans "Kayıtları temizle" %}</button></form>{% endif %}
     </div>
 
     <div class="devlist">
@@ -39,6 +42,9 @@
                 <span class="k">{% trans "Kullanıcı" %}</span><span class="v">{{ d.username|default:"—" }}</span>
                 <span class="k">{% trans "İlk görülme" %}</span><span class="v mono"><span class="lt" data-utc="{{ d.first_seen|date:'Y-m-d H:i:s' }}">{{ d.first_seen|date:'Y-m-d H:i:s' }}</span></span>
                 <span class="k">{% trans "User-Agent" %}</span><span class="v mono ua">{{ d.user_agent|default:"—" }}</span>
+            </div>
+            <div style="padding:0 16px 12px;text-align:right;">
+                <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="del_device"><input type="hidden" name="id" value="{{ d.id }}"><button type="submit" class="btn ghost" style="padding:5px 12px;font-size:12px;text-transform:none;color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent);">{% trans "Sil" %}</button></form>
             </div>
         </details>
         {% empty %}
