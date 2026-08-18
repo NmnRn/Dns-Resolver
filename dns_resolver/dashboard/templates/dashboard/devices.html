@@ -39,8 +39,8 @@
                 <span class="k">{% trans "Bellek (GB)" %}</span><span class="v mono">{{ d.memory|default:"—" }}</span>
                 <span class="k">{% trans "GPU (WebGL)" %}</span><span class="v mono">{{ d.gpu|default:"—" }}</span>
                 {% trans "evet,hayır" as yn %}<span class="k">{% trans "Dokunmatik" %}</span><span class="v">{{ d.touch|yesno:yn }}</span>
-                <span class="k">{% trans "Canvas fp" %}</span><span class="v mono">{{ d.canvas_hash|default:"—" }}{% if d.fp_protected %} <span class="muted">({% trans "rastgele — anahtara dahil değil" %})</span>{% endif %}</span>
-                <span class="k">{% trans "Fingerprint koruması" %}</span><span class="v">{% if d.fp_protected %}{% if d.brave %}Brave{% else %}{% trans "aktif (canvas rastgele)" %}{% endif %}{% else %}{% trans "yok" %}{% endif %}</span>
+                <span class="k">{% trans "Canvas fp" %}</span><span class="v mono">{{ d.canvas_hash|default:"—" }}{% if 'canvas_hash' in d.volatile %} <span class="muted">({% trans "rastgele — anahtara dahil değil" %})</span>{% endif %}</span>
+                <span class="k">{% trans "Fingerprint koruması" %}</span><span class="v">{% if d.brave %}Brave{% elif d.volatile %}{% trans "oynak" %}: {{ d.volatile }}{% elif 'or similar' in d.gpu %}{% trans "GPU maskeleme (Firefox)" %}{% elif d.fp_protected %}{% trans "canvas rastgele" %}{% else %}{% trans "yok" %}{% endif %}</span>
                 <span class="k">{% trans "Kullanıcı" %}</span><span class="v">{{ d.username|default:"—" }}</span>
                 <span class="k">{% trans "İlk görülme" %}</span><span class="v mono"><span class="lt" data-utc="{{ d.first_seen|date:'Y-m-d H:i:s' }}">{{ d.first_seen|date:'Y-m-d H:i:s' }}</span></span>
                 <span class="k">{% trans "User-Agent" %}</span><span class="v mono ua">{{ d.user_agent|default:"—" }}</span>

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dns-panel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-18 22:23+0000\n"
+"POT-Creation-Date: 2026-08-18 22:28+0000\n"
 "PO-Revision-Date: 2026-08-18 00:00+0000\n"
 "Last-Translator: NmnRn\n"
 "Language-Team: English\n"
@@ -365,7 +365,9 @@ msgstr "not found"
 #: dashboard/templates/dashboard/devices.html:7
 msgid ""
 "Panele erişen benzersiz cihazlar — bir cihaza tıkla, tüm özelliklerini gör."
-msgstr "Unique devices that accessed the panel — click a device to see all its properties."
+msgstr ""
+"Unique devices that accessed the panel — click a device to see all its "
+"properties."
 
 #: dashboard/templates/dashboard/devices.html:12
 msgid "Cihaz"
@@ -471,8 +473,17 @@ msgid "Fingerprint koruması"
 msgstr "Fingerprint protection"
 
 #: dashboard/templates/dashboard/devices.html:43
-msgid "aktif (canvas rastgele)"
-msgstr "active (canvas randomized)"
+msgid "oynak"
+msgstr "volatile"
+
+#: dashboard/templates/dashboard/devices.html:43
+msgid "GPU maskeleme (Firefox)"
+msgstr "GPU masking (Firefox)"
+
+#: dashboard/templates/dashboard/devices.html:43
+#| msgid "aktif (canvas rastgele)"
+msgid "canvas rastgele"
+msgstr "canvas randomized"
 
 #: dashboard/templates/dashboard/devices.html:44
 #: dashboard/templates/dashboard/users.html:16
