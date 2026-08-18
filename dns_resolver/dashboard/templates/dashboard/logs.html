@@ -1,33 +1,33 @@
 {% extends "dashboard/base.html" %}
-{% load static %}
-{% block title %}Genel Bakış · DNS Panel{% endblock %}
+{% load static i18n %}
+{% block title %}{% trans "Genel Bakış" %} · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/logs.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <div class="head">
-        <div><h1>Genel Bakış</h1><p class="sub" style="margin:4px 0 0;">Özet istatistikler · zamanlar UTC</p></div>
-        <a class="btn" href="{% url 'dashboard:queries' %}">Sorgu geçmişi →</a>
+        <div><h1>{% trans "Genel Bakış" %}</h1><p class="sub" style="margin:4px 0 0;">{% trans "Özet istatistikler · zamanlar UTC" %}</p></div>
+        <a class="btn" href="{% url 'dashboard:queries' %}">{% trans "Sorgu geçmişi" %} →</a>
     </div>
 
     {% if error %}
-        <div class="error">Veritabanına erişilemedi: {{ error }}</div>
+        <div class="error">{% blocktrans %}Veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
     {% else %}
     <div class="bento">
         <!-- HERO: son 24 saat + grafik -->
         <div class="b hero">
             <div class="hero-top">
                 <div>
-                    <div class="lbl">Son 24 saat trafiği</div>
+                    <div class="lbl">{% trans "Son 24 saat trafiği" %}</div>
                     <div class="big num">{{ stats.last_24h }}</div>
-                    <div class="hsub">tepe {{ peak }} / saat</div>
+                    <div class="hsub">{% blocktrans with p=peak %}tepe {{ p }} / saat{% endblocktrans %}</div>
                 </div>
                 <div class="hero-mini">
-                    <div class="lbl">Engellenen (24s)</div>
+                    <div class="lbl">{% trans "Engellenen (24s)" %}</div>
                     <div class="m2 num">{{ stats.blocked }}</div>
-                    <div class="hsub">%{{ blocked_pct }} oranında</div>
+                    <div class="hsub">{% blocktrans with p=blocked_pct %}%{{ p }} oranında{% endblocktrans %}</div>
                 </div>
             </div>
             {% if spark %}
-            <svg class="spark" viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" role="img" aria-label="Son 24 saatlik sorgu trendi">
+            <svg class="spark" viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" role="img" aria-label="{% trans 'Son 24 saatlik sorgu trendi' %}">
                 <defs><linearGradient id="sp" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/>
                     <stop offset="1" stop-color="var(--accent)" stop-opacity="0"/>
@@ -43,36 +43,36 @@
         <div class="b blocked">
             <div class="ring" style="--p:{{ blocked_pct }}"><div class="hole">%{{ blocked_pct }}</div></div>
             <div class="binfo">
-                <div class="lbl">Engellenen toplam</div>
+                <div class="lbl">{% trans "Engellenen toplam" %}</div>
                 <div class="m2 num">{{ stats.blocked }}</div>
-                <div class="hsub">reklam · izleyici · kötücül</div>
+                <div class="hsub">{% trans "reklam · izleyici · kötücül" %}</div>
             </div>
         </div>
 
         <!-- İSTATİSTİK TILE'LARI -->
-        <div class="b tile"><div class="ic">📊</div><div><div class="tn num">{{ stats.total }}</div><div class="tl">Toplam Sorgu</div></div></div>
-        <div class="b tile"><div class="ic">🌐</div><div><div class="tn num">{{ stats.distinct_domains }}</div><div class="tl">Farklı Alan Adı</div></div></div>
-        <div class="b tile"><div class="ic">💻</div><div><div class="tn num">{{ stats.distinct_clients }}</div><div class="tl">Farklı İstemci</div></div></div>
+        <div class="b tile"><div class="ic">📊</div><div><div class="tn num">{{ stats.total }}</div><div class="tl">{% trans "Toplam Sorgu" %}</div></div></div>
+        <div class="b tile"><div class="ic">🌐</div><div><div class="tn num">{{ stats.distinct_domains }}</div><div class="tl">{% trans "Farklı Alan Adı" %}</div></div></div>
+        <div class="b tile"><div class="ic">💻</div><div><div class="tn num">{{ stats.distinct_clients }}</div><div class="tl">{% trans "Farklı İstemci" %}</div></div></div>
 
         <!-- EN ÇOK SORGULANANLAR (bar'lı) -->
         <div class="b list">
-            <h3>En Çok Sorgulananlar</h3>
+            <h3>{% trans "En Çok Sorgulananlar" %}</h3>
             {% for d in top_domains %}
             <div class="li"><span class="nm">{{ d.domain }}</span><span class="v num">{{ d.cnt }}</span><div class="bar"><i style="width:{{ d.pct }}%"></i></div></div>
-            {% empty %}<div class="li muted">Veri yok</div>{% endfor %}
+            {% empty %}<div class="li muted">{% trans "Veri yok" %}</div>{% endfor %}
         </div>
 
         <!-- EN AKTİF İSTEMCİLER -->
         <div class="b list">
-            <h3>En Aktif İstemciler</h3>
+            <h3>{% trans "En Aktif İstemciler" %}</h3>
             {% for c in top_clients %}
             <div class="li"><span class="nm ip">{{ c.client_ip }}</span><span class="v num">{{ c.cnt }}</span><div class="bar"><i style="width:{{ c.pct }}%"></i></div></div>
-            {% empty %}<div class="li muted">Veri yok</div>{% endfor %}
+            {% empty %}<div class="li muted">{% trans "Veri yok" %}</div>{% endfor %}
         </div>
 
         <!-- YÖNTEME GÖRE (segment bar + lejant) -->
         <div class="b list">
-            <h3>Yönteme Göre</h3>
+            <h3>{% trans "Yönteme Göre" %}</h3>
             {% if methods %}
             <div class="seg">
                 {% for m in methods %}<i class="b-{{ m.method }}" style="width:{{ m.share }}%"></i>{% endfor %}
@@ -82,7 +82,7 @@
                 <div class="row"><span class="swatch b-{{ m.method }}"></span>{{ m.method|upper }}<span class="v num">{{ m.cnt }}</span></div>
                 {% endfor %}
             </div>
-            {% else %}<div class="li muted">Veri yok</div>{% endif %}
+            {% else %}<div class="li muted">{% trans "Veri yok" %}</div>{% endif %}
         </div>
     </div>
     {% endif %}

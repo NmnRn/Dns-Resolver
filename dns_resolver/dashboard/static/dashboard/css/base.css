@@ -94,6 +94,14 @@ a { color: var(--accent-deep); text-decoration: none; }
 .langform select { appearance: none; -webkit-appearance: none; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: var(--r-sm); padding: 7px 10px; font: 600 12.5px var(--sans); cursor: pointer; transition: border-color .18s ease; }
 .langform select:hover { border-color: var(--accent); }
 .langform select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.updatebar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 9px 16px;
+    background: var(--accent-soft); border-bottom: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+    color: var(--text); font: 600 13px var(--sans); text-align: center; }
+.updatebar .mono { color: var(--accent-deep); }
+:root[data-theme="dark"] .updatebar .mono { color: var(--accent); }
+.updatebar .ubx { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 15px;
+    line-height: 1; padding: 2px 6px; border-radius: 6px; }
+.updatebar .ubx:hover { color: var(--text); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Yerleşim + açılış animasyonu */

@@ -14,6 +14,16 @@
     <script src="{% static 'dashboard/js/ajax.js' %}?v={{ static_v }}" defer></script>
 </head>
 <body>
+    {% if update_available %}
+    <div class="updatebar" id="updatebar" data-ver="{{ update_latest }}">
+        <span>🔔 {% blocktrans with v=update_latest %}Yeni sürüm mevcut ({{ v }}) — güncellemek için sunucuda <span class="mono">sudo ./upgrade.sh</span> çalıştır.{% endblocktrans %}</span>
+        <button type="button" class="ubx" data-no-ajax aria-label="{% trans 'Kapat' %}">✕</button>
+    </div>
+    <script>(function(){var b=document.getElementById('updatebar');if(!b)return;
+        try{if(localStorage.getItem('upd_dismiss')===b.dataset.ver){b.remove();return;}}catch(e){}
+        var x=b.querySelector('.ubx'); if(x) x.addEventListener('click',function(){try{localStorage.setItem('upd_dismiss',b.dataset.ver);}catch(e){}b.remove();});
+    })();</script>
+    {% endif %}
     <header class="topbar">
         <div class="topbar-in">
             <div class="brand"><img class="brand-logo" src="{% static 'dashboard/img/logo.png' %}?v={{ static_v }}" alt="" width="26" height="21">dns.panel</div>
@@ -22,15 +32,15 @@
                 <a href="{% url 'dashboard:queries' %}" class="{% if active == 'queries' %}active{% endif %}">{% trans "Sorgu Geçmişi" %}</a>
                 <a href="{% url 'dashboard:analytics' %}" class="{% if active == 'analytics' %}active{% endif %}">{% trans "Analiz" %}</a>
                 <div class="navdd">
-                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' or active == 'devices' or active == 'device_details' %}active{% endif %}">{% trans "DNS Ayarları" %} ▾</button>
+                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' or active == 'devices' or active == 'dns_devices' %}active{% endif %}">{% trans "DNS Ayarları" %} ▾</button>
                     <div class="ddmenu">
                         <a href="{% url 'dashboard:settings' %}">{% trans "Genel" %}</a>
                         <a href="{% url 'dashboard:query_settings' %}">{% trans "Sorgu Ayarları" %}</a>
                         <a href="{% url 'dashboard:servers' %}">{% trans "Sunucular" %}</a>
                         <a href="{% url 'dashboard:filters' %}">{% trans "Filtreler" %}</a>
                         <a href="{% url 'dashboard:certificate' %}">{% trans "Sertifika" %}</a>
+                        {% if is_admin %}<a href="{% url 'dashboard:dns_devices' %}">{% trans "DNS Cihazları" %}</a>{% endif %}
                         {% if is_admin %}<a href="{% url 'dashboard:devices' %}">{% trans "Cihazlar" %}</a>{% endif %}
-                        {% if is_admin %}<a href="{% url 'dashboard:device_details' %}">{% trans "Cihaz Özellikleri" %}</a>{% endif %}
                     </div>
                 </div>
                 {% if is_admin %}<a href="{% url 'dashboard:users' %}" class="{% if active == 'users' %}active{% endif %}">{% trans "Kullanıcılar" %}</a>{% endif %}
@@ -69,8 +79,10 @@
         });
     })();
     </script>
-    <script>/* Cihaz fingerprint — her tam sayfa acilisinda topla + gonder (server dedup'lar) */
-    (function(){
+    <script>/* Cihaz fingerprint — her tam sayfa acilisinda topla + gonder (server dedup'lar).
+    Brave/Tor canvas'i her okumada rastgeleleştirir → tespit et; server canvas'i
+    dedup ANAHTARINA koymaz, boylece her sekmede yeni cihaz olusmaz. */
+    (async function(){
         if(!window.fetch) return;
         var meta = document.querySelector('meta[name=csrf-token]');
         if(!meta || !meta.content) return;                 // token yoksa (or. anonim) atla
@@ -86,6 +98,12 @@
             var d=c.toDataURL(); var h=0; for(var i=0;i<d.length;i++){ h=(h*31 + d.charCodeAt(i))|0; }
             return (h>>>0).toString(16);
         }catch(e){ return ''; } }
+        // Brave: kendi API'siyle kesin tespit
+        var brave = false;
+        try{ if(navigator.brave && navigator.brave.isBrave){ brave = await navigator.brave.isBrave(); } }catch(e){}
+        // Canvas rastgele mi: ard arda iki okuma FARKLIYSA farbling aktif (Brave/Tor/RFP)
+        var cv1 = canvasHash(), cv2 = canvasHash();
+        var canvasProtected = (cv1 !== cv2);
         try{
             var fp = {
                 screen: screen.width+'x'+screen.height,
@@ -98,7 +116,9 @@
                 memory: navigator.deviceMemory||'',
                 gpu: gpu(),
                 touch: ('ontouchstart' in window) || (navigator.maxTouchPoints||0) > 0,
-                canvas: canvasHash()
+                canvas: cv1,
+                brave: brave,
+                canvasProtected: canvasProtected
             };
             fetch('{% url "dashboard:device_record" %}', { method:'POST', keepalive:true,
                 headers:{'Content-Type':'application/json','X-CSRFToken':meta.content,'X-Requested-With':'fetch'},

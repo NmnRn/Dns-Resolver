@@ -1,9 +1,9 @@
-{% load static %}<!DOCTYPE html>
-<html lang="tr">
+{% load static i18n %}{% get_current_language as CUR_LANG %}<!DOCTYPE html>
+<html lang="{{ CUR_LANG }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>404 · Sayfa bulunamadı · DNS Panel</title>
+    <title>404 · {% trans "Sayfa bulunamadı" %} · DNS Panel</title>
     <link rel="icon" type="image/png" href="{% static 'dashboard/img/logo.png' %}?v={{ static_v }}">
     <script>(function(){try{var t=localStorage.getItem('theme');if(!t){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}}catch(e){}})();</script>
     <link rel="stylesheet" href="{% static 'dashboard/css/base.css' %}?v={{ static_v }}">
@@ -36,9 +36,9 @@
         <div class="brand"><span class="dot"></span>dns.panel</div>
         <div class="code">404</div>
         <div class="dig">;; -&gt;&gt;HEADER&lt;&lt;- opcode: QUERY, status: <b>NXDOMAIN</b></div>
-        <h1>Sayfa bulunamadı</h1>
-        <p>Aradığın kayıt bu sunucuda çözülemedi — yol yanlış girilmiş ya da sayfa taşınmış olabilir.</p>
-        <a class="home" href="{% url 'dashboard:logs' %}">← Panele dön</a>
+        <h1>{% trans "Sayfa bulunamadı" %}</h1>
+        <p>{% trans "Aradığın kayıt bu sunucuda çözülemedi — yol yanlış girilmiş ya da sayfa taşınmış olabilir." %}</p>
+        <a class="home" href="{% url 'dashboard:logs' %}">← {% trans "Panele dön" %}</a>
     </div>
 </body>
 </html>

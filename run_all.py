@@ -20,6 +20,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -57,6 +58,24 @@ def _handle_signal(signum, frame) -> None:
     _terminate_all()
 
 
+def _startup_healthcheck() -> None:
+    """Sunucu açılırken TEK SEFER sağlık probe'u atar (periyodik DEĞİL — Docker
+    HEALTHCHECK kaldırıldı, sürekli sorgu istenmiyor). Yalnız bilgilendirme:
+    sonucu loglar, konteyneri/exit kodunu ETKİLEMEZ. Sunucuların bağlanması için
+    kısa bir gecikmeden sonra çalışır."""
+    time.sleep(int(os.getenv("HEALTHCHECK_START_DELAY", "10")))
+    try:
+        r = subprocess.run(
+            [PYTHON, "-m", "project_control.healthcheck"],
+            cwd=str(BASE_DIR), capture_output=True, text=True, timeout=30,
+        )
+        out = (r.stdout or r.stderr or "").strip()
+        durum = "OK" if r.returncode == 0 else "BASARISIZ"
+        print(f"[launcher] baslangic saglik kontrolu: {durum} — {out}", flush=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"[launcher] baslangic saglik kontrolu calistirilamadi: {e}", flush=True)
+
+
 def main() -> None:
     # 1) Django'nun iç tablolarını (SQLite: auth/session/admin) hazırla.
     print("[launcher] Django migrate...", flush=True)
@@ -74,6 +93,9 @@ def main() -> None:
          "--host", SITE_BIND, "--port", SITE_PORT],
         cwd=DJANGO_DIR,
     )
+
+    # 3b) Açılışta TEK SEFER sağlık probe'u (arka planda, engellemez, non-fatal).
+    threading.Thread(target=_startup_healthcheck, daemon=True).start()
 
     # 4) Biri ölene (ya da sinyal gelene) kadar bekle.
     dead_name = None

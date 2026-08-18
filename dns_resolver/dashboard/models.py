@@ -43,6 +43,10 @@ class DeviceProfile(models.Model):
     gpu = models.CharField(max_length=200, blank=True)
     touch = models.BooleanField(default=False)
     canvas_hash = models.CharField(max_length=64, blank=True)
+    # Fingerprint koruması: Brave/Tor/Firefox-RFP canvas'ı her okumada
+    # rastgeleleştirir (farbling) → canvas dedup anahtarından ÇIKARILIR.
+    brave = models.BooleanField(default=False)
+    fp_protected = models.BooleanField(default=False)
     extra = models.TextField(blank=True)          # ham fingerprint JSON (detay)
     username = models.CharField(max_length=150, blank=True)
     first_seen = models.DateTimeField(auto_now_add=True)

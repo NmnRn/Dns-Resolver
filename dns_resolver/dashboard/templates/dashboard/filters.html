@@ -1,19 +1,19 @@
 {% extends "dashboard/base.html" %}
-{% load static %}
-{% block title %}Filtreler · DNS Panel{% endblock %}
+{% load static i18n %}
+{% block title %}{% trans "Filtreler" %} · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/filters.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
-    <h1>Filtreler</h1>
-    <p class="sub">Engelleme ve izin listelerini yönet — değişiklikleri resolver ~15 sn içinde uygular. İzin listesi engel listesinden önceliklidir; bir alanı engellemek alt alanlarını da engeller (ör. <span class="mono">doubleclick.net</span> → <span class="mono">ads.doubleclick.net</span>).</p>
+    <h1>{% trans "Filtreler" %}</h1>
+    <p class="sub">{% trans "Engelleme ve izin listelerini yönet — değişiklikleri resolver ~15 sn içinde uygular. İzin listesi engel listesinden önceliklidir; bir alanı engellemek alt alanlarını da engeller (ör. <span class='mono'>doubleclick.net</span> → <span class='mono'>ads.doubleclick.net</span>)." %}</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
     {% if error %}
-        <div class="error">Veritabanına erişilemedi: {{ error }}</div>
+        <div class="error">{% blocktrans %}Veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
     {% else %}
         <!-- Güvenli Arama (motor başına seçim) -->
         <div class="box" style="margin-bottom:16px;">
-            <h2>Güvenli Arama — arama motoru seç</h2>
+            <h2>{% trans "Güvenli Arama — arama motoru seç" %}</h2>
             <div class="svcgrid">
                 {% for e in safesearch_engines %}
                 <form method="post" class="svcitem">
@@ -21,16 +21,16 @@
                     <input type="hidden" name="action" value="safesearch_engine">
                     <input type="hidden" name="engine" value="{{ e.id }}">
                     <span class="svcname">{{ e.name }}</span>
-                    <button type="submit" name="enabled" value="{% if e.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ e.enabled|yesno:'true,false' }}" aria-label="{{ e.name }} güvenli arama aç/kapat"></button>
+                    <button type="submit" name="enabled" value="{% if e.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ e.enabled|yesno:'true,false' }}" aria-label="{% blocktrans with n=e.name %}{{ n }} güvenli arama aç/kapat{% endblocktrans %}"></button>
                 </form>
                 {% endfor %}
             </div>
-            <p class="sub" style="padding:0 16px 14px;margin:0;">Seçilen motorlar zorunlu güvenli varyanta yönlendirilir (Google tüm ülke uzantıları dahil).</p>
+            <p class="sub" style="padding:0 16px 14px;margin:0;">{% trans "Seçilen motorlar zorunlu güvenli varyanta yönlendirilir (Google tüm ülke uzantıları dahil)." %}</p>
         </div>
 
         <!-- Kategori engelleme (ebeveyn kontrolü) -->
         <div class="box" style="margin-bottom:16px;">
-            <h2>Kategori Engelleme</h2>
+            <h2>{% trans "Kategori Engelleme" %}</h2>
             <div class="svcgrid">
                 {% for c in categories %}
                 <form method="post" class="svcitem">
@@ -38,18 +38,16 @@
                     <input type="hidden" name="action" value="category_toggle">
                     <input type="hidden" name="category" value="{{ c.id }}">
                     <span class="svcname">{{ c.name }}</span>
-                    <button type="submit" name="enabled" value="{% if c.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ c.enabled|yesno:'true,false' }}" aria-label="{{ c.name }} engelle/kaldır"></button>
+                    <button type="submit" name="enabled" value="{% if c.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ c.enabled|yesno:'true,false' }}" aria-label="{% blocktrans with n=c.name %}{{ n }} engelle/kaldır{% endblocktrans %}"></button>
                 </form>
                 {% endfor %}
             </div>
-            <p class="sub" style="padding:0 16px 14px;margin:0;">Ebeveyn kontrolü = <b>Güvenli Arama</b> (yukarıda) + <b>Yetişkin İçerik</b>. Kategoriler hazır blocklist olarak eklenir (resolver ~15 sn'de indirir).</p>
+            <p class="sub" style="padding:0 16px 14px;margin:0;">{% trans "Ebeveyn kontrolü = <b>Güvenli Arama</b> (yukarıda) + <b>Yetişkin İçerik</b>. Kategoriler hazır blocklist olarak eklenir (resolver ~15 sn'de indirir)." %}</p>
         </div>
-
-        <!-- Katalog artık "Eklenen Listeler" kartındaki "+ Liste Ekle" butonuyla açılan modalde -->
 
         <!-- Ön tanımlı servisler -->
         <div class="box" style="margin-bottom:16px;">
-            <h2>Ön Tanımlı Servisler — tek tıkla engelle</h2>
+            <h2>{% trans "Ön Tanımlı Servisler — tek tıkla engelle" %}</h2>
             <div class="svcgrid">
                 {% for s in services %}
                 <form method="post" class="svcitem">
@@ -57,7 +55,7 @@
                     <input type="hidden" name="action" value="service_toggle">
                     <input type="hidden" name="service" value="{{ s.id }}">
                     <span class="svcname">{{ s.name }}</span>
-                    <button type="submit" name="enabled" value="{% if s.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ s.enabled|yesno:'true,false' }}" aria-label="{{ s.name }} engelle/kaldır"></button>
+                    <button type="submit" name="enabled" value="{% if s.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ s.enabled|yesno:'true,false' }}" aria-label="{% blocktrans with n=s.name %}{{ n }} engelle/kaldır{% endblocktrans %}"></button>
                 </form>
                 {% endfor %}
             </div>
@@ -66,37 +64,37 @@
         <!-- Eklenen listeler -->
         <div class="box" style="margin-bottom:16px;">
             <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                <span>Eklenen Listeler — {{ source_count }} liste · {{ total_list_domains }} domain</span>
+                <span>{% blocktrans with cnt=source_count dom=total_list_domains %}Eklenen Listeler — {{ cnt }} liste · {{ dom }} domain{% endblocktrans %}</span>
                 <span style="display:flex;gap:8px;">
-                    {% if sources %}<button type="button" id="checklinks" class="btn ghost" style="padding:6px 13px;font-size:12px;text-transform:none;">🔗 Linkleri kontrol et</button>{% endif %}
-                    {% if sources %}<form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="source_refresh_all"><button type="submit" class="btn ghost" style="padding:6px 13px;font-size:12px;text-transform:none;">↻ Hepsini yenile</button></form>{% endif %}
-                    <button type="button" class="btn" data-open="listmodal" style="padding:6px 13px;font-size:12px;text-transform:none;">+ Liste Ekle</button>
+                    {% if sources %}<button type="button" id="checklinks" class="btn ghost" style="padding:6px 13px;font-size:12px;text-transform:none;">🔗 {% trans "Linkleri kontrol et" %}</button>{% endif %}
+                    {% if sources %}<form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="source_refresh_all"><button type="submit" class="btn ghost" style="padding:6px 13px;font-size:12px;text-transform:none;">↻ {% trans "Hepsini yenile" %}</button></form>{% endif %}
+                    <button type="button" class="btn" data-open="listmodal" style="padding:6px 13px;font-size:12px;text-transform:none;">+ {% trans "Liste Ekle" %}</button>
                 </span>
             </h2>
             <div class="tablescroll">
                 <table>
-                    <thead><tr><th>Liste</th><th>Domain</th><th>Güncellendi <span class="muted" style="font-weight:400;">(yerel)</span></th><th>Açık</th><th></th></tr></thead>
+                    <thead><tr><th>{% trans "Liste" %}</th><th>{% trans "Domain" %}</th><th>{% trans "Güncellendi" %} <span class="muted" style="font-weight:400;">({% trans "yerel" %})</span></th><th>{% trans "Açık" %}</th><th></th></tr></thead>
                     <tbody>
                         {% for s in sources %}
                         <tr data-src-id="{{ s.id }}">
                             <td><b title="{{ s.name }}">{{ s.name|truncatechars:44 }}</b> <span class="linkstat"></span><br><a class="srcurl" href="{{ s.url }}" target="_blank" rel="noopener noreferrer" title="{{ s.url }}" data-no-ajax>{{ s.url|truncatechars:64 }}</a></td>
-                            <td class="num">{% if s.count %}{{ s.count }}{% elif s.updated_at %}<span class="lbadge err" title="İndirilemedi (0 domain) — URL kırık ya da erişilemiyor">indirilemedi</span>{% else %}<span class="lbadge" title="Henüz indirilmedi">bekliyor</span>{% endif %}</td>
+                            <td class="num">{% if s.count %}{{ s.count }}{% elif s.updated_at %}<span class="lbadge err" title="{% trans 'İndirilemedi (0 domain) — URL kırık ya da erişilemiyor' %}">{% trans "indirilemedi" %}</span>{% else %}<span class="lbadge" title="{% trans 'Henüz indirilmedi' %}">{% trans "bekliyor" %}</span>{% endif %}</td>
                             <td class="muted num"><span class="lt" data-utc="{{ s.updated_at|date:'Y-m-d H:i:s' }}">{{ s.updated_at|date:"Y-m-d H:i:s"|default:"—" }}</span></td>
                             <td>
                                 <form method="post" style="margin:0;">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="source_toggle">
                                     <input type="hidden" name="source_id" value="{{ s.id }}">
-                                    <button type="submit" name="enabled" value="{% if s.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ s.enabled|yesno:'true,false' }}" aria-label="aç/kapat"></button>
+                                    <button type="submit" name="enabled" value="{% if s.enabled %}0{% else %}1{% endif %}" class="toggle" aria-checked="{{ s.enabled|yesno:'true,false' }}" aria-label="{% trans 'aç/kapat' %}"></button>
                                 </form>
                             </td>
                             <td style="text-align:right;white-space:nowrap;">
-                                <form method="post" style="margin:0;display:inline;">{% csrf_token %}<input type="hidden" name="action" value="source_refresh"><input type="hidden" name="source_id" value="{{ s.id }}"><button class="xbtn" style="color:var(--accent);" type="submit">Yenile</button></form>
-                                <form method="post" style="margin:0;display:inline;">{% csrf_token %}<input type="hidden" name="action" value="source_del"><input type="hidden" name="source_id" value="{{ s.id }}"><button class="xbtn danger" type="submit">Sil</button></form>
+                                <form method="post" style="margin:0;display:inline;">{% csrf_token %}<input type="hidden" name="action" value="source_refresh"><input type="hidden" name="source_id" value="{{ s.id }}"><button class="xbtn" style="color:var(--accent);" type="submit">{% trans "Yenile" %}</button></form>
+                                <form method="post" style="margin:0;display:inline;">{% csrf_token %}<input type="hidden" name="action" value="source_del"><input type="hidden" name="source_id" value="{{ s.id }}"><button class="xbtn danger" type="submit">{% trans "Sil" %}</button></form>
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="5" class="empty">Henüz liste eklenmedi — yukarıdaki katalogdan tıklayarak ekle.</td></tr>
+                        <tr><td colspan="5" class="empty">{% trans "Henüz liste eklenmedi — yukarıdaki katalogdan tıklayarak ekle." %}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -105,12 +103,12 @@
 
         <div class="grid2">
             <div class="box">
-                <h2>Engellenenler ({{ block_count }})</h2>
+                <h2>{% blocktrans with cnt=block_count %}Engellenenler ({{ cnt }}){% endblocktrans %}</h2>
                 <form method="post" class="addf">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="block_add">
-                    <input type="text" name="domain" placeholder="ör. ads.example.com" autocomplete="off" spellcheck="false">
-                    <button class="btn" type="submit">Engelle</button>
+                    <input type="text" name="domain" placeholder="{% trans 'ör. ads.example.com' %}" autocomplete="off" spellcheck="false">
+                    <button class="btn" type="submit">{% trans "Engelle" %}</button>
                 </form>
                 <form method="post">
                     {% csrf_token %}
@@ -119,21 +117,21 @@
                         {% for b in blocklist %}
                         <li>
                             <label class="fchk"><input type="checkbox" name="domains" value="{{ b.domain }}"><span class="mono">{{ b.domain }}</span></label>
-                            <button class="xbtn danger" type="submit" name="one" value="{{ b.domain }}">Sil</button>
+                            <button class="xbtn danger" type="submit" name="one" value="{{ b.domain }}">{% trans "Sil" %}</button>
                         </li>
-                        {% empty %}<li class="muted">Liste boş</li>{% endfor %}
+                        {% empty %}<li class="muted">{% trans "Liste boş" %}</li>{% endfor %}
                     </ul>
-                    {% if blocklist %}<div class="bulkbar"><button class="xbtn danger" type="submit">Seçilenleri sil</button></div>{% endif %}
+                    {% if blocklist %}<div class="bulkbar"><button class="xbtn danger" type="submit">{% trans "Seçilenleri sil" %}</button></div>{% endif %}
                 </form>
             </div>
 
             <div class="box">
-                <h2>İzin Verilenler ({{ allow_count }})</h2>
+                <h2>{% blocktrans with cnt=allow_count %}İzin Verilenler ({{ cnt }}){% endblocktrans %}</h2>
                 <form method="post" class="addf">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="allow_add">
-                    <input type="text" name="domain" placeholder="ör. safe.example.com" autocomplete="off" spellcheck="false">
-                    <button class="btn" type="submit">İzin ver</button>
+                    <input type="text" name="domain" placeholder="{% trans 'ör. safe.example.com' %}" autocomplete="off" spellcheck="false">
+                    <button class="btn" type="submit">{% trans "İzin ver" %}</button>
                 </form>
                 <form method="post">
                     {% csrf_token %}
@@ -142,24 +140,24 @@
                         {% for a in allowlist %}
                         <li>
                             <label class="fchk"><input type="checkbox" name="domains" value="{{ a.domain }}"><span class="mono">{{ a.domain }}</span></label>
-                            <button class="xbtn danger" type="submit" name="one" value="{{ a.domain }}">Sil</button>
+                            <button class="xbtn danger" type="submit" name="one" value="{{ a.domain }}">{% trans "Sil" %}</button>
                         </li>
-                        {% empty %}<li class="muted">Liste boş</li>{% endfor %}
+                        {% empty %}<li class="muted">{% trans "Liste boş" %}</li>{% endfor %}
                     </ul>
-                    {% if allowlist %}<div class="bulkbar"><button class="xbtn danger" type="submit">Seçilenleri sil</button></div>{% endif %}
+                    {% if allowlist %}<div class="bulkbar"><button class="xbtn danger" type="submit">{% trans "Seçilenleri sil" %}</button></div>{% endif %}
                 </form>
             </div>
         </div>
 
         <div class="box" style="margin-top:16px;">
-            <h2>DNS Rewrites ({{ rewrite_count }})</h2>
-            <p class="sub" style="margin:0 16px 4px;">Elle tanımlı kayıt: bir alan adını sabit bir IP'ye ya da başka bir alana yönlendir (yerel <span class="mono">/etc/hosts</span> gibi). <span class="mono">0.0.0.0</span> = sinkhole; <span class="mono">*.reklam.com</span> = tüm alt alanlar. Engel/izin listelerinden önceliklidir.</p>
+            <h2>{% blocktrans with cnt=rewrite_count %}DNS Rewrites ({{ cnt }}){% endblocktrans %}</h2>
+            <p class="sub" style="margin:0 16px 4px;">{% trans "Elle tanımlı kayıt: bir alan adını sabit bir IP'ye ya da başka bir alana yönlendir (yerel <span class='mono'>/etc/hosts</span> gibi). <span class='mono'>0.0.0.0</span> = sinkhole; <span class='mono'>*.reklam.com</span> = tüm alt alanlar. Engel/izin listelerinden önceliklidir." %}</p>
             <form method="post" class="addf">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="rewrite_add">
-                <input type="text" name="domain" placeholder="alan adı — ör. nas.ev ya da *.reklam.com" autocomplete="off" spellcheck="false">
-                <input type="text" name="answer" placeholder="cevap — ör. 192.168.1.10 ya da hedef.com" autocomplete="off" spellcheck="false">
-                <button class="btn" type="submit">Ekle</button>
+                <input type="text" name="domain" placeholder="{% trans 'alan adı — ör. nas.ev ya da *.reklam.com' %}" autocomplete="off" spellcheck="false">
+                <input type="text" name="answer" placeholder="{% trans 'cevap — ör. 192.168.1.10 ya da hedef.com' %}" autocomplete="off" spellcheck="false">
+                <button class="btn" type="submit">{% trans "Ekle" %}</button>
             </form>
             <form method="post">
                 {% csrf_token %}
@@ -168,17 +166,17 @@
                     {% for r in rewrites %}
                     <li>
                         <label class="fchk"><input type="checkbox" name="domains" value="{{ r.domain }}"><span class="mono">{{ r.domain }} &rarr; {{ r.answer }}</span></label>
-                        <button class="xbtn danger" type="submit" name="one" value="{{ r.domain }}">Sil</button>
+                        <button class="xbtn danger" type="submit" name="one" value="{{ r.domain }}">{% trans "Sil" %}</button>
                     </li>
-                    {% empty %}<li class="muted">Henüz kayıt yok</li>{% endfor %}
+                    {% empty %}<li class="muted">{% trans "Henüz kayıt yok" %}</li>{% endfor %}
                 </ul>
-                {% if rewrites %}<div class="bulkbar"><button class="xbtn danger" type="submit">Seçilenleri sil</button></div>{% endif %}
+                {% if rewrites %}<div class="bulkbar"><button class="xbtn danger" type="submit">{% trans "Seçilenleri sil" %}</button></div>{% endif %}
             </form>
         </div>
 
         <div class="box" style="margin-top:16px;">
-            <h2>Zamanlanmış Engelleme ({{ schedules|length }})</h2>
-            <p class="sub" style="margin:0 16px 4px;">Bir ön tanımlı servis yalnız seçtiğin gün ve saat aralığında engelli olsun (ör. sosyal medya hafta içi 09:00–17:00). Pencere dışında engel otomatik kalkar. Saatler <b>senin yerel saatine</b> göredir (tarayıcıdan otomatik alınır). İlgili servisin "Ön Tanımlı Servisler"de de açık olması gerekir.</p>
+            <h2>{% blocktrans count n=schedules|length %}Zamanlanmış Engelleme ({{ n }}){% plural %}Zamanlanmış Engelleme ({{ n }}){% endblocktrans %}</h2>
+            <p class="sub" style="margin:0 16px 4px;">{% trans "Bir ön tanımlı servis yalnız seçtiğin gün ve saat aralığında engelli olsun (ör. sosyal medya hafta içi 09:00–17:00). Pencere dışında engel otomatik kalkar. Saatler <b>senin yerel saatine</b> göredir (tarayıcıdan otomatik alınır). İlgili servisin 'Ön Tanımlı Servisler'de de açık olması gerekir." %}</p>
             <form method="post" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="schedule_add">
@@ -192,22 +190,22 @@
                     <input type="time" name="end" value="17:00" required>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <label class="daychip"><input type="checkbox" name="days" value="0" checked>Pzt</label>
-                    <label class="daychip"><input type="checkbox" name="days" value="1" checked>Sal</label>
-                    <label class="daychip"><input type="checkbox" name="days" value="2" checked>Çar</label>
-                    <label class="daychip"><input type="checkbox" name="days" value="3" checked>Per</label>
-                    <label class="daychip"><input type="checkbox" name="days" value="4" checked>Cum</label>
-                    <label class="daychip"><input type="checkbox" name="days" value="5">Cmt</label>
-                    <label class="daychip"><input type="checkbox" name="days" value="6">Paz</label>
+                    <label class="daychip"><input type="checkbox" name="days" value="0" checked>{% trans "Pzt" %}</label>
+                    <label class="daychip"><input type="checkbox" name="days" value="1" checked>{% trans "Sal" %}</label>
+                    <label class="daychip"><input type="checkbox" name="days" value="2" checked>{% trans "Çar" %}</label>
+                    <label class="daychip"><input type="checkbox" name="days" value="3" checked>{% trans "Per" %}</label>
+                    <label class="daychip"><input type="checkbox" name="days" value="4" checked>{% trans "Cum" %}</label>
+                    <label class="daychip"><input type="checkbox" name="days" value="5">{% trans "Cmt" %}</label>
+                    <label class="daychip"><input type="checkbox" name="days" value="6">{% trans "Paz" %}</label>
                 </div>
-                <div><button class="btn" type="submit">Zamanlama ekle</button></div>
+                <div><button class="btn" type="submit">{% trans "Zamanlama ekle" %}</button></div>
             </form>
             {% if schedules %}
             <ul class="flist">
                 {% for sc in schedules %}
                 <li>
                     <span class="mono">{{ sc.name }} — {{ sc.days }} · {{ sc.start }}–{{ sc.end }}</span>
-                    <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="schedule_del"><input type="hidden" name="name" value="{{ sc.name }}"><button class="xbtn danger" type="submit">Sil</button></form>
+                    <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="schedule_del"><input type="hidden" name="name" value="{{ sc.name }}"><button class="xbtn danger" type="submit">{% trans "Sil" %}</button></form>
                 </li>
                 {% endfor %}
             </ul>
@@ -219,11 +217,11 @@
         <div class="modal-overlay" id="listmodal" hidden>
             <div class="modal">
                 <div class="modal-head">
-                    <h3>Hazır Engelleme Listesi Ekle</h3>
-                    <button type="button" class="modal-x" data-close aria-label="Kapat">&#10005;</button>
+                    <h3>{% trans "Hazır Engelleme Listesi Ekle" %}</h3>
+                    <button type="button" class="modal-x" data-close aria-label="{% trans 'Kapat' %}">&#10005;</button>
                 </div>
                 <div class="modal-search">
-                    <input type="text" id="listsearch" placeholder="Liste ara…" autocomplete="off" spellcheck="false">
+                    <input type="text" id="listsearch" placeholder="{% trans 'Liste ara…' %}" autocomplete="off" spellcheck="false">
                 </div>
                 <div class="modal-body">
                     {% for cat, items in catalog %}
@@ -232,7 +230,7 @@
                         <div class="chips">
                             {% for name, url in items %}
                                 {% if url in added_urls %}
-                                <span class="lchip added" title="Zaten ekli" data-name="{{ name|lower }}">{{ name }} <span class="ok">✓</span></span>
+                                <span class="lchip added" title="{% trans 'Zaten ekli' %}" data-name="{{ name|lower }}">{{ name }} <span class="ok">✓</span></span>
                                 {% else %}
                                 <form method="post" style="margin:0;" data-name="{{ name|lower }}">
                                     {% csrf_token %}
@@ -251,9 +249,9 @@
                     <form method="post" style="display:flex;gap:8px;flex:1;flex-wrap:wrap;">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="source_add">
-                        <input type="text" name="name" placeholder="İsim (opsiyonel)" style="flex:0 1 150px;" autocomplete="off" spellcheck="false">
-                        <input type="text" name="url" placeholder="özel liste URL'si (https://…)" style="flex:1;min-width:190px;" autocomplete="off" spellcheck="false">
-                        <button class="btn" type="submit">Ekle</button>
+                        <input type="text" name="name" placeholder="{% trans 'İsim (opsiyonel)' %}" style="flex:0 1 150px;" autocomplete="off" spellcheck="false">
+                        <input type="text" name="url" placeholder="{% trans 'özel liste URL(si) (https://…)' %}" style="flex:1;min-width:190px;" autocomplete="off" spellcheck="false">
+                        <button class="btn" type="submit">{% trans "Ekle" %}</button>
                     </form>
                 </div>
             </div>
@@ -277,7 +275,6 @@
           function open(){ ov.hidden = false; if(si){ si.value=''; filt(); si.focus(); } }
           function close(){
             ov.hidden = true;
-            // Liste eklendiyse "Eklenen Listeler" tablosunu yenile (tam sayfa yenilemesiz).
             if(added > 0){
               added = 0;
               if(window.ajaxNavigate){ window.ajaxNavigate(location.href, {headers:{'X-Requested-With':'fetch'}}, false, false); }
@@ -290,48 +287,43 @@
           document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !ov.hidden) close(); });
           if(si) si.addEventListener('input', filt);
 
-          // Liste ekleme form'larını modal İÇİNDE hallet: arka planda ekle, MODALI KAPATMA.
-          // (Yoksa her seçimde ajax.js tüm sayfayı swap eder → modal kapanır; kullanıcı
-          //  üst üste liste seçemez.) stopPropagation ile ajax.js'in document dinleyicisini atlarız.
           ov.addEventListener('submit', function(e){
-            if(!window.fetch) return;                 // fetch yoksa normal gönderim (geri düşüş)
+            if(!window.fetch) return;
             var form = e.target;
             if(!(form instanceof HTMLFormElement)) return;
-            var isChip = form.hasAttribute('data-name');   // katalog chip'i mi, elle-URL mi
-            if(!isChip){                                    // elle-URL: client-side doğrula
+            var isChip = form.hasAttribute('data-name');
+            if(!isChip){
               var u = (form.querySelector('input[name=url]').value || '').trim();
               if(!/^https?:\/\//i.test(u)){
                 e.preventDefault(); e.stopPropagation();
-                alert('Geçersiz URL — http:// veya https:// ile başlamalı.');
+                alert("{% trans 'Geçersiz URL — http:// veya https:// ile başlamalı.' %}");
                 return;
               }
             }
             e.preventDefault();
-            e.stopPropagation();                            // ajax.js sayfayı swap etmesin
+            e.stopPropagation();
             var btn = form.querySelector('[type=submit]');
             var fd = new FormData(form);
             if(btn) btn.disabled = true;
             fetch(location.pathname, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}})
               .then(function(r){ if(!r.ok) throw new Error('http'); added++;
                 if(isChip){
-                  // chip'i "eklendi ✓" rozetine çevir; modal açık kalır
                   var nm = (form.querySelector('input[name=name]') || {}).value || '';
                   var sp = document.createElement('span');
-                  sp.className = 'lchip added'; sp.title = 'Zaten ekli';
+                  sp.className = 'lchip added'; sp.title = "{% trans 'Zaten ekli' %}";
                   sp.setAttribute('data-name', form.getAttribute('data-name'));
                   sp.appendChild(document.createTextNode(nm + ' '));
                   var ok = document.createElement('span'); ok.className = 'ok'; ok.textContent = '✓';
                   sp.appendChild(ok);
                   form.replaceWith(sp);
                 } else {
-                  // elle-URL form'u: temizle + kısa geri bildirim, modal açık kalır
                   form.reset();
-                  if(btn){ var t = btn.textContent; btn.textContent = '✓ Eklendi';
+                  if(btn){ var t = btn.textContent; btn.textContent = "{% trans '✓ Eklendi' %}";
                            setTimeout(function(){ btn.textContent = t; btn.disabled = false; }, 1400); }
                 }
               })
               .catch(function(){ if(btn) btn.disabled = false;
-                                 alert('Liste eklenemedi — bağlantıyı kontrol edin.'); });
+                                 alert("{% trans 'Liste eklenemedi — bağlantıyı kontrol edin.' %}"); });
           });
         })();
 
@@ -342,8 +334,8 @@
           function setStat(s, cls, text, title){ s.className = 'linkstat' + (cls ? ' ' + cls : ''); s.textContent = text; s.title = title || ''; }
           btn.addEventListener('click', function(){
             if(!window.fetch) return;
-            document.querySelectorAll('tr[data-src-id] .linkstat').forEach(function(s){ setStat(s, 'wait', '…', 'kontrol ediliyor'); });
-            var orig = btn.textContent; btn.disabled = true; btn.textContent = 'Kontrol ediliyor…';
+            document.querySelectorAll('tr[data-src-id] .linkstat').forEach(function(s){ setStat(s, 'wait', '…', "{% trans 'kontrol ediliyor' %}"); });
+            var orig = btn.textContent; btn.disabled = true; btn.textContent = "{% trans 'Kontrol ediliyor…' %}";
             var tok = document.querySelector('[name=csrfmiddlewaretoken]').value;
             fetch('{% url "dashboard:check_sources" %}', {method:'POST', headers:{'X-CSRFToken':tok,'X-Requested-With':'fetch'}})
               .then(function(r){ if(!r.ok) throw new Error('http'); return r.json(); })
@@ -353,14 +345,14 @@
                   var s = r.querySelector('.linkstat'); if(!s) return;
                   var res = byId[r.getAttribute('data-src-id')];
                   if(!res){ setStat(s, '', '', ''); return; }
-                  if(res.ok) setStat(s, 'ok', '✓', 'Erişilebilir' + (res.status ? ' (HTTP ' + res.status + ')' : ''));
-                  else if(res.warn) setStat(s, 'warn', '⚠', res.detail || 'erişildi, içerik alınamadı');
-                  else setStat(s, 'err', '✗', res.detail || 'erişilemedi');
+                  if(res.ok) setStat(s, 'ok', '✓', "{% trans 'Erişilebilir' %}" + (res.status ? ' (HTTP ' + res.status + ')' : ''));
+                  else if(res.warn) setStat(s, 'warn', '⚠', res.detail || "{% trans 'erişildi, içerik alınamadı' %}");
+                  else setStat(s, 'err', '✗', res.detail || "{% trans 'erişilemedi' %}");
                 });
               })
               .catch(function(){
                 document.querySelectorAll('tr[data-src-id] .linkstat').forEach(function(s){ setStat(s, '', '', ''); });
-                alert('Link kontrolü başarısız — oturum/bağlantıyı kontrol edin.');
+                alert("{% trans 'Link kontrolü başarısız — oturum/bağlantıyı kontrol edin.' %}");
               })
               .then(function(){ btn.disabled = false; btn.textContent = orig; });
           });

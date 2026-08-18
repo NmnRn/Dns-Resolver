@@ -1,45 +1,45 @@
 {% extends "dashboard/base.html" %}
-{% load static %}
-{% block title %}Sorgu Geçmişi · DNS Panel{% endblock %}
+{% load static i18n %}
+{% block title %}{% trans "Sorgu Geçmişi" %} · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/queries.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <div class="qtop">
         <div>
-            <h1>Sorgu Geçmişi</h1>
-            <p class="sub" style="margin:4px 0 0;">Canlı log akışı · en yeni üstte · zamanlar yerel · aşağı kaydırdıkça otomatik yüklenir</p>
+            <h1>{% trans "Sorgu Geçmişi" %}</h1>
+            <p class="sub" style="margin:4px 0 0;">{% trans "Canlı log akışı · en yeni üstte · zamanlar yerel · aşağı kaydırdıkça otomatik yüklenir" %}</p>
         </div>
         <div class="qactions">
-            <a class="btn ghost" href="{% url 'dashboard:queries_export' %}?q={{ q|urlencode }}&amp;method={{ method }}" data-no-ajax>⭳ CSV indir</a>
-            <a class="btn ghost" href="{% url 'dashboard:queries' %}?q={{ q|urlencode }}&amp;method={{ method }}">↻ Yenile</a>
+            <a class="btn ghost" href="{% url 'dashboard:queries_export' %}?q={{ q|urlencode }}&amp;method={{ method }}" data-no-ajax>⭳ {% trans "CSV indir" %}</a>
+            <a class="btn ghost" href="{% url 'dashboard:queries' %}?q={{ q|urlencode }}&amp;method={{ method }}">↻ {% trans "Yenile" %}</a>
         </div>
     </div>
 
     <form method="get" class="qfilter">
         <label class="qsearch">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.8 15.8 L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <input type="text" name="q" value="{{ q }}" placeholder="Alan adı ara (örn. google)" autocomplete="off">
+            <input type="text" name="q" value="{{ q }}" placeholder="{% trans 'Alan adı ara (örn. google)' %}" autocomplete="off">
         </label>
         <select name="method">
-            <option value="">Tüm yöntemler</option>
+            <option value="">{% trans "Tüm yöntemler" %}</option>
             {% for m in methods %}<option value="{{ m }}" {% if m == method %}selected{% endif %}>{{ m|upper }}</option>{% endfor %}
         </select>
-        <button type="submit" class="btn">Filtrele</button>
-        {% if q or method %}<a class="clear" href="{% url 'dashboard:queries' %}">Temizle</a>{% endif %}
+        <button type="submit" class="btn">{% trans "Filtrele" %}</button>
+        {% if q or method %}<a class="clear" href="{% url 'dashboard:queries' %}">{% trans "Temizle" %}</a>{% endif %}
     </form>
 
     {% if error %}
-        <div class="error">Veritabanına erişilemedi: {{ error }}</div>
+        <div class="error">{% blocktrans %}Veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
     {% else %}
         <div class="qpanel">
             <div class="qhead">
-                <span id="qcount">{{ rows|length }}</span>&nbsp;kayıt gösteriliyor
-                {% if pending_count %}<span class="qlive"><span class="qdot live"></span>{{ pending_count }} canlı</span>{% endif %}
+                <span id="qcount">{{ rows|length }}</span>&nbsp;{% trans "kayıt gösteriliyor" %}
+                {% if pending_count %}<span class="qlive"><span class="qdot live"></span>{% blocktrans count n=pending_count %}{{ n }} canlı{% plural %}{{ n }} canlı{% endblocktrans %}</span>{% endif %}
             </div>
             <div class="qfeed" id="qrows">{% include "dashboard/_query_rows.html" with rows=rows first=True %}</div>
             <div id="qmore" class="qmore" data-offset="{{ next_offset }}" data-q="{{ q }}" data-method="{{ method }}" data-more="{% if has_more %}1{% else %}0{% endif %}">
-                <span id="qspin" class="muted" style="display:none;">Yükleniyor…</span>
-                <button type="button" class="btn ghost" id="loadmore" {% if not has_more %}hidden{% endif %}>Daha fazla yükle</button>
-                <span id="qdone" class="muted" style="{% if has_more %}display:none;{% endif %}">Tümü yüklendi</span>
+                <span id="qspin" class="muted" style="display:none;">{% trans "Yükleniyor…" %}</span>
+                <button type="button" class="btn ghost" id="loadmore" {% if not has_more %}hidden{% endif %}>{% trans "Daha fazla yükle" %}</button>
+                <span id="qdone" class="muted" style="{% if has_more %}display:none;{% endif %}">{% trans "Tümü yüklendi" %}</span>
             </div>
         </div>
 
@@ -84,7 +84,7 @@
                     })
                     .catch(function () {
                         if (spin) spin.style.display = 'none';
-                        if (btn) { btn.hidden = false; btn.textContent = 'Hata — tekrar dene'; }
+                        if (btn) { btn.hidden = false; btn.textContent = "{% trans 'Hata — tekrar dene' %}"; }
                     })
                     .finally(function () { loading = false; });
             }

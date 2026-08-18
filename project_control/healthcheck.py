@@ -12,7 +12,11 @@ import sys
 from dnslib import DNSRecord
 
 TIMEOUT = 5
-TEST_DOMAIN = "example.com"
+# Gercek bir domain YERINE ayrilmis (RFC 6761 .invalid) bir sentinel: resolver
+# hizli NXDOMAIN doner (sunucu ayakta = saglikli), gercek bir siteye istek
+# GITMEZ. Ayrica bu probe 127.0.0.1'den geldigi icin gecmise loglanmaz
+# (db_ops.add_to_cache loopback'i atlar).
+TEST_DOMAIN = "healthcheck.invalid"
 
 
 def _recv_exact(sock, n):

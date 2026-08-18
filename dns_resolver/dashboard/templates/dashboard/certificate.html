@@ -1,49 +1,49 @@
 {% extends "dashboard/base.html" %}
-{% load static %}
-{% block title %}Sertifika · DNS Panel{% endblock %}
+{% load static i18n %}
+{% block title %}{% trans "Sertifika" %} · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/certificate.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
 
-    <h1>Sertifika</h1>
-    <p class="sub">DoT / DoH / DoQ için TLS sertifikası. Yolu buradan ayarla; değişiklik <b>Sunucular</b>'dan ilgili metodu kapatıp açınca yüklenir.</p>
+    <h1>{% trans "Sertifika" %}</h1>
+    <p class="sub">{% trans "DoT / DoH / DoQ için TLS sertifikası. Yolu buradan ayarla; değişiklik <b>Sunucular</b>'dan ilgili metodu kapatıp açınca yüklenir." %}</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
     {% if error %}
-        <div class="error">Veritabanına erişilemedi: {{ error }}</div>
+        <div class="error">{% blocktrans %}Veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
     {% else %}
     <div class="cgrid">
         <div class="box">
-            <h2>Sertifika Yolları</h2>
+            <h2>{% trans "Sertifika Yolları" %}</h2>
             <form method="post" class="body">
                 {% csrf_token %}
                 <div class="cfield">
-                    <label>Sertifika (fullchain.pem)</label>
+                    <label>{% trans "Sertifika (fullchain.pem)" %}</label>
                     <input type="text" name="cert_file" value="{{ cert_file }}" class="mono" spellcheck="false" placeholder="certificates/fullchain.pem">
                 </div>
                 <div class="cfield">
-                    <label>Özel anahtar (privkey.pem)</label>
+                    <label>{% trans "Özel anahtar (privkey.pem)" %}</label>
                     <input type="text" name="key_file" value="{{ key_file }}" class="mono" spellcheck="false" placeholder="certificates/privkey.pem">
                 </div>
-                <p class="muted" style="font-size:12px;margin:0 0 15px;">Göreli yol <span class="mono">/app</span> köküne göre çözülür. Sertifikalar <span class="mono">./certificates</span> ile konteynere salt-okunur mount edilir.</p>
-                <button class="btn" type="submit">Kaydet</button>
+                <p class="muted" style="font-size:12px;margin:0 0 15px;">{% trans "Göreli yol <span class='mono'>/app</span> köküne göre çözülür. Sertifikalar <span class='mono'>./certificates</span> ile konteynere salt-okunur mount edilir." %}</p>
+                <button class="btn" type="submit">{% trans "Kaydet" %}</button>
             </form>
         </div>
 
         <div class="box">
-            <h2>Doğrulama
-                {% if cert.error %}<span class="cst err" style="margin-left:8px;">HATA</span>
-                {% else %}<span class="cst {{ cert.status }}" style="margin-left:8px;">{% if cert.status == 'VALID' %}GEÇERLİ{% elif cert.status == 'EXPIRING' %}YAKINDA DOLUYOR{% else %}SÜRESİ DOLMUŞ{% endif %}</span>{% endif %}
+            <h2>{% trans "Doğrulama" %}
+                {% if cert.error %}<span class="cst err" style="margin-left:8px;">{% trans "HATA" %}</span>
+                {% else %}<span class="cst {{ cert.status }}" style="margin-left:8px;">{% if cert.status == 'VALID' %}{% trans "GEÇERLİ" %}{% elif cert.status == 'EXPIRING' %}{% trans "YAKINDA DOLUYOR" %}{% else %}{% trans "SÜRESİ DOLMUŞ" %}{% endif %}</span>{% endif %}
             </h2>
             {% if cert.error %}
-                <div class="crow"><span class="k">Hata</span><span style="color:var(--err);">{{ cert.error }}</span></div>
+                <div class="crow"><span class="k">{% trans "Hata" %}</span><span style="color:var(--err);">{{ cert.error }}</span></div>
             {% else %}
                 <div class="crow">
-                    <span class="k">Özne (CN)</span><span class="mono">{{ cert.subject }}</span>
-                    <span class="k">Veren</span><span class="mono">{{ cert.issuer }}</span>
-                    <span class="k">Bitiş</span><span class="mono lt" data-utc="{{ cert.valid_until_iso }}">{{ cert.valid_until }}</span>
-                    <span class="k">Kalan</span><span style="color:{% if cert.days < 0 %}var(--err){% elif cert.days < 30 %}var(--dot){% else %}var(--ok){% endif %};font-weight:600;">{{ cert.days }} gün</span>
-                    <span class="k">Anahtar</span><span>{% if key_exists %}<span style="color:var(--ok);">bulundu ✓</span>{% else %}<span style="color:var(--err);">bulunamadı</span>{% endif %}</span>
+                    <span class="k">{% trans "Özne (CN)" %}</span><span class="mono">{{ cert.subject }}</span>
+                    <span class="k">{% trans "Veren" %}</span><span class="mono">{{ cert.issuer }}</span>
+                    <span class="k">{% trans "Bitiş" %}</span><span class="mono lt" data-utc="{{ cert.valid_until_iso }}">{{ cert.valid_until }}</span>
+                    <span class="k">{% trans "Kalan" %}</span><span style="color:{% if cert.days < 0 %}var(--err){% elif cert.days < 30 %}var(--dot){% else %}var(--ok){% endif %};font-weight:600;">{% blocktrans count days=cert.days %}{{ days }} gün{% plural %}{{ days }} gün{% endblocktrans %}</span>
+                    <span class="k">{% trans "Anahtar" %}</span><span>{% if key_exists %}<span style="color:var(--ok);">{% trans "bulundu ✓" %}</span>{% else %}<span style="color:var(--err);">{% trans "bulunamadı" %}</span>{% endif %}</span>
                 </div>
             {% endif %}
         </div>

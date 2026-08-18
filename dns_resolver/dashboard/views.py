@@ -738,24 +738,25 @@ def users(request):
 
 
 def devices(request):
-    """Cihazlar: web panele giriş yapan cihazların denetim kaydı (IP + tarayıcı/
-    OS/cihaz). Sync view — SQLite ORM (PanelLogin) kullanır. Yalnız yöneticiye."""
+    """Cihazlar: panele erişen benzersiz cihazlar — her sayfa açılışında fingerprint
+    toplanıp DEDUP'lanır; her cihaz TIKLANINCA tam özelliklerini (ekran/GPU/canvas...)
+    açar. Son görülene göre = 'son giriş yapılan yerler'. Yalnız yöneticiye.
+    (Eski 'Cihaz Özellikleri' sayfası buraya taşındı.)"""
     uid = request.session.get('_auth_user_id')
     if not uid:
         return redirect(f"{reverse('dashboard:login')}?next={request.path}")
     if not User.objects.filter(id=uid, is_superuser=True).exists():
         return redirect('dashboard:logs')
 
-    rows = list(PanelLogin.objects.order_by('-created_at')
-                .values('username', 'ip', 'user_agent', 'created_at')[:200])
-    for r in rows:
-        r.update(parse_user_agent(r['user_agent']))
-
+    devs = list(DeviceProfile.objects.order_by('-last_seen')[:200].values(
+        'ip', 'browser', 'os', 'device', 'screen', 'viewport', 'timezone', 'platform',
+        'languages', 'color_depth', 'cpu', 'memory', 'gpu', 'touch', 'canvas_hash',
+        'username', 'first_seen', 'last_seen', 'hits', 'user_agent'))
     context = _base_ctx(request, 'devices')
     context.update(
-        logins=rows,
-        total=PanelLogin.objects.count(),
-        unique_ips=PanelLogin.objects.exclude(ip='').values('ip').distinct().count(),
+        devices=devs,
+        total=DeviceProfile.objects.count(),
+        unique_ips=DeviceProfile.objects.exclude(ip='').values('ip').distinct().count(),
     )
     return render(request, 'dashboard/devices.html', context)
 
@@ -768,6 +769,11 @@ def device_record(request):
         return JsonResponse({'error': 'method'}, status=405)
     if not request.session.get('_auth_user_id'):
         return JsonResponse({'error': 'auth'}, status=403)
+    # Oturum başına BİR kez kaydet: her sayfa/sekme açılışında değil, yeni giriş
+    # (oturum) başına. Çıkışta oturum sıfırlanır → yeni girişte tekrar kaydedilir.
+    # (dedup ile aynı cihaz tek satır; hits = oturum/giriş sayısı.)
+    if request.session.get('fp_recorded'):
+        return JsonResponse({'ok': True, 'skipped': True})
     try:
         data = json.loads((request.body or b'').decode('utf-8') or '{}')
     except (ValueError, UnicodeDecodeError):
@@ -789,9 +795,14 @@ def device_record(request):
         cpu=s('cpu', 8), memory=s('memory', 8), gpu=s('gpu', 200), canvas_hash=s('canvas', 64),
     )
     touch = bool(data.get('touch'))
+    brave = bool(data.get('brave'))
+    # Brave/Tor/Firefox-RFP canvas'ı her okumada rastgeleleştirir → koruma tespiti
+    fp_protected = bool(data.get('canvasProtected')) or brave
 
+    # canvas'ı ANAHTARA KOYMA: farbling yüzünden her sekmede değişir → yeni cihaz
+    # olurdu. Kararlı sinyallerle tekilleştir (canvas yalnız gösterim için saklanır).
     key = '|'.join([ip, ua, f['screen'], f['timezone'], f['platform'], f['gpu'],
-                    f['languages'], f['color_depth'], f['cpu'], f['memory'], f['canvas_hash']])
+                    f['languages'], f['color_depth'], f['cpu'], f['memory']])
     fp_hash = hashlib.sha256(key.encode('utf-8', 'ignore')).hexdigest()
 
     now = datetime.now(timezone.utc)
@@ -800,34 +811,62 @@ def device_record(request):
         obj, created = DeviceProfile.objects.get_or_create(
             fp_hash=fp_hash,
             defaults=dict(ip=ip, user_agent=ua, browser=parsed['browser'], os=parsed['os'],
-                          device=parsed['device'], touch=touch, username=username,
+                          device=parsed['device'], touch=touch, brave=brave,
+                          fp_protected=fp_protected, username=username,
                           extra=json.dumps(data)[:4000], last_seen=now, hits=1, **f),
         )
         if not created:
             DeviceProfile.objects.filter(pk=obj.pk).update(
                 last_seen=now, hits=F('hits') + 1, ip=ip, username=username,
-                viewport=f['viewport'])
+                viewport=f['viewport'], canvas_hash=f['canvas_hash'],
+                brave=brave, fp_protected=fp_protected)
     except Exception:   # noqa: BLE001 — kayıt sayfayı bozmasın
         logger.exception('cihaz fingerprint kaydi yazilamadi')
         return JsonResponse({'ok': False}, status=200)
+    request.session['fp_recorded'] = True    # bu oturumda tekrar kaydetme
     return JsonResponse({'ok': True, 'new': created})
 
 
-def device_details(request):
-    """Cihaz Özellikleri: panele erişen benzersiz cihazlar + tam fingerprint
-    (son görülene göre = 'son giriş yapılan yerler'). Yalnız yöneticiye."""
-    uid = request.session.get('_auth_user_id')
-    if not uid:
-        return redirect(f"{reverse('dashboard:login')}?next={request.path}")
-    if not User.objects.filter(id=uid, is_superuser=True).exists():
-        return redirect('dashboard:logs')
-    devs = list(DeviceProfile.objects.order_by('-last_seen')[:200].values(
-        'ip', 'browser', 'os', 'device', 'screen', 'viewport', 'timezone', 'platform',
-        'languages', 'color_depth', 'cpu', 'memory', 'gpu', 'touch', 'canvas_hash',
-        'username', 'first_seen', 'last_seen', 'hits', 'user_agent'))
-    context = _base_ctx(request, 'device_details')
-    context.update(devices=devs, total=DeviceProfile.objects.count())
-    return render(request, 'dashboard/device_details.html', context)
+# PTR reverse-lookup önbelleği (süreç ömrü; hostname nadir değişir → kalıcı cache OK)
+_ptr_cache: dict = {}
+
+
+async def _reverse_lookups(ips):
+    """IP listesi → {ip: hostname} (PTR). Önbellekli + kısa timeout + eşzamanlı;
+    PTR yoksa/timeout olursa ''. Sayfayı yavaşlatmamak için budanmış çağrılır."""
+    async def one(ip):
+        if ip in _ptr_cache:
+            return _ptr_cache[ip]
+        host = ''
+        try:
+            res = await asyncio.wait_for(asyncio.to_thread(socket.gethostbyaddr, ip), timeout=1.2)
+            host = (res[0] or '').rstrip('.')
+        except Exception:   # noqa: BLE001 — PTR yok / timeout / hata → hostname yok
+            host = ''
+        _ptr_cache[ip] = host
+        return host
+    results = await asyncio.gather(*[one(ip) for ip in ips])
+    return dict(zip(ips, results))
+
+
+async def dns_devices(request):
+    """DNS Cihazları: DNS SORGUSU yapan istemciler — IP + PTR hostname + kullanılan
+    yöntem(ler) + sorgu sayısı + ilk/son görülme. (Panel-giriş 'Cihazlar'ından ayrı;
+    bu DNS tarafı.) HTTP'siz olduğundan tanı IP/PTR/method ile sınırlı."""
+    gate = _gate(request)
+    if gate:
+        return gate
+    ctx = _base_ctx(request, 'dns_devices')
+    try:
+        devices = await db.get_dns_devices(limit=80)
+    except Exception as e:   # noqa: BLE001 — DB erişilemezse sayfa yine açılsın
+        ctx.update(devices=[], total=0, error=str(e))
+        return render(request, 'dashboard/dns_devices.html', ctx)
+    hosts = await _reverse_lookups([d['client_ip'] for d in devices[:60]])
+    for d in devices:
+        d['host'] = hosts.get(d['client_ip'], '')
+    ctx.update(devices=devices, total=len(devices), error=None)
+    return render(request, 'dashboard/dns_devices.html', ctx)
 
 
 # --------------------------------------------------------------------------- #

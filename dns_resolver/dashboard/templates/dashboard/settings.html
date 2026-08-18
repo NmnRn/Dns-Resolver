@@ -1,113 +1,113 @@
 {% extends "dashboard/base.html" %}
-{% load static %}
-{% block title %}Genel Ayarlar · DNS Panel{% endblock %}
+{% load static i18n %}
+{% block title %}{% trans "Genel Ayarlar" %} · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/settings.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <div class="sethead">
-        <h1>Genel Ayarlar</h1>
-        <p class="sub">Geçmiş, önbellek ve erişim davranışı. Çözümleme (upstream / recursion / strateji) artık ayrı <b>Sorgu Ayarları</b> sayfasında. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok).</p>
+        <h1>{% trans "Genel Ayarlar" %}</h1>
+        <p class="sub">{% trans "Geçmiş, önbellek ve erişim davranışı. Çözümleme (upstream / recursion / strateji) artık ayrı <b>Sorgu Ayarları</b> sayfasında. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok)." %}</p>
     </div>
 
     <div class="setwrap">
         {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
         {% if error %}
-            <div class="error">Veritabanına erişilemedi: {{ error }}</div>
+            <div class="error">{% blocktrans %}Veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
         {% else %}
         <form method="post">
             {% csrf_token %}
             <div class="box setcard">
                 <div class="setrow">
                     <div class="si">
-                        <div class="t">Sorgu geçmişi</div>
-                        <div class="d">Kapalıyken sorgular veritabanına yazılmaz — Genel Bakış / Sorgu Geçmişi / Analiz beslenmez (çözümleme çalışmaya devam eder).</div>
+                        <div class="t">{% trans "Sorgu geçmişi" %}</div>
+                        <div class="d">{% trans "Kapalıyken sorgular veritabanına yazılmaz — Genel Bakış / Sorgu Geçmişi / Analiz beslenmez (çözümleme çalışmaya devam eder)." %}</div>
                     </div>
                     <label class="sw"><input type="checkbox" name="log_queries" {% if log_queries %}checked{% endif %}><span></span></label>
                 </div>
                 <div class="setrow">
                     <div class="si">
-                        <div class="t">Önbellek</div>
-                        <div class="d">Kapalıyken her sorgu baştan çözülür (yavaş ama taze). Açıkken cevaplar TTL süresince bellekte tutulur.</div>
+                        <div class="t">{% trans "Önbellek" %}</div>
+                        <div class="d">{% trans "Kapalıyken her sorgu baştan çözülür (yavaş ama taze). Açıkken cevaplar TTL süresince bellekte tutulur." %}</div>
                     </div>
                     <label class="sw"><input type="checkbox" name="cache_enabled" {% if cache_enabled %}checked{% endif %}><span></span></label>
                 </div>
                 <div class="ttlrow">
-                    <div class="ttlf"><label>Min TTL (sn)</label><input type="number" name="cache_min_ttl" value="{{ cache_min_ttl }}" min="0"></div>
-                    <div class="ttlf"><label>Max TTL (sn)</label><input type="number" name="cache_max_ttl" value="{{ cache_max_ttl }}" min="1"></div>
+                    <div class="ttlf"><label>{% trans "Min TTL (sn)" %}</label><input type="number" name="cache_min_ttl" value="{{ cache_min_ttl }}" min="0"></div>
+                    <div class="ttlf"><label>{% trans "Max TTL (sn)" %}</label><input type="number" name="cache_max_ttl" value="{{ cache_max_ttl }}" min="1"></div>
                 </div>
-                <p class="setnote">Min TTL kısa süreli kayıtları en az bu kadar bellekte tutar (0 = dokunma); Max TTL üst sınırdır.</p>
+                <p class="setnote">{% trans "Min TTL kısa süreli kayıtları en az bu kadar bellekte tutar (0 = dokunma); Max TTL üst sınırdır." %}</p>
             </div>
 
             <div class="box setcard" style="margin-top:16px;">
                 <div class="setrow">
                     <div class="si">
-                        <div class="t">Rate limit — istemci başına / sn</div>
-                        <div class="d">Bir istemci saniyede bu sayıdan fazla sorarsa fazlası reddedilir (REFUSED). 0 = kapalı.</div>
+                        <div class="t">{% trans "Rate limit — istemci başına / sn" %}</div>
+                        <div class="d">{% trans "Bir istemci saniyede bu sayıdan fazla sorarsa fazlası reddedilir (REFUSED). 0 = kapalı." %}</div>
                     </div>
                     <input type="number" name="rate_limit" value="{{ rate_limit }}" min="0" class="numin">
                 </div>
-                <label class="modelbl">İzinli istemciler (boş = herkes) — IP / CIDR, satır başına bir tane</label>
+                <label class="modelbl">{% trans "İzinli istemciler (boş = herkes) — IP / CIDR, satır başına bir tane" %}</label>
                 <textarea class="upst" name="client_allow" rows="3" spellcheck="false" placeholder="192.168.1.0/24&#10;10.0.0.5">{{ client_allow }}</textarea>
-                <label class="modelbl">Reddedilen istemciler — IP / CIDR</label>
+                <label class="modelbl">{% trans "Reddedilen istemciler — IP / CIDR" %}</label>
                 <textarea class="upst" name="client_deny" rows="3" spellcheck="false" placeholder="203.0.113.7">{{ client_deny }}</textarea>
-                <p class="setnote">İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman engellenir (izinliden önce).</p>
+                <p class="setnote">{% trans "İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman engellenir (izinliden önce)." %}</p>
             </div>
 
             <div class="box setcard" style="margin-top:16px;">
                 <div class="setrow">
                     <div class="si">
-                        <div class="t">Geçmiş saklama süresi</div>
-                        <div class="d">Bu süreden eski sorgu geçmişi otomatik silinir (saatlik kontrol). "Kapalı" = sonsuz.</div>
+                        <div class="t">{% trans "Geçmiş saklama süresi" %}</div>
+                        <div class="d">{% trans "Bu süreden eski sorgu geçmişi otomatik silinir (saatlik kontrol). 'Kapalı' = sonsuz." %}</div>
                     </div>
                     <select name="log_retention_days">
-                        <option value="0" {% if retention_days == '0' %}selected{% endif %}>Kapalı</option>
-                        {% for d in retention_presets %}{% if d != '0' %}<option value="{{ d }}" {% if retention_days == d %}selected{% endif %}>{{ d }} gün</option>{% endif %}{% endfor %}
-                        <option value="custom" {% if retention_is_custom %}selected{% endif %}>Özel…</option>
+                        <option value="0" {% if retention_days == '0' %}selected{% endif %}>{% trans "Kapalı" %}</option>
+                        {% for d in retention_presets %}{% if d != '0' %}<option value="{{ d }}" {% if retention_days == d %}selected{% endif %}>{% blocktrans count days=d|add:0 %}{{ days }} gün{% plural %}{{ days }} gün{% endblocktrans %}</option>{% endif %}{% endfor %}
+                        <option value="custom" {% if retention_is_custom %}selected{% endif %}>{% trans "Özel…" %}</option>
                     </select>
                 </div>
-                <label class="modelbl">Özel gün (yalnız "Özel…" seçiliyken)</label>
-                <input type="number" name="log_retention_custom" value="{% if retention_is_custom %}{{ retention_days }}{% endif %}" min="1" placeholder="ör. 45" class="numin">
+                <label class="modelbl">{% trans "Özel gün (yalnız 'Özel…' seçiliyken)" %}</label>
+                <input type="number" name="log_retention_custom" value="{% if retention_is_custom %}{{ retention_days }}{% endif %}" min="1" placeholder="{% trans 'ör. 45' %}" class="numin">
             </div>
 
-            <div style="margin-top:16px;"><button class="btn" type="submit">Kaydet</button></div>
+            <div style="margin-top:16px;"><button class="btn" type="submit">{% trans "Kaydet" %}</button></div>
         </form>
 
         <form method="post" class="box setcard" style="margin-top:16px;">
             {% csrf_token %}
             <div class="setrow">
                 <div class="si">
-                    <div class="t">Önbelleği temizle</div>
-                    <div class="d">Bellekteki tüm çözümleme önbelleğini boşaltır (sonraki sorgular baştan çözülür).</div>
+                    <div class="t">{% trans "Önbelleği temizle" %}</div>
+                    <div class="d">{% trans "Bellekteki tüm çözümleme önbelleğini boşaltır (sonraki sorgular baştan çözülür)." %}</div>
                 </div>
-                <button class="btn ghost" type="submit" name="clear_cache" value="1">Temizle</button>
+                <button class="btn ghost" type="submit" name="clear_cache" value="1">{% trans "Temizle" %}</button>
             </div>
             <div class="setrow">
                 <div class="si">
-                    <div class="t">Geçmişi temizle</div>
-                    <div class="d">Veritabanındaki tüm sorgu geçmişini siler — <b>geri alınamaz</b>.</div>
+                    <div class="t">{% trans "Geçmişi temizle" %}</div>
+                    <div class="d">{% trans "Veritabanındaki tüm sorgu geçmişini siler — <b>geri alınamaz</b>." %}</div>
                 </div>
-                <button class="btn ghost" type="submit" name="clear_history" value="1" onclick="return confirm('Tüm sorgu geçmişi silinsin mi? Bu işlem geri alınamaz.')">Geçmişi sil</button>
+                <button class="btn ghost" type="submit" name="clear_history" value="1" onclick="return confirm('{% trans "Tüm sorgu geçmişi silinsin mi? Bu işlem geri alınamaz." %}')">{% trans "Geçmişi sil" %}</button>
             </div>
         </form>
 
         <div class="box setcard" style="margin-top:16px;">
             <div class="setrow">
                 <div class="si">
-                    <div class="t">Ayarları yedekle</div>
-                    <div class="d">Tüm ayarlar + engel/izin listeleri + hazır listeler + rewrite + zamanlama'yı tek JSON olarak indir. <b>Şifreleme anahtarı (DNS_LOG_KEY) yedeğe DAHİL DEĞİL.</b></div>
+                    <div class="t">{% trans "Ayarları yedekle" %}</div>
+                    <div class="d">{% trans "Tüm ayarlar + engel/izin listeleri + hazır listeler + rewrite + zamanlama'yı tek JSON olarak indir. <b>Şifreleme anahtarı (DNS_LOG_KEY) yedeğe DAHİL DEĞİL.</b>" %}</div>
                 </div>
-                <a class="btn ghost" href="{% url 'dashboard:backup_export' %}" data-no-ajax>⭳ JSON indir</a>
+                <a class="btn ghost" href="{% url 'dashboard:backup_export' %}" data-no-ajax>⭳ {% trans "JSON indir" %}</a>
             </div>
             <form method="post" enctype="multipart/form-data" class="setrow" style="align-items:center;">
                 {% csrf_token %}
                 <input type="hidden" name="import_backup" value="1">
                 <div class="si">
-                    <div class="t">Yedekten geri yükle</div>
-                    <div class="d">Bir yedek JSON'u seç; içindekiler mevcut ayarlarla <b>birleştirilir</b> (mevcutları silmez).</div>
+                    <div class="t">{% trans "Yedekten geri yükle" %}</div>
+                    <div class="d">{% trans "Bir yedek JSON'u seç; içindekiler mevcut ayarlarla <b>birleştirilir</b> (mevcutları silmez)." %}</div>
                 </div>
                 <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <input type="file" name="backup" accept=".json,application/json" required>
-                    <button class="btn ghost" type="submit" onclick="return confirm('Yedekteki ayarlar mevcutlarla birleştirilecek. Devam edilsin mi?')">Geri yükle</button>
+                    <button class="btn ghost" type="submit" onclick="return confirm('{% trans "Yedekteki ayarlar mevcutlarla birleştirilecek. Devam edilsin mi?" %}')">{% trans "Geri yükle" %}</button>
                 </span>
             </form>
         </div>

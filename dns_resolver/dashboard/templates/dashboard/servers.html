@@ -1,15 +1,15 @@
 {% extends "dashboard/base.html" %}
-{% load static %}
-{% block title %}Sunucular · DNS Panel{% endblock %}
+{% load static i18n %}
+{% block title %}{% trans "Sunucular" %} · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/servers.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
-    <h1>Sunucular</h1>
-    <p class="sub">DNS yöntemlerini canlı aç/kapat — değişiklik ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık.</p>
+    <h1>{% trans "Sunucular" %}</h1>
+    <p class="sub">{% trans "DNS yöntemlerini canlı aç/kapat — değişiklik ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık." %}</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
     {% if error %}
-        <div class="error">Ayarlar veritabanına erişilemedi: {{ error }}</div>
+        <div class="error">{% blocktrans %}Ayarlar veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
     {% else %}
         <div class="srv-cards">
             {% for m in methods %}
@@ -20,24 +20,22 @@
                     <span class="name"><span class="dotc b-{{ m.key }}"></span> {{ m.label }}</span>
                     <button type="submit" name="enabled" value="{% if m.enabled %}0{% else %}1{% endif %}"
                             class="toggle" aria-checked="{{ m.enabled|yesno:'true,false' }}"
-                            aria-label="{{ m.label }} aç/kapat"
-                            {% if m.key == 'udp' %}disabled title="UDP kapatılamaz (temel çözümleme)"{% endif %}></button>
+                            aria-label="{% blocktrans %}{{ m.label }} aç/kapat{% endblocktrans %}"
+                            {% if m.key == 'udp' %}disabled title="{% trans 'UDP kapatılamaz (temel çözümleme)' %}"{% endif %}></button>
                 </div>
                 <div class="meta">
-                    <span>Container portu</span><b class="mono">{{ m.port }}</b>
-                    <span>Local (host) portu</span><b class="mono">{{ m.local_port|default:"—" }}</b>
-                    <span>Durum</span><b style="color:{% if m.enabled %}var(--ok){% else %}var(--muted){% endif %}">{% if m.enabled %}açık{% else %}kapalı{% endif %}</b>
-                    {% if m.needs_cert %}<span>Sertifika</span><b>gerekli</b>{% endif %}
+                    <span>{% trans "Container portu" %}</span><b class="mono">{{ m.port }}</b>
+                    <span>{% trans "Local (host) portu" %}</span><b class="mono">{{ m.local_port|default:"—" }}</b>
+                    <span>{% trans "Durum" %}</span><b style="color:{% if m.enabled %}var(--ok){% else %}var(--muted){% endif %}">{% if m.enabled %}{% trans "açık" %}{% else %}{% trans "kapalı" %}{% endif %}</b>
+                    {% if m.needs_cert %}<span>{% trans "Sertifika" %}</span><b>{% trans "gerekli" %}</b>{% endif %}
                 </div>
             </form>
             {% endfor %}
         </div>
-        <p class="sub" style="margin-top:18px;">DoT/DoH/DoQ için geçerli sertifika yoksa açık istenip başlatılamaz (resolver güvenli şekilde atlar).</p>
+        <p class="sub" style="margin-top:18px;">{% trans "DoT/DoH/DoQ için geçerli sertifika yoksa açık istenip başlatılamaz (resolver güvenli şekilde atlar)." %}</p>
         <div class="srvnote">
-            🛠️ <b>Portlar buradan değiştirilmez — yalnızca bilgi.</b> <span class="mono">Container portu</span>
-            = konteyner içindeki dinleme portu; <span class="mono">Local (host) portu</span> = dışarı yayınlanan
-            port. Değiştirmek için sunucu klasöründe <span class="mono">./setup.sh</span> çalıştır (her iki portu da
-            sorar), sonra <span class="mono">docker compose up -d</span>.
+            🛠️ <b>{% trans "Portlar buradan değiştirilmez — yalnızca bilgi." %}</b> <span class="mono">{% trans "Container portu" %}</span>
+            {% trans "= konteyner içindeki dinleme portu;" %} <span class="mono">{% trans "Local (host) portu" %}</span> {% trans "= dışarı yayınlanan port. Değiştirmek için sunucu klasöründe" %} <span class="mono">./setup.sh</span> {% trans "çalıştır (her iki portu da sorar), sonra" %} <span class="mono">docker compose up -d</span>.
         </div>
     {% endif %}
 {% endblock %}

@@ -6,7 +6,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # --- Resolver tarafı ---
-COPY app.py run_all.py ./
+COPY app.py run_all.py VERSION ./
 # Resolver + panel'in paylaştığı leaf modüller (log şifreleme + DoH HTTP/2 istemcisi).
 COPY logcrypto.py doh_client.py ./
 COPY servers ./servers
@@ -32,10 +32,10 @@ ENV BIND_ADDRESS=0.0.0.0 \
     SITE_BIND=0.0.0.0 \
     SITE_PORT=8000
 
-# interval 15m: healthcheck sorgusu (example.com) DB'ye loglandigi icin
-# sik aralik tabloyu gurultuye boguyordu (30s = gunde 2880 satir).
-HEALTHCHECK --interval=15m --timeout=6s --start-period=10s --retries=3 \
-    CMD python -m project_control.healthcheck || exit 1
+# Periyodik Docker HEALTHCHECK KALDIRILDI (surekli sorgu istenmiyor). Saglik
+# probe'u artik yalnizca ACILIŞTA bir kez calisir (run_all.py _startup_healthcheck,
+# .invalid sentinel'i ile, gecmise loglanmadan). Docker "health" durumu gostermez;
+# konteyner canliligi 'restart: unless-stopped' + process izleme ile saglanir.
 
 # Tek container, iki ayrı process (resolver + web sitesi) -> run_all.py yönetir.
 CMD ["python", "run_all.py"]

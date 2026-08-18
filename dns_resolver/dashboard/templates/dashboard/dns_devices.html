@@ -1,0 +1,45 @@
+{% extends "dashboard/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "DNS Cihazları" %} · DNS Panel{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/devices.css' %}?v={{ static_v }}">{% endblock %}
+{% block content %}
+    <h1>{% trans "DNS Cihazları" %}</h1>
+    <p class="sub">{% trans "DNS <b>sorgusu yapan</b> istemciler, IP'ye göre gruplanır. DNS'te tarayıcı/JS fingerprint YOKTUR — tanı yalnız <b>IP + ters DNS (PTR) adı + kullanılan yöntem</b> ile sınırlıdır." %}</p>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <div class="dstats">
+        <div class="dstat"><span class="k">{% trans "Cihaz (IP)" %}</span><span class="v">{{ total }}</span></div>
+    </div>
+
+    <div class="box">
+        <div class="tablescroll">
+            <table>
+                <thead><tr>
+                    <th>{% trans "IP" %}</th><th>{% trans "Ad (PTR)" %}</th><th>{% trans "Yöntem" %}</th>
+                    <th>{% trans "Sorgu" %}</th>
+                    <th>{% trans "İlk görülme" %} <span class="muted" style="font-weight:400;">({% trans "yerel" %})</span></th>
+                    <th>{% trans "Son görülme" %}</th>
+                </tr></thead>
+                <tbody>
+                    {% for d in devices %}
+                    <tr>
+                        <td class="mono"><b>{{ d.client_ip }}</b></td>
+                        <td class="mono muted">{{ d.host|default:"—" }}</td>
+                        <td>{% for m in d.methods %}<span class="dchip">{{ m }}</span> {% endfor %}</td>
+                        <td class="num">{{ d.cnt }}</td>
+                        <td class="muted num"><span class="lt" data-utc="{{ d.first_seen|date:'Y-m-d H:i:s' }}">{{ d.first_seen|date:'Y-m-d H:i:s' }}</span></td>
+                        <td class="muted num"><span class="lt" data-utc="{{ d.last_seen|date:'Y-m-d H:i:s' }}">{{ d.last_seen|date:'Y-m-d H:i:s' }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="empty">{% trans "Henüz DNS sorgusu kaydı yok." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="dnote">
+        🔎 {% trans "DNS istemcisi HTTP göndermez → User-Agent / JS fingerprint yoktur. Daha fazla tanı için: DoH isteklerinde <b>User-Agent</b> loglama, DoT/DoQ için TLS <b>JA3/JA4</b> parmak izi, LAN'da <b>DHCP/ARP</b> eşleme (IP→MAC→cihaz adı)." %}
+    </div>
+{% endblock %}

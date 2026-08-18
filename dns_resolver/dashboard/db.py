@@ -219,6 +219,37 @@ async def get_method_breakdown() -> list[dict]:
     )
 
 
+async def get_dns_devices(limit: int = 60) -> list[dict]:
+    """DNS istemcilerini client_ip'ye göre grupla: kullanılan yöntem(ler), sorgu
+    sayısı, ilk/son görülme. client_ip deterministik şifreli olduğundan GROUP BY
+    şifreli değer üzerinde çalışır; sonra çözülür. PTR reverse lookup (hostname)
+    view'da yapılır. Loopback (healthcheck) zaten loglanmaz; eski satırlar elenir."""
+    rows = await _fetch_all(
+        """
+        SELECT client_ip,
+               COUNT(*)                       AS cnt,
+               GROUP_CONCAT(DISTINCT method)  AS methods,
+               MIN(queried_at)                AS first_seen,
+               MAX(queried_at)                AS last_seen
+        FROM dns_cache
+        WHERE client_ip IS NOT NULL AND client_ip <> ''
+        GROUP BY client_ip
+        ORDER BY last_seen DESC
+        LIMIT %s
+        """,
+        (limit,),
+    )
+    out = []
+    for r in rows:
+        ip = (logcrypto.dec(r.get('client_ip')) or '').strip()
+        if not ip or ip in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+            continue                          # eski loopback (healthcheck) kayıtları
+        r['client_ip'] = ip
+        r['methods'] = sorted({m for m in (r.get('methods') or '').split(',') if m})
+        out.append(r)
+    return out
+
+
 async def get_record_type_breakdown(limit: int = 8) -> list[dict]:
     return await _fetch_all(
         """

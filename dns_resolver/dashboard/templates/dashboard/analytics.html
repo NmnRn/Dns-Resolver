@@ -1,20 +1,20 @@
 {% extends "dashboard/base.html" %}
-{% load static %}
-{% block title %}Analiz · DNS Panel{% endblock %}
+{% load static i18n %}
+{% block title %}{% trans "Analiz" %} · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/analytics.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
-    <h1>Analiz</h1>
-    <p class="sub">Trafik eğilimi ve dağılımlar · zamanlar UTC</p>
+    <h1>{% trans "Analiz" %}</h1>
+    <p class="sub">{% trans "Trafik eğilimi ve dağılımlar · zamanlar UTC" %}</p>
 
     {% if error %}
-        <div class="error">Veritabanına erişilemedi: {{ error }}</div>
+        <div class="error">{% blocktrans %}Veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
     {% else %}
         <div class="box chart-hero" style="margin-bottom:16px;">
-            <h2>Son 24 saat trafiği · toplam {{ stats.last_24h }} · tepe {{ peak }}/saat <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;">— üzerine gel: saatlik ayrıntı</span></h2>
+            <h2>{% blocktrans with total=stats.last_24h peak=peak %}Son 24 saat trafiği · toplam {{ total }} · tepe {{ peak }}/saat{% endblocktrans %} <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;">— {% trans "üzerine gel: saatlik ayrıntı" %}</span></h2>
             <div class="body">
                 {% if spark %}
                 <div class="sparkwrap">
-                    <svg id="sparksvg" viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" width="100%" height="140" role="img" aria-label="Son 24 saat trafik grafiği (üzerine gelince saatlik ayrıntı)">
+                    <svg id="sparksvg" viewBox="0 0 {{ spark.w }} {{ spark.h }}" preserveAspectRatio="none" width="100%" height="140" role="img" aria-label="{% trans 'Son 24 saat trafik grafiği (üzerine gelince saatlik ayrıntı)' %}">
                         <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0" stop-color="var(--accent)" stop-opacity=".3"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/>
                         </linearGradient></defs>
@@ -27,30 +27,30 @@
                     </svg>
                     <div id="sparktip" class="chart-tip" style="display:none"></div>
                 </div>
-                <div class="chartleg"><span><i class="lg-b"></i> Toplam sorgu</span><span><i class="lg-r"></i> Engellenen</span></div>
+                <div class="chartleg"><span><i class="lg-b"></i> {% trans "Toplam sorgu" %}</span><span><i class="lg-r"></i> {% trans "Engellenen" %}</span></div>
                 {{ hourly|json_script:"hourly-data" }}
-                {% else %}<div class="empty">Veri yok</div>{% endif %}
+                {% else %}<div class="empty">{% trans "Veri yok" %}</div>{% endif %}
             </div>
         </div>
 
         {% if source_times %}
         <div class="box" style="margin-bottom:16px;">
-            <h2>Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / upstream)</h2>
+            <h2>{% trans "Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / upstream)" %}</h2>
             <div class="bars">
                 {% for s in source_times %}
                 <div class="bar" style="grid-template-columns:230px 1fr auto;">
                     <span class="lbl mono">{{ s.name }}</span>
                     <span class="track"><span class="fill" style="width:{{ s.pct }}%;"></span></span>
-                    <span class="v">{{ s.avg }} ms · {{ s.count }} sorgu</span>
+                    <span class="v">{% blocktrans with avg=s.avg count=s.count %}{{ avg }} ms · {{ count }} sorgu{% endblocktrans %}</span>
                 </div>
-                {% empty %}<div class="empty">Henüz ölçüm yok</div>{% endfor %}
+                {% empty %}<div class="empty">{% trans "Henüz ölçüm yok" %}</div>{% endfor %}
             </div>
         </div>
         {% endif %}
 
         {% if block_total %}
         <div class="box" style="margin-bottom:16px;">
-            <h2>Engelleme Listelerine Göre — toplam {{ block_total }} engellenen sorgu</h2>
+            <h2>{% blocktrans with total=block_total %}Engelleme Listelerine Göre — toplam {{ total }} engellenen sorgu{% endblocktrans %}</h2>
             <div class="bars">
                 {% for b in blocks %}
                 <div class="bar" style="grid-template-columns:200px 1fr auto;">
@@ -58,28 +58,28 @@
                     <span class="track"><span class="fill" style="width:{{ b.pct }}%;background:var(--err);"></span></span>
                     <span class="v">{{ b.cnt }}</span>
                 </div>
-                {% empty %}<div class="empty">Henüz engelleme yok</div>{% endfor %}
+                {% empty %}<div class="empty">{% trans "Henüz engelleme yok" %}</div>{% endfor %}
             </div>
         </div>
         {% endif %}
 
         {% if blocked_domains %}
         <div class="box redlist" style="margin-bottom:16px;">
-            <h2>En Çok Engellenen Alan Adları</h2>
+            <h2>{% trans "En Çok Engellenen Alan Adları" %}</h2>
             <div class="scroll5">
                 {% for d in blocked_domains %}
                 <div class="bl">
                     <div class="bl-top"><span class="nm mono" style="color:var(--err);">{{ d.domain }}</span><span class="v">{{ d.cnt }}</span></div>
                     <div class="track"><span class="fill" style="width:{{ d.pct }}%;background:var(--err);"></span></div>
                 </div>
-                {% empty %}<div class="empty">Henüz engelleme yok</div>{% endfor %}
+                {% empty %}<div class="empty">{% trans "Henüz engelleme yok" %}</div>{% endfor %}
             </div>
         </div>
         {% endif %}
 
         <div class="an-grid">
             <div class="box">
-                <h2>Yönteme Göre</h2>
+                <h2>{% trans "Yönteme Göre" %}</h2>
                 <div class="bars">
                     {% for m in methods %}
                     <div class="bar">
@@ -87,12 +87,12 @@
                         <span class="track"><span class="fill" style="width:{{ m.pct }}%;background:var(--{{ m.method }})"></span></span>
                         <span class="v">{{ m.cnt }}</span>
                     </div>
-                    {% empty %}<div class="empty">Veri yok</div>{% endfor %}
+                    {% empty %}<div class="empty">{% trans "Veri yok" %}</div>{% endfor %}
                 </div>
             </div>
 
             <div class="box">
-                <h2>Kayıt Tipine Göre</h2>
+                <h2>{% trans "Kayıt Tipine Göre" %}</h2>
                 <div class="bars">
                     {% for r in rtypes %}
                     <div class="bar">
@@ -100,31 +100,31 @@
                         <span class="track"><span class="fill" style="width:{{ r.pct }}%"></span></span>
                         <span class="v">{{ r.cnt }}</span>
                     </div>
-                    {% empty %}<div class="empty">Veri yok</div>{% endfor %}
+                    {% empty %}<div class="empty">{% trans "Veri yok" %}</div>{% endfor %}
                 </div>
             </div>
 
             <div class="box">
-                <h2>En Çok Sorgulanan Alan Adları</h2>
+                <h2>{% trans "En Çok Sorgulanan Alan Adları" %}</h2>
                 <div class="scroll5">
                     {% for d in tdomains %}
                     <div class="bl">
                         <div class="bl-top"><span class="nm mono">{{ d.domain }}</span><span class="v">{{ d.cnt }}</span></div>
                         <div class="track"><span class="fill" style="width:{{ d.pct }}%"></span></div>
                     </div>
-                    {% empty %}<div class="empty">Veri yok</div>{% endfor %}
+                    {% empty %}<div class="empty">{% trans "Veri yok" %}</div>{% endfor %}
                 </div>
             </div>
 
             <div class="box">
-                <h2>En Aktif İstemciler</h2>
+                <h2>{% trans "En Aktif İstemciler" %}</h2>
                 <div>
                     {% for c in tclients %}
                     <div class="bl">
                         <div class="bl-top"><span class="nm mono">{{ c.client_ip }}</span><span class="v">{{ c.cnt }}</span></div>
                         <div class="track"><span class="fill" style="width:{{ c.pct }}%"></span></div>
                     </div>
-                    {% empty %}<div class="empty">Veri yok</div>{% endfor %}
+                    {% empty %}<div class="empty">{% trans "Veri yok" %}</div>{% endfor %}
                 </div>
             </div>
         </div>
@@ -160,9 +160,9 @@
             dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.style.display = '';
             dotb.setAttribute('cx', x); dotb.setAttribute('cy', ysb[i]); dotb.style.display = '';
             var html = '<div class="tt-h">' + fmtHour(d.utc) + '</div>'
-                + '<div><span>Sorgu</span><b>' + d.total + '</b></div>'
-                + '<div><span>Engellenen</span><b class="tt-b">' + d.blocked + '</b></div>';
-            if (d.client) html += '<div><span>En aktif</span><b>' + d.client + ' (' + d.client_cnt + ')</b></div>';
+                + '<div><span>{% trans "Sorgu" %}</span><b>' + d.total + '</b></div>'
+                + '<div><span>{% trans "Engellenen" %}</span><b class="tt-b">' + d.blocked + '</b></div>';
+            if (d.client) html += '<div><span>{% trans "En aktif" %}</span><b>' + d.client + ' (' + d.client_cnt + ')</b></div>';
             tip.innerHTML = html;
             tip.style.display = '';
             var px = x / W * r.width, half = tip.offsetWidth / 2;

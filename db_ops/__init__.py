@@ -91,6 +91,11 @@ class DBManager(dbops.DB_CON):
         """
         if not self.logging_enabled:   # geçmiş kapalı → sorguyu hiç tamponlama
             return
+        # Docker HEALTHCHECK 127.0.0.1'den periyodik probe atar; onu geçmişe
+        # YAZMA (gerçek istemciler dns-net / yayın portundan farklı IP ile gelir
+        # → hiçbir gerçek kayıt gizlenmez). Tüm transport'lar buradan geçer.
+        if value.get("client_ip") in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+            return
         value = dict(value)  # çağıranın dict'ini değiştirme
         value.setdefault("queried_at", self.utc_now())
         # PII: anahtar (DNS_LOG_KEY) varsa istemci IP'sini ve sorgu domain'ini

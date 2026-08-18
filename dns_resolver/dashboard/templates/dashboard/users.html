@@ -1,24 +1,24 @@
 {% extends "dashboard/base.html" %}
-{% load static %}
-{% block title %}Kullanıcılar · DNS Panel{% endblock %}
+{% load static i18n %}
+{% block title %}{% trans "Kullanıcılar" %} · DNS Panel{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/users.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
-    <h1>Kullanıcılar</h1>
-    <p class="sub">Panele giriş yapabilen yönetici hesapları. Panel yalnızca yöneticilere açıktır — eklenen her hesap tam yetkilidir.</p>
+    <h1>{% trans "Kullanıcılar" %}</h1>
+    <p class="sub">{% trans "Panele giriş yapabilen yönetici hesapları. Panel yalnızca yöneticilere açıktır — eklenen her hesap tam yetkilidir." %}</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
     <div class="u-grid">
         <div class="box">
-            <h2>Hesaplar ({{ users|length }})</h2>
+            <h2>{% blocktrans count n=users|length %}Hesaplar ({{ n }}){% plural %}Hesaplar ({{ n }}){% endblocktrans %}</h2>
             <div class="tablescroll">
                 <table>
-                    <thead><tr><th>Kullanıcı</th><th>Rol</th><th>Son Giriş <span class="muted" style="font-weight:400;">(yerel)</span></th><th>Oluşturma</th><th></th></tr></thead>
+                    <thead><tr><th>{% trans "Kullanıcı" %}</th><th>{% trans "Rol" %}</th><th>{% trans "Son Giriş" %} <span class="muted" style="font-weight:400;">({% trans "yerel" %})</span></th><th>{% trans "Oluşturma" %}</th><th></th></tr></thead>
                     <tbody>
                         {% for u in users %}
                         <tr>
-                            <td><b>{{ u.username }}</b>{% if u.id|stringformat:"s" == me %} <span class="muted" style="font-size:12px;">(sen)</span>{% endif %}</td>
-                            <td><span class="role {% if u.is_superuser %}admin{% else %}user{% endif %}">{% if u.is_superuser %}yönetici{% else %}kullanıcı{% endif %}</span></td>
+                            <td><b>{{ u.username }}</b>{% if u.id|stringformat:"s" == me %} <span class="muted" style="font-size:12px;">({% trans "sen" %})</span>{% endif %}</td>
+                            <td><span class="role {% if u.is_superuser %}admin{% else %}user{% endif %}">{% if u.is_superuser %}{% trans "yönetici" %}{% else %}{% trans "kullanıcı" %}{% endif %}</span></td>
                             <td class="muted num"><span class="lt" data-utc="{{ u.last_login|date:'Y-m-d H:i:s' }}">{{ u.last_login|date:"Y-m-d H:i:s"|default:"—" }}</span></td>
                             <td class="muted num">{{ u.date_joined|date:"Y-m-d" }}</td>
                             <td style="text-align:right;">
@@ -27,13 +27,13 @@
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="del">
                                     <input type="hidden" name="user_id" value="{{ u.id }}">
-                                    <button class="xbtn danger" type="submit">Sil</button>
+                                    <button class="xbtn danger" type="submit">{% trans "Sil" %}</button>
                                 </form>
                                 {% endif %}
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="5" class="empty">Kullanıcı yok</td></tr>
+                        <tr><td colspan="5" class="empty">{% trans "Kullanıcı yok" %}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -41,14 +41,14 @@
         </div>
 
         <div class="box">
-            <h2>Yeni Kullanıcı</h2>
+            <h2>{% trans "Yeni Kullanıcı" %}</h2>
             <form method="post" class="body" style="display:grid;gap:14px;">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="add">
-                <div class="ufield"><label>Kullanıcı adı</label><input type="text" name="username" autocomplete="off" spellcheck="false"></div>
-                <div class="ufield"><label>Parola</label><input type="password" name="password" autocomplete="new-password" placeholder="en az 8 karakter"></div>
-                <p class="sub" style="margin:0;font-size:12px;">Eklenen her hesap <b>yönetici</b> olur (panel yalnız yöneticilere açıktır).</p>
-                <button class="btn" type="submit">Oluştur</button>
+                <div class="ufield"><label>{% trans "Kullanıcı adı" %}</label><input type="text" name="username" autocomplete="off" spellcheck="false"></div>
+                <div class="ufield"><label>{% trans "Parola" %}</label><input type="password" name="password" autocomplete="new-password" placeholder="{% trans 'en az 8 karakter' %}"></div>
+                <p class="sub" style="margin:0;font-size:12px;">{% trans "Eklenen her hesap <b>yönetici</b> olur (panel yalnız yöneticilere açıktır)." %}</p>
+                <button class="btn" type="submit">{% trans "Oluştur" %}</button>
             </form>
         </div>
     </div>

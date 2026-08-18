@@ -50,6 +50,18 @@ def _event():
     return {"record_type": "A", "client_ip": "1.1.1.1", "method": "Normal DNS"}
 
 
+def test_loopback_healthcheck_not_buffered():
+    """Docker HEALTHCHECK 127.0.0.1'den probe atar → geçmişe YAZILMAZ; gerçek
+    istemci (loopback olmayan IP) normal tamponlanir."""
+    manager, _, _ = make_manager()
+    for ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+        manager.add_to_cache("healthcheck.invalid.",
+                             {"record_type": "A", "client_ip": ip, "method": "Normal DNS"})
+    assert manager.flush_cache == []            # hicbir loopback probe tamponlanmadi
+    manager.add_to_cache("a.com.", _event())     # 1.1.1.1 = gercek istemci
+    assert len(manager.flush_cache) == 1
+
+
 def test_add_to_cache_stamps_naive_utc_datetime():
     """Zaman damgasını add_to_cache vurur: tz-suffix'siz (naive) UTC datetime."""
     manager, _, _ = make_manager()
