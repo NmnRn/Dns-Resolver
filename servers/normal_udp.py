@@ -28,6 +28,7 @@ MAX_DEPTH = 16           # CNAME / NS-çözme özyineleme derinliği
 EDNS_UDP_SIZE = 4096     # EDNS0 ile ilan ettiğimiz UDP tampon boyutu
 MAX_TTL = 86400          # cache'te bir kaydı en fazla tutma süresi (sn)
 NEG_TTL_CAP = 900        # negatif (NXDOMAIN/NODATA) cache üst sınırı (sn)
+CACHE_MAX_ENTRIES = 10000  # bellek-içi cache girdi üst sınırı (unique-query flood DoS'a karşı)
 REWRITE_TTL = 300        # DNS rewrite (elle tanımlı kayıt) cevaplarının TTL'i (sn)
 
 # Güvenli arama: motor -> (görünen ad, zorunlu güvenli hedef). Panelde motor başına seçilir.
@@ -194,6 +195,11 @@ class DNSCore:
         if ttl == 0:
             return
         with self._lock:
+            # Bellek sınırı: dolduysa en eski eklenen ~%10'u at (unique-query
+            # flood'un cache'i şişirip belleği tüketmesini engeller).
+            if len(self._cache) >= CACHE_MAX_ENTRIES and (domain, qtype) not in self._cache:
+                for k in list(self._cache.keys())[:max(1, CACHE_MAX_ENTRIES // 10)]:
+                    del self._cache[k]
             self._cache[(domain, qtype)] = (now() + ttl, rcode, records)
 
     def clear_cache(self):
@@ -335,6 +341,40 @@ class DNSCore:
         return sub_rcode, [cname] + list(sub_rr)
 
     # --- Tel üzerinde sorgu --------------------------------------------------
+    @staticmethod
+    def _resp_ok(resp, q):
+        """Gelen cevap gerçekten bizim sorumuza mı ait? Header ID + SORU bölümü
+        (qname/qtype) eşleşmeli. Yalnız 16-bit ID off-path spoof'a karşı zayıftır;
+        soruyu da eşlemek zorunlu kontroldür (RFC 5452)."""
+        if resp is None or resp.header.id != q.header.id or resp.header.q < 1:
+            return False
+        return (str(resp.q.qname).rstrip(".").lower() == str(q.q.qname).rstrip(".").lower()
+                and resp.q.qtype == q.q.qtype)
+
+    @staticmethod
+    def _bailiwick_chain(records, domain, qtype):
+        """Cevap bölümünü SORULAN İSİM ZİNCİRİNE indir: domain'den başla; yalnız o
+        isme ait CNAME + istenen-tip kayıtları al, CNAME hedefine geç; zincir DIŞI
+        (yanıta enjekte edilmiş alakasız) kayıtları AT. (zincir_kayıtları, son_ad) döner."""
+        by_name = {}
+        for r in records:
+            by_name.setdefault(str(r.rname).rstrip(".").lower(), []).append(r)
+        out, seen = [], set()
+        name = domain.rstrip(".").lower()
+        while name and name not in seen:
+            seen.add(name)
+            recs = by_name.get(name, [])
+            cn = [r for r in recs if QTYPE[r.rtype] == "CNAME"]
+            want = [r for r in recs if QTYPE[r.rtype] == qtype]
+            out.extend(cn + want)
+            if want:
+                break                     # istenen tip bulundu → zincir tamam
+            if cn:
+                name = str(cn[-1].rdata).rstrip(".").lower()   # CNAME hedefine geç
+            else:
+                break
+        return out, name
+
     def _query(self, domain, qtype, server_ip, tcp=False, timeout=QUERY_TIMEOUT, port=53):
         """Tek bir sunucuya sorgu at (varsayılan port 53). TC gelirse TCP'ye düş."""
         q = DNSRecord.question(domain, qtype)
@@ -357,11 +397,11 @@ class DNSCore:
                 resp_data, _ = sock.recvfrom(EDNS_UDP_SIZE)
  
             resp = DNSRecord.parse(resp_data)
- 
-            # ID eşleşmiyorsa eski/sahte pakettir, güvenme
-            if resp.header.id != qid:
+
+            # ID + SORU eşleşmiyorsa eski/sahte pakettir, güvenme
+            if not self._resp_ok(resp, q):
                 return None
- 
+
             # UDP'de kesik geldiyse TCP ile tekrar dene
             if resp.header.tc and not tcp:
                 return self._query(domain, qtype, server_ip, tcp=True, timeout=timeout, port=port)
@@ -398,7 +438,7 @@ class DNSCore:
         qid = q.header.id
         try:
             resp = DNSRecord.parse(doh_client.doh_query(endpoint, q.pack(), timeout, bootstrap=self.bootstrap_dns))
-            return resp if resp.header.id == qid else None
+            return resp if self._resp_ok(resp, q) else None
         except Exception:
             return None
 
@@ -435,7 +475,7 @@ class DNSCore:
             sock.sendall(struct.pack("!H", len(data)) + data)
             length = struct.unpack("!H", _recv_exact(sock, 2))[0]
             resp = DNSRecord.parse(_recv_exact(sock, length))
-            return resp if resp.header.id == qid else None
+            return resp if self._resp_ok(resp, q) else None
         except Exception:
             return None
         finally:
@@ -682,9 +722,9 @@ class DNSCore:
                     str(r.rdata) for r in resp.ar
                     if QTYPE[r.rtype] == "A" and str(r.rname).rstrip(".").lower() in ns_names
                 ]
-                if not glue:
-                    glue = [str(r.rdata) for r in resp.ar if QTYPE[r.rtype] == "A"]
- 
+                # Bailiwick: yalnız NS adlarıyla EŞLEŞEN glue'ya güven. Eşleşen
+                # yoksa alakasız A kayıtlarını KABUL ETME (sahte glue = yön çalma);
+                # NS adını aşağıda ayrıca çözeriz.
                 if glue:
                     nameservers = glue
                 else:
@@ -707,23 +747,26 @@ class DNSCore:
  
             # 2) Cevap bölümü doluysa
             if resp.rr:
-                direct = [r for r in resp.rr if QTYPE[r.rtype] == qtype]
+                # Bailiwick: yalnız sorulan isim ZİNCİRİNE ait kayıtları al;
+                # yanıta enjekte edilmiş alakasız kayıtları AT.
+                chain, _final = self._bailiwick_chain(resp.rr, domain, qtype)
+                direct = [r for r in chain if QTYPE[r.rtype] == qtype]
                 if direct:
-                    self._cache_put(domain, qtype, RCODE.NOERROR, resp.rr, _min_ttl(resp.rr))
-                    return RCODE.NOERROR, resp.rr
- 
-                # CNAME zinciri: hedefi ayrıca çöz, sonucu birleştir
-                cnames = [r for r in resp.rr if QTYPE[r.rtype] == "CNAME"]
+                    self._cache_put(domain, qtype, RCODE.NOERROR, chain, _min_ttl(chain))
+                    return RCODE.NOERROR, chain
+
+                # Zincir CNAME'de bitti ama hedefin kaydı yanıtta yok -> hedefi çöz
+                cnames = [r for r in chain if QTYPE[r.rtype] == "CNAME"]
                 if cnames:
                     target = str(cnames[-1].rdata)
                     sub_rcode, sub_rr = self.resolve(target, qtype, depth + 1)
-                    merged = list(resp.rr) + list(sub_rr)
+                    merged = list(chain) + list(sub_rr)
                     if sub_rr:
                         self._cache_put(domain, qtype, sub_rcode, merged, _min_ttl(merged))
                     return sub_rcode, merged
- 
-                # İstenen tip yok ama başka cevap var -> olduğu gibi dön
-                return RCODE.NOERROR, resp.rr
+
+                # Sorulan isme ait kayıt yok (yalnız alakasız kayıt gelmiş) -> NODATA
+                return RCODE.NOERROR, []
  
             # 3) Cevap yok -> referral mı, NODATA mı?
             ns_records = [a for a in resp.auth if QTYPE[a.rtype] == "NS"]
@@ -739,9 +782,7 @@ class DNSCore:
                 str(r.rdata) for r in resp.ar
                 if QTYPE[r.rtype] == "A" and str(r.rname).rstrip(".").lower() in ns_names
             ]
-            if not glue:  # ada özel glue yoksa additional'daki herhangi bir A'yı dene
-                glue = [str(r.rdata) for r in resp.ar if QTYPE[r.rtype] == "A"]
- 
+            # Bailiwick: eşleşmeyen (alakasız) glue'yu KABUL ETME → NS'i aşağıda çöz.
             if glue:
                 nameservers = glue
                 continue
