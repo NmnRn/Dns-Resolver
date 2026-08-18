@@ -803,13 +803,17 @@ def device_record(request):
     )
     touch = bool(data.get('touch'))
     brave = bool(data.get('brave'))
-    # Brave/Tor/Firefox-RFP canvas'ı her okumada rastgeleleştirir → koruma tespiti
-    fp_protected = bool(data.get('canvasProtected')) or brave
+    # Koruma tespiti: Brave (kesin, isBrave) + canvas per-READ rastgele +
+    # Firefox/Zen'in jenerik GPU işareti ('or similar') → gizlilik tarayıcıları.
+    fp_protected = (bool(data.get('canvasProtected')) or brave
+                    or 'or similar' in f['gpu'].lower())
 
-    # canvas'ı ANAHTARA KOYMA: farbling yüzünden her sekmede değişir → yeni cihaz
-    # olurdu. Kararlı sinyallerle tekilleştir (canvas yalnız gösterim için saklanır).
+    # Dedup ANAHTARINA yalnız KARARLI sinyaller. canvas + cpu (hardwareConcurrency)
+    # + memory (deviceMemory) bazı gizlilik tarayıcılarında (Zen/Firefox-RFP) HER
+    # sayfa açılışında RASTGELEŞİR → anahtara koyarsak yenilemede yeni cihaz olur.
+    # Bu üçü yalnız gösterim için saklanır, tekilleştirmeye girmez.
     key = '|'.join([ip, ua, f['screen'], f['timezone'], f['platform'], f['gpu'],
-                    f['languages'], f['color_depth'], f['cpu'], f['memory']])
+                    f['languages'], f['color_depth']])
     fp_hash = hashlib.sha256(key.encode('utf-8', 'ignore')).hexdigest()
 
     # Oturum başına, DEĞİŞTİKÇE kaydet: aynı cihaz+IP bu oturumda zaten yazıldıysa
