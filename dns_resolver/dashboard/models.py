@@ -27,26 +27,28 @@ class DeviceProfile(models.Model):
     YENİ satır yerine BU satırı günceller. fingerprint alanları betimleyicidir; açılışlar
     arası DEĞİŞEN alanlar `volatile`'a düşer (tarayıcı onları rastgeliyor). Görülen tüm
     IP'ler `ips`'te (VPN/ağ değişimi burada görünür)."""
-    fp_hash = models.CharField(max_length=64, unique=True, db_index=True)  # = istemci kimliği
-    ip = models.CharField(max_length=64, blank=True)                       # son görülen IP
-    ips = models.TextField(blank=True)                                     # görülen tüm IP'ler (virgülle)
-    volatile = models.CharField(max_length=200, blank=True)                # oynak/rastgeleşen alanlar
-    user_agent = models.TextField(blank=True)
-    browser = models.CharField(max_length=40, blank=True)
+    fp_hash = models.CharField(max_length=64, unique=True, db_index=True)  # = istemci kimliği (düz)
+    # PII/tanımlayıcı alanlar at-rest ŞİFRELİ saklanır (logcrypto/AES-SIV, DNS_LOG_KEY;
+    # anahtar yoksa düz). Şifreli değer 'enc:<b64>' → sabit boydan taşar diye TextField.
+    ip = models.TextField(blank=True)                                      # son görülen IP (şifreli)
+    ips = models.TextField(blank=True)                                     # görülen tüm IP'ler (şifreli)
+    volatile = models.CharField(max_length=200, blank=True)                # oynak/rastgeleşen alanlar (düz)
+    user_agent = models.TextField(blank=True)                              # (şifreli)
+    browser = models.CharField(max_length=40, blank=True)                  # kaba etiket (düz)
     os = models.CharField(max_length=40, blank=True)
     device = models.CharField(max_length=20, blank=True)
-    # istemci (JS) tarafı fingerprint alanları
-    screen = models.CharField(max_length=40, blank=True)
-    viewport = models.CharField(max_length=40, blank=True)
-    timezone = models.CharField(max_length=64, blank=True)
-    platform = models.CharField(max_length=64, blank=True)
-    languages = models.CharField(max_length=128, blank=True)
-    color_depth = models.CharField(max_length=8, blank=True)
-    cpu = models.CharField(max_length=8, blank=True)
+    # istemci (JS) tarafı fingerprint alanları — tanımlayıcılar ŞİFRELİ (TextField)
+    screen = models.TextField(blank=True)
+    viewport = models.TextField(blank=True)
+    timezone = models.TextField(blank=True)
+    platform = models.TextField(blank=True)
+    languages = models.TextField(blank=True)
+    color_depth = models.CharField(max_length=8, blank=True)               # düşük entropi → düz
+    cpu = models.CharField(max_length=8, blank=True)                       # farble/düşük → düz
     memory = models.CharField(max_length=8, blank=True)
-    gpu = models.CharField(max_length=200, blank=True)
+    gpu = models.TextField(blank=True)
     touch = models.BooleanField(default=False)
-    canvas_hash = models.CharField(max_length=64, blank=True)
+    canvas_hash = models.TextField(blank=True)
     # Fingerprint koruması: Brave/Tor/Firefox-RFP canvas'ı her okumada
     # rastgeleleştirir (farbling) → canvas dedup anahtarından ÇIKARILIR.
     brave = models.BooleanField(default=False)

@@ -31,6 +31,7 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 
+import logcrypto  # DeviceProfile PII alanlarını at-rest şifreler/çözer (DNS_LOG_KEY)
 from project_control.blocklists import normalize_url, check_link
 from . import db
 from .catalog import catalog_grouped
@@ -765,6 +766,12 @@ def devices(request):
         'timezone', 'platform', 'languages', 'color_depth', 'cpu', 'memory', 'gpu', 'touch',
         'canvas_hash', 'brave', 'fp_protected', 'username', 'first_seen', 'last_seen',
         'hits', 'user_agent'))
+    # PII alanlarını gösterim için ÇÖZ (at-rest şifreli; anahtar yoksa zaten düz)
+    _DEC = ('ip', 'ips', 'user_agent', 'screen', 'viewport', 'timezone',
+            'platform', 'languages', 'gpu', 'canvas_hash')
+    for d in devs:
+        for k in _DEC:
+            d[k] = logcrypto.dec(d.get(k) or '')
     context = _base_ctx(request, 'devices')
     context.update(
         devices=devs, msg=msg,
@@ -823,29 +830,36 @@ def device_record(request):
     # Açılışlar arası DEĞİŞEN (tarayıcının rastgelediği) alanlar → koruma göstergesi
     _VOL = ('screen', 'timezone', 'platform', 'languages', 'color_depth',
             'cpu', 'memory', 'gpu', 'canvas_hash')
+    # PII/tanımlayıcılar at-rest ŞİFRELİ (logcrypto/AES-SIV; anahtar yoksa düz geçer)
+    _ENC = ('screen', 'viewport', 'timezone', 'platform', 'languages', 'gpu', 'canvas_hash')
+    store = {k: (logcrypto.enc(v) if k in _ENC else v) for k, v in f.items()}
     try:
         obj, created = DeviceProfile.objects.get_or_create(
             fp_hash=cid,
             defaults=dict(
-                ip=ip, ips=ip, user_agent=ua, browser=parsed['browser'], os=parsed['os'],
-                device=parsed['device'], touch=touch, brave=brave, username=username,
-                extra=json.dumps(data)[:4000], last_seen=now, hits=1,
+                ip=logcrypto.enc(ip), ips=logcrypto.enc(ip), user_agent=logcrypto.enc(ua),
+                browser=parsed['browser'], os=parsed['os'], device=parsed['device'],
+                touch=touch, brave=brave, username=username,
+                extra=logcrypto.enc(json.dumps(data)[:4000]), last_seen=now, hits=1,
                 fp_protected=(brave or bool(data.get('canvasProtected'))
                               or 'or similar' in f['gpu'].lower()),
-                **f),
+                **store),
         )
         if not created:
-            changed = {k for k in _VOL if getattr(obj, k) != f[k]}
+            # oynak tespiti: saklanan (şifreli olabilir) değeri ÇÖZüp plain ile karşılaştır
+            changed = {k for k in _VOL
+                       if (logcrypto.dec(getattr(obj, k)) if k in _ENC else getattr(obj, k)) != f[k]}
             vol = set(filter(None, (obj.volatile or '').split(','))) | changed
-            seen = set(filter(None, (obj.ips or '').split(',')))
+            seen = set(filter(None, (logcrypto.dec(obj.ips) or '').split(',')))
             seen.add(ip)
             protected = (brave or bool(data.get('canvasProtected'))
                          or 'or similar' in f['gpu'].lower() or bool(vol))
             DeviceProfile.objects.filter(pk=obj.pk).update(
-                last_seen=now, hits=F('hits') + 1, ip=ip, username=username,
-                ips=','.join(sorted(seen)[:20]), volatile=','.join(sorted(vol))[:200],
+                last_seen=now, hits=F('hits') + 1, ip=logcrypto.enc(ip), username=username,
+                ips=logcrypto.enc(','.join(sorted(seen)[:20])),
+                volatile=','.join(sorted(vol))[:200],
                 browser=parsed['browser'], os=parsed['os'], device=parsed['device'],
-                touch=touch, brave=brave, fp_protected=protected, **f)
+                touch=touch, brave=brave, fp_protected=protected, **store)
     except Exception:   # noqa: BLE001 — kayıt sayfayı bozmasın
         logger.exception('cihaz fingerprint kaydi yazilamadi')
         return JsonResponse({'ok': False}, status=200)
