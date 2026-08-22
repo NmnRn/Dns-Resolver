@@ -831,6 +831,66 @@ def _local_ip_note(ip):
     return None
 
 
+def _vcard_name(vcard):
+    """RDAP jCard (vcardArray) içinden 'fn' (görünen ad) çıkar."""
+    try:
+        for item in vcard[1]:
+            if item[0] == "fn":
+                return item[3]
+    except (TypeError, IndexError, KeyError):
+        pass
+    return ""
+
+
+def _rdap_format(d, kind):
+    """RDAP JSON → okunur özet metin. Eksik alanlar atlanır."""
+    lines = []
+
+    def add(k, v):
+        if v:
+            lines.append(f"{k}: {v}")
+
+    if kind == "ip":
+        rng = f"{d.get('startAddress', '')} – {d.get('endAddress', '')}".strip(" –")
+        add("Aralık", rng)
+        add("Ağ adı", d.get("name"))
+        add("Handle", d.get("handle"))
+        add("Tip", d.get("type"))
+        add("Ülke", d.get("country"))
+    else:
+        add("Domain", d.get("ldhName") or d.get("handle"))
+        add("Durum", ", ".join(d.get("status", []) or []))
+    for e in (d.get("entities") or []):
+        roles = ", ".join(e.get("roles", []) or [])
+        name = _vcard_name(e.get("vcardArray")) or e.get("handle")
+        add(f"İlgili ({roles})" if roles else "İlgili", name)
+    for ev in (d.get("events") or []):
+        add(ev.get("eventAction", "olay"), ev.get("eventDate"))
+    for rm in (d.get("remarks") or []):
+        desc = " ".join(rm.get("description", []) or [])
+        if desc:
+            lines.append(desc)
+    return "\n".join(lines).strip() or None
+
+
+def _rdap(query):
+    """RDAP — WHOIS'in modern HTTPS(443) halefi. Port 43 kapalı sunucularda da çalışır.
+    rdap.org bootstrap → doğru RIR/registry'ye yönlendirir (IP/domain otomatik)."""
+    import httpx
+    try:
+        ipaddress.ip_address(query)
+        kind = "ip"
+    except ValueError:
+        kind = "domain"
+    with httpx.Client(timeout=6, follow_redirects=True) as c:
+        r = c.get(f"https://rdap.org/{kind}/{query}",
+                  headers={"accept": "application/rdap+json"})
+    if r.status_code == 404:
+        return None                       # kayıt yok
+    r.raise_for_status()
+    return _rdap_format(r.json(), kind)
+
+
 def _whois(query):
     """IP YA DA alan adı için 2 adımlı WHOIS: whois.iana.org:43 sorumlu sunucuyu
     (RIR ya da TLD registry) döndürür → tam sorgu oraya yapılır. Ham metin döner.
@@ -882,15 +942,22 @@ def whois_lookup(request):
         ip_obj = None
     if ip_obj is None and not _valid_domain(q):
         return JsonResponse({'error': 'Geçersiz IP / alan adı'}, status=400)
-    if ip_obj is not None:                              # yerel/özel IP → dış WHOIS'e GİTME
+    if ip_obj is not None:                              # yerel/özel IP → dış sorguya GİTME
         note = _local_ip_note(ip_obj)
         if note:
             return JsonResponse({'query': q, 'whois': note, 'local': True})
+    # Önce RDAP (HTTPS/443 — port 43 kapalı sunucularda da çalışır), sonra klasik WHOIS (43).
+    text, err = None, None
     try:
-        text = _whois(q)
-    except Exception as exc:   # noqa: BLE001 — dış WHOIS hatası sayfayı bozmasın
-        return JsonResponse({'error': f'WHOIS başarısız: {type(exc).__name__}'}, status=502)
-    return JsonResponse({'query': q, 'whois': (text or '').strip()[:8000]})
+        text = _rdap(q)
+    except Exception as exc:   # noqa: BLE001
+        err = type(exc).__name__
+    if not text:
+        try:
+            text = _whois(q)
+        except Exception as exc:   # noqa: BLE001 — dış sorgu hatası sayfayı bozmasın
+            return JsonResponse({'error': f'RDAP/WHOIS başarısız: {err or type(exc).__name__}'}, status=502)
+    return JsonResponse({'query': q, 'whois': (text or '').strip()[:8000] or '—'})
 
 
 def device_record(request):

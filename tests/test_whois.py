@@ -82,3 +82,28 @@ def test_local_ip_note_dns_net_subnet(monkeypatch):
     monkeypatch.setattr(views, "_server_ips", lambda: ["172.27.17.2"])   # konteyner IP
     note = views._local_ip_note(ipaddress.ip_address("172.27.17.9"))
     assert note is not None and "dns-net" in note
+
+
+def test_vcard_name():
+    vc = ["vcard", [["version", {}, "text", "4.0"], ["fn", {}, "text", "Example Org"]]]
+    assert views._vcard_name(vc) == "Example Org"
+    assert views._vcard_name(None) == ""
+
+
+def test_rdap_format_ip():
+    data = {"startAddress": "1.1.1.0", "endAddress": "1.1.1.255", "name": "APNIC-LABS",
+            "type": "ALLOCATED", "country": "AU",
+            "entities": [{"roles": ["registrant"],
+                          "vcardArray": ["vcard", [["version", {}, "text", "4.0"],
+                                                   ["fn", {}, "text", "Cloudflare"]]]}],
+            "events": [{"eventAction": "registration", "eventDate": "2011-01-01"}]}
+    out = views._rdap_format(data, "ip")
+    assert "1.1.1.0" in out and "APNIC-LABS" in out and "Cloudflare" in out and "registration" in out
+
+
+def test_rdap_format_domain():
+    data = {"ldhName": "EXAMPLE.COM", "status": ["client transfer prohibited"],
+            "entities": [{"roles": ["registrar"], "handle": "376"}],
+            "events": [{"eventAction": "expiration", "eventDate": "2027-08-13"}]}
+    out = views._rdap_format(data, "domain")
+    assert "EXAMPLE.COM" in out and "registrar" in out and "expiration" in out

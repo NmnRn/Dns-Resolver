@@ -26,12 +26,17 @@
 .qdot.blk{ background:var(--err); }
 .qdot.nx{ background:var(--warn); }
 .qdot.err{ background:var(--err); }
-.qstat{ display:inline-flex; align-items:center; justify-content:center; width:18px; flex:none;
-    font-size:13px; line-height:1; }   /* sabit genişlik → ✓/⛔/∅/⚠ hizalı, satırlar kaymaz */
+/* Durum yuvası: SABİT genişlik + sağa yaslı → NXDOMAIN/SERVFAIL yazısı gelse de
+   A/DOT/saat hizalı kalır (satırlar kaymaz). */
+.qstatus{ display:inline-flex; align-items:center; justify-content:flex-end; min-width:74px; flex:none; }
+.qstat{ font-size:13px; line-height:1; }
 .qstat.s-ok{ color:var(--ok); }
 .qstat.s-blk{ color:var(--err); }
-.qstat.s-nx{ color:var(--warn); }
-.qstat.s-err{ color:var(--err); }
+.qstag{ font:700 9.5px var(--mono); letter-spacing:.03em; padding:2px 6px; border-radius:5px; white-space:nowrap; }
+.qstag.s-nx{ color:var(--warn); background:color-mix(in srgb,var(--warn) 14%,transparent);
+    border:1px solid color-mix(in srgb,var(--warn) 34%,transparent); }
+.qstag.s-err{ color:var(--err); background:color-mix(in srgb,var(--err) 14%,transparent);
+    border:1px solid color-mix(in srgb,var(--err) 34%,transparent); }
 .qdot.live{ background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); animation:qpulse 1.6s ease-in-out infinite; }
 @keyframes qpulse{ 0%,100%{opacity:1} 50%{opacity:.4} }
 @media(prefers-reduced-motion:reduce){ .qdot.live{ animation:none; } }

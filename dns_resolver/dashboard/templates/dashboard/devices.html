@@ -67,7 +67,7 @@
         <div class="whois-box">
             <div class="whois-head"><span>WHOIS · <span class="mono" id="whoisIp"></span></span><button type="button" class="whois-x" data-no-ajax aria-label="{% trans 'Kapat' %}">✕</button></div>
             <pre class="whois-body mono" id="whoisBody"></pre>
-            <div class="whois-foot">{% trans "Sorgu IANA + ilgili RIR'e (ARIN/RIPE/APNIC…) gider — dış istektir." %}</div>
+            <div class="whois-foot">{% trans "RDAP (HTTPS) ile sorgulanır — port 43 kapalı sunucuda da çalışır. Yerel/özel IP'lerde dış istek atılmaz." %}</div>
         </div>
     </div>
     <script>/* IP rozeti / WHOIS kutusu → WHOIS (same-origin; sonuç modalda) */
