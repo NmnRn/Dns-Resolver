@@ -26,6 +26,17 @@ QUERY_TIMEOUT = 1.0     # tek sunucuya saniye cinsinden bekleme
 MAX_HOPS = 16            # bir sorguda kaç delegation adımı izlenir
 MAX_DEPTH = 16           # CNAME / NS-çözme özyineleme derinliği
 EDNS_UDP_SIZE = 4096     # EDNS0 ile ilan ettiğimiz UDP tampon boyutu
+
+
+def status_for(rcode, blocked):
+    """Sorgu sonucu durumu (panel göstergesi): blocked > nxdomain > servfail > ok."""
+    if blocked:
+        return "blocked"
+    if rcode == RCODE.NXDOMAIN:
+        return "nxdomain"
+    if rcode == RCODE.SERVFAIL:
+        return "servfail"
+    return "ok"
 MAX_TTL = 86400          # cache'te bir kaydı en fazla tutma süresi (sn)
 NEG_TTL_CAP = 900        # negatif (NXDOMAIN/NODATA) cache üst sınırı (sn)
 CACHE_MAX_ENTRIES = 10000  # bellek-içi cache girdi üst sınırı (unique-query flood DoS'a karşı)
@@ -290,6 +301,10 @@ class DNSCore:
             return None
         labels = name.split(".")
         candidates = [".".join(labels[i:]) for i in range(len(labels))]
+        # '*.sonek' wildcard adayları — YALNIZ alt alanlar (apex'i kapsamaz). Elle
+        # eklenen '*.example.com' → sub.example.com'u engeller, example.com'u DEĞİL;
+        # '*.onion' → tüm .onion adlarını engeller.
+        candidates += ["*." + ".".join(labels[i:]) for i in range(1, len(labels))]
         if any(c in self.allowset for c in candidates):
             return None
         if any(c in self.manual_block for c in candidates):
@@ -840,7 +855,7 @@ class DNSResolver(BaseResolver):
         log("**** **** %s -> %s (%d kayıt)", qtype, RCODE[rcode], len(records))
 
         blocked_by = self.core.is_blocked(qname)  # None ya da eşleşen liste adı
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method, "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method, "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by))})
         
         return reply
  

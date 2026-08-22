@@ -24,6 +24,13 @@
 .qdot{ width:9px; height:9px; border-radius:50%; flex:none; }
 .qdot.ok{ background:var(--ok); }
 .qdot.blk{ background:var(--err); }
+.qdot.nx{ background:var(--warn); }
+.qdot.err{ background:var(--err); }
+.qstat{ font-size:13px; line-height:1; flex:none; }
+.qstat.s-ok{ color:var(--ok); }
+.qstat.s-blk{ color:var(--err); }
+.qstat.s-nx{ color:var(--warn); }
+.qstat.s-err{ color:var(--err); }
 .qdot.live{ background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); animation:qpulse 1.6s ease-in-out infinite; }
 @keyframes qpulse{ 0%,100%{opacity:1} 50%{opacity:.4} }
 @media(prefers-reduced-motion:reduce){ .qdot.live{ animation:none; } }

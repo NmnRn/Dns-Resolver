@@ -27,7 +27,7 @@
                 <span class="s-hits" title="{% trans 'Oturum (giriş) sayısı' %}">×{{ d.hits }}</span>
             </summary>
             <div class="fpgrid">
-                <span class="k">{% trans "Görülen IP'ler" %}</span><span class="v mono">{{ d.ips|default:d.ip|default:"—" }}</span>
+                <span class="k">{% trans "Görülen IP'ler" %}</span><span class="v ipwrap">{% for ip in d.ips_list %}<button type="button" class="ipbadge mono" data-ip="{{ ip }}" data-no-ajax title="{% trans 'WHOIS sorgusu çalıştır' %}">{{ ip }}</button>{% empty %}—{% endfor %}</span>
                 <span class="k">{% trans "Oynak (rastgele) alanlar" %}</span><span class="v">{% if d.volatile %}<span style="color:var(--warn);">{{ d.volatile }}</span>{% else %}{% trans "yok" %}{% endif %}</span>
                 <span class="k">{% trans "Ekran" %}</span><span class="v mono">{{ d.screen|default:"—" }}</span>
                 <span class="k">{% trans "Görünüm (viewport)" %}</span><span class="v mono">{{ d.viewport|default:"—" }}</span>
@@ -57,4 +57,37 @@
     <div class="dnote">
         🔎 {% trans "Fingerprint verileri tarayıcı tarafından <b>bildirilir</b> (JS ile toplanır) ve <b>taklit edilebilir</b>; kesin donanım kimliği değildir. Panel yalnız yönetici erişimlidir." %}
     </div>
+
+    <div class="whois-modal" id="whoisModal" hidden>
+        <div class="whois-box">
+            <div class="whois-head"><span>WHOIS · <span class="mono" id="whoisIp"></span></span><button type="button" class="whois-x" data-no-ajax aria-label="{% trans 'Kapat' %}">✕</button></div>
+            <pre class="whois-body mono" id="whoisBody"></pre>
+            <div class="whois-foot">{% trans "Sorgu IANA + ilgili RIR'e (ARIN/RIPE/APNIC…) gider — dış istektir." %}</div>
+        </div>
+    </div>
+    <script>/* IP rozetine tıkla → WHOIS (same-origin; sonuç modalda gösterilir) */
+    (function(){
+        if(window.__whoisBound) return; window.__whoisBound = true;   // ajax gezinmede tek bağla
+        var URL = '{% url "dashboard:whois" %}';
+        document.addEventListener('click', function(e){
+            var modal = document.getElementById('whoisModal');
+            var b = e.target.closest('.ipbadge');
+            if(b){
+                if(!modal) return;
+                document.getElementById('whoisIp').textContent = b.dataset.ip;
+                document.getElementById('whoisBody').textContent = '{% trans "Sorgulanıyor…" %}';
+                modal.hidden = false;
+                fetch(URL + '?ip=' + encodeURIComponent(b.dataset.ip),
+                      {credentials:'same-origin', headers:{'X-Requested-With':'fetch'}})
+                    .then(function(r){ return r.json(); })
+                    .then(function(d){ document.getElementById('whoisBody').textContent = d.whois || d.error || '—'; })
+                    .catch(function(){ document.getElementById('whoisBody').textContent = '{% trans "Hata" %}'; });
+                return;
+            }
+            if(modal && !modal.hidden && (e.target === modal || e.target.classList.contains('whois-x'))){
+                modal.hidden = true;
+            }
+        });
+    })();
+    </script>
 {% endblock %}

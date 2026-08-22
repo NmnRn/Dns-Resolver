@@ -107,7 +107,7 @@
                 <form method="post" class="addf">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="block_add">
-                    <input type="text" name="domain" placeholder="{% trans 'ör. ads.example.com' %}" autocomplete="off" spellcheck="false">
+                    <input type="text" name="domain" placeholder="{% trans 'ör. ads.example.com · *.example.com · *.onion' %}" autocomplete="off" spellcheck="false">
                     <button class="btn" type="submit">{% trans "Engelle" %}</button>
                 </form>
                 <form method="post">
@@ -130,7 +130,7 @@
                 <form method="post" class="addf">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="allow_add">
-                    <input type="text" name="domain" placeholder="{% trans 'ör. safe.example.com' %}" autocomplete="off" spellcheck="false">
+                    <input type="text" name="domain" placeholder="{% trans 'ör. safe.example.com · *.example.com' %}" autocomplete="off" spellcheck="false">
                     <button class="btn" type="submit">{% trans "İzin ver" %}</button>
                 </form>
                 <form method="post">

@@ -43,3 +43,25 @@
     border-left:3px solid var(--accent-deep); color:var(--text); }
 .dnote b{ color:var(--accent-deep); }
 :root[data-theme="dark"] .dnote b{ color:var(--accent); }
+
+/* Görülen IP'ler → tıklanabilir rozetler (WHOIS) */
+.ipwrap{ display:flex; flex-wrap:wrap; gap:6px; }
+.ipbadge{ font:600 11.5px var(--mono); color:var(--text); background:var(--panel-2);
+    border:1px solid var(--border-strong); border-radius:999px; padding:3px 10px; cursor:pointer;
+    transition:border-color .14s ease, color .14s ease, background .14s ease; }
+.ipbadge:hover{ border-color:var(--accent); color:var(--accent-deep); background:var(--accent-soft); }
+:root[data-theme="dark"] .ipbadge:hover{ color:var(--accent); }
+
+/* WHOIS modal */
+.whois-modal{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+    background:color-mix(in srgb,#000 55%,transparent); padding:20px; }
+.whois-modal[hidden]{ display:none; }
+.whois-box{ background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg);
+    box-shadow:var(--shadow); width:min(720px,100%); max-height:80vh; display:flex; flex-direction:column; overflow:hidden; }
+.whois-head{ display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:13px 16px; border-bottom:1px solid var(--border); font:700 13px var(--sans); }
+.whois-x{ background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; line-height:1; }
+.whois-x:hover{ color:var(--err); }
+.whois-body{ margin:0; padding:14px 16px; overflow:auto; font:12px/1.5 var(--mono); color:var(--text);
+    white-space:pre-wrap; word-break:break-word; }
+.whois-foot{ padding:9px 16px; border-top:1px solid var(--border); font-size:11px; color:var(--muted-2); }

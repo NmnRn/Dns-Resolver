@@ -67,3 +67,30 @@ def test_resolve_blocked_returns_nxdomain_without_network():
     rcode, records = core.resolve("blocked.com.", "A")
     assert rcode == RCODE.NXDOMAIN
     assert records == []
+
+
+def test_wildcard_blocks_subdomains_not_apex():
+    core = _core(manual={"*.example.com"})
+    assert core.is_blocked("sub.example.com") == "Elle eklenen"
+    assert core.is_blocked("a.b.example.com") == "Elle eklenen"
+    assert core.is_blocked("example.com") is None      # apex '*.'e girmez
+
+
+def test_wildcard_tld_onion():
+    core = _core(manual={"*.onion"})
+    assert core.is_blocked("foo.onion") == "Elle eklenen"
+    assert core.is_blocked("a.b.onion") == "Elle eklenen"
+
+
+def test_wildcard_allow_overrides():
+    core = _core(manual={"*.example.com"}, allow={"*.example.com"})
+    assert core.is_blocked("sub.example.com") is None
+
+
+def test_status_for_helper():
+    from servers.normal_udp import status_for
+    assert status_for(RCODE.NOERROR, False) == "ok"
+    assert status_for(RCODE.NXDOMAIN, False) == "nxdomain"
+    assert status_for(RCODE.SERVFAIL, False) == "servfail"
+    assert status_for(RCODE.NOERROR, True) == "blocked"    # blocked önceliklidir
+    assert status_for(RCODE.NXDOMAIN, True) == "blocked"

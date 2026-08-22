@@ -20,6 +20,7 @@ urlpatterns = [
     path('ayarlar/yedek/', views.backup_export, name='backup_export'),
     path('kullanicilar/', views.users, name='users'),
     path('cihazlar/', views.devices, name='devices'),
+    path('cihazlar/whois/', views.whois_lookup, name='whois'),
     path('cihaz-kayit/', views.device_record, name='device_record'),
     path('dns-cihazlari/', views.dns_devices, name='dns_devices'),
     path('giris/', views.login_view, name='login'),

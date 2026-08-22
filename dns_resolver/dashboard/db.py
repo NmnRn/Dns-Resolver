@@ -295,7 +295,7 @@ async def get_recent_queries(domain: str = '', method: str = '', client_ip: str 
     rows = await _fetch_all(
         f"""
         SELECT id, domain, record_type, client_ip,
-               DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method, user_id, blocked, blocked_by, resolved_by
+               DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method, user_id, blocked, blocked_by, resolved_by, status
         FROM dns_cache
         {clause}
         ORDER BY queried_at DESC
@@ -338,7 +338,7 @@ async def get_queries_for_export(domain: str = '', method: str = '', client_ip: 
         f"""
         SELECT domain, record_type, client_ip,
                DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method,
-               blocked, blocked_by, resolved_by
+               blocked, blocked_by, resolved_by, status
         FROM dns_cache
         {clause}
         ORDER BY queried_at DESC
@@ -382,7 +382,7 @@ def read_pending(domain: str = '', method: str = '', client_ip: str = '') -> lis
             'client_ip': cip, 'queried_at': it.get('queried_at'),
             'method': it.get('method'), 'user_id': None, 'pending': True,
             'blocked': it.get('blocked', False), 'blocked_by': it.get('blocked_by'),
-            'resolved_by': it.get('resolved_by'),
+            'resolved_by': it.get('resolved_by'), 'status': it.get('status'),
         })
     return out
 

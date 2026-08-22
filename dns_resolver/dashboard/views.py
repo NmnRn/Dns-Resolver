@@ -443,6 +443,18 @@ def _valid_domain(d: str) -> bool:
     return bool(_DOMAIN_RE.match(d))
 
 
+_LABEL_RE = re.compile(r'^[a-z0-9](-?[a-z0-9])*$')
+
+
+def _valid_block_domain(d: str) -> bool:
+    """Engelleme/izin girişi: tam alan adı YA DA '*.sonek' wildcard.
+    Örn: *.example.com (alt alanlar), *.onion / *.local (tek-etiket sonek de olur)."""
+    if d.startswith('*.'):
+        base = d[2:]
+        return bool(base) and all(_LABEL_RE.match(lbl) for lbl in base.split('.'))
+    return _valid_domain(d)
+
+
 def _auto_list_name(url: str) -> str:
     """Özel liste URL'sinden kısa bir ad türet (son anlamlı yol parçası, uzantısız;
     yoksa host). İsim verilmeyince tabloda/engellenen sütununda upuzun URL görünmesin."""
@@ -606,7 +618,7 @@ async def filters(request):
             else:
                 # --- Elle domain işlemleri ---
                 domain = _norm_domain(request.POST.get('domain', ''))
-                if action in ('block_add', 'allow_add') and not _valid_domain(domain):
+                if action in ('block_add', 'allow_add') and not _valid_block_domain(domain):
                     msg = ('error', f'Geçersiz alan adı: {domain or "(boş)"}')
                 elif action == 'block_add':
                     await db.add_block(domain)
@@ -785,6 +797,8 @@ def devices(request):
     for d in devs:
         for k in _DEC:
             d[k] = logcrypto.dec(d.get(k) or '')
+        # Görülen IP'ler → tıklanabilir rozet listesi (WHOIS için)
+        d['ips_list'] = [ip for ip in (d['ips'] or d['ip'] or '').split(',') if ip]
     context = _base_ctx(request, 'devices')
     context.update(
         devices=devs, msg=msg,
@@ -793,6 +807,53 @@ def devices(request):
         unique_ips=len({ip for d in devs for ip in (d['ips'] or d['ip'] or '').split(',') if ip}),
     )
     return render(request, 'dashboard/devices.html', context)
+
+
+def _whois(ip):
+    """2 adımlı WHOIS: whois.iana.org:43 sorumlu RIR'i döndürür → o RIR sorgulanır.
+    Ham metin döner. IP çağırandan ÖNCE doğrulanmalı (enjeksiyon/SSRF önle).
+    NOT: sorgu IANA + ilgili RIR'e (ARIN/RIPE/APNIC...) port 43 ile GİDER (dış istek)."""
+    def q(server, query):
+        with socket.create_connection((server, 43), timeout=5) as s:
+            s.sendall((query + '\r\n').encode('ascii', 'ignore'))
+            data = b''
+            while len(data) < 200_000:
+                chunk = s.recv(8192)
+                if not chunk:
+                    break
+                data += chunk
+        return data.decode('utf-8', 'replace')
+
+    top = q('whois.iana.org', ip)
+    refer = ''
+    for line in top.splitlines():
+        if line.lower().startswith('refer:'):
+            refer = line.split(':', 1)[1].strip()
+            break
+    if refer and re.match(r'^[A-Za-z0-9.\-]+$', refer):   # RIR ana bilgisayar adı (temiz)
+        try:
+            return q(refer, ip)
+        except OSError:
+            return top
+    return top
+
+
+def whois_lookup(request):
+    """AJAX: bir IP için WHOIS (yalnız yönetici). IP doğrulanır → enjeksiyon önlenir.
+    Sync view → uvicorn threadpool'unda koşar (bloklayan soket olay döngüsünü tutmaz)."""
+    uid = request.session.get('_auth_user_id')
+    if not uid or not User.objects.filter(id=uid, is_superuser=True).exists():
+        return JsonResponse({'error': 'auth'}, status=403)
+    ip = (request.GET.get('ip', '') or '').strip()
+    try:
+        ipaddress.ip_address(ip)
+    except ValueError:
+        return JsonResponse({'error': 'Geçersiz IP'}, status=400)
+    try:
+        text = _whois(ip)
+    except Exception as exc:   # noqa: BLE001 — dış WHOIS hatası sayfayı bozmasın
+        return JsonResponse({'error': f'WHOIS başarısız: {type(exc).__name__}'}, status=502)
+    return JsonResponse({'ip': ip, 'whois': (text or '').strip()[:8000]})
 
 
 def device_record(request):
@@ -1249,11 +1310,11 @@ async def settings_page(request):
                         await db.set_setting(str(k), '' if v is None else str(v))
                     for d in (data.get('blocklist') or []):
                         dd = _norm_domain(str(d))
-                        if _valid_domain(dd):
+                        if _valid_block_domain(dd):
                             await db.add_block(dd)
                     for d in (data.get('allowlist') or []):
                         dd = _norm_domain(str(d))
-                        if _valid_domain(dd):
+                        if _valid_block_domain(dd):
                             await db.add_allow(dd)
                     for src in (data.get('sources') or []):
                         u = normalize_url(str(src.get('url', '')))

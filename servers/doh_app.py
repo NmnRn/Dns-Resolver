@@ -19,6 +19,7 @@ from dnslib import QTYPE, RCODE, DNSRecord
 
 import config_store
 from logs.dns_logs import logger
+from servers.normal_udp import status_for
 
 DNS_QUERY_PATH = "/dns-query"
 DNS_MSG = b"application/dns-message"
@@ -125,7 +126,7 @@ def make_app(core):
         core.db_manager.add_to_cache(key=qname, value={
             "record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani,
             "method": "doh", "blocked": bool(blocked_by), "blocked_by": blocked_by,
-            "resolved_by": src[0],
+            "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by)),
         })
         await _send(send, 200, reply_bytes, DNS_MSG)
 

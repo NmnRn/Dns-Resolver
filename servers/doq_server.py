@@ -8,6 +8,7 @@ from project_control import settings
 
 from dnslib import QTYPE, RCODE, DNSRecord
 from logs.dns_logs import logger
+from servers.normal_udp import status_for
 
 load_dotenv(settings.PROJECT_DIRECTORY / ".env")
 
@@ -76,7 +77,7 @@ class DoQProtocol(QuicConnectionProtocol):
             else:
                 reply.rr = list(record)
             blocked_by = self.core.is_blocked(qname)
-            self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0]})
+            self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by))})
         reply.header.id = 0
         reply_bytes = reply.pack()
         
