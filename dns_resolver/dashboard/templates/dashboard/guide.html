@@ -23,7 +23,7 @@
             {% endfor %}
         </div>
         {% endfor %}
-        <div class="callout note" style="margin-bottom:0;"><span class="ic">ℹ️</span><p>{% trans "Domain adresleri <b>standart portu</b> varsayar (DoH&nbsp;443, DoT/DoQ&nbsp;853) — host'ta bu portları konteynerin iç portuna eşlemelisin. <b>dns-net IP</b>'leri konteynerin <b>iç portunu</b> gösterir (doğrudan erişim; iç port <b>Sunucular</b>'dan ayarlanır). Şifreli yöntemde IP ile bağlanırsan sertifika adı uyuşmayabilir — mümkünse domaini kullan." %}</p></div>
+        <div class="callout note" style="margin-bottom:0;"><span class="ic">ℹ️</span><p>{% trans "Domain adresleri <b>dış (host) portunu</b> gösterir — standart port (DoH&nbsp;443, DoT/DoQ&nbsp;853, UDP&nbsp;53) <b>gizlenir</b>, farklıysa <code>:port</code> yazılır. Dış portu + yayını <b>Sunucular</b> sayfasından ayarlarsın. <b>dns-net IP</b> konteynerin <b>iç portunu</b> gösterir (Cloudflare Tunnel origin / aynı ağdan doğrudan erişim). Şifreli yöntem sertifikayı <b>domaine</b> doğrular → IP ile bağlanma, domaini kullan." %}</p></div>
     {% else %}
         <p class="muted" style="margin:0;">{% trans "Şu an açık yöntem yok — <b>Sunucular</b> sayfasından bir yöntem aç, adresler burada belirsin." %}</p>
     {% endif %}

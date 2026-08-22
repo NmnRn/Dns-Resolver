@@ -1,0 +1,13 @@
+{
+  "bind": "0.0.0.0",
+  "site_port": 8444,
+  "cert_file": "/app/certificates/fullchain.pem",
+  "key_file": "/app/certificates/privkey.pem",
+  "allowed_host": "dns.example.com",
+  "methods": {
+    "udp": { "enabled": true,  "container_port": 5300,  "external_port": 53,  "publish": false },
+    "doh": { "enabled": false, "container_port": 44300, "external_port": 443, "publish": false },
+    "dot": { "enabled": false, "container_port": 8853,  "external_port": 853, "publish": false },
+    "doq": { "enabled": false, "container_port": 8530,  "external_port": 853, "publish": false }
+  }
+}

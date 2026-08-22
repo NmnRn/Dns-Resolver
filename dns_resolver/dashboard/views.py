@@ -32,6 +32,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 
 import logcrypto  # DeviceProfile PII alanlarını at-rest şifreler/çözer (DNS_LOG_KEY)
+import config_store  # sunucu topolojisi (aç/kapa + portlar) TEK kaynak: config/servers.json
 from project_control.blocklists import normalize_url, check_link
 from . import db
 from .catalog import catalog_grouped
@@ -45,11 +46,7 @@ METHODS = ['udp', 'doh', 'dot', 'doq']
 METHOD_LABELS = {'udp': 'UDP · düz DNS', 'doh': 'DoH · HTTPS', 'dot': 'DoT · TLS', 'doq': 'DoQ · QUIC'}
 METHOD_PORTS = {'udp': 5300, 'doh': 44300, 'dot': 8853, 'doq': 8530}
 NEEDS_CERT = {'doh', 'dot', 'doq'}
-# Metot -> app_settings anahtarı (panelden ayarlanan iç dinleme portu).
-PORT_KEY = {'udp': 'udp_port', 'doh': 'https_port', 'dot': 'dot_port', 'doq': 'doq_port'}
-# Host (yayın) port env adları — panelde BİLGİ olarak gösterilir (ayar setup.sh'te).
-EXTERNAL_KEY = {'udp': 'EXTERNAL_UDP_PORT', 'doh': 'EXTERNAL_HTTPS_PORT',
-                'dot': 'EXTERNAL_DOT_PORT', 'doq': 'EXTERNAL_DOQ_PORT'}
+# NOT: port/aç-kapa artık config_store (config/servers.json); DB/env değil.
 
 logger = logging.getLogger('dashboard')
 
@@ -316,6 +313,7 @@ async def queries(request):
 
     domain = request.GET.get('q', '').strip()
     method = request.GET.get('method', '').strip()
+    client_ip = request.GET.get('ip', '').strip()
     try:
         offset = int(request.GET.get('offset', 0))
     except (TypeError, ValueError):
@@ -324,12 +322,12 @@ async def queries(request):
     partial = request.GET.get('partial') == '1'
 
     try:
-        db_rows = await db.get_recent_queries(domain=domain, method=method, limit=QUERIES_CHUNK, offset=offset)
+        db_rows = await db.get_recent_queries(domain=domain, method=method, client_ip=client_ip, limit=QUERIES_CHUNK, offset=offset)
     except Exception as exc:
         if partial:
             return render(request, 'dashboard/_query_rows.html', {'rows': [], 'first': False})
         context = _base_ctx(request, 'queries')
-        context.update(q=domain, method=method, methods=METHODS, error=_fail(exc, 'Veritabanına erişilemedi.'))
+        context.update(q=domain, method=method, ip=client_ip, methods=METHODS, error=_fail(exc, 'Veritabanına erişilemedi.'))
         return render(request, 'dashboard/queries.html', context)
 
     if partial:
@@ -337,12 +335,12 @@ async def queries(request):
         return render(request, 'dashboard/_query_rows.html', {'rows': db_rows, 'first': False})
 
     # İlk sayfa = cache (resolver'ın flush bekleyen tamponu, en üstte) + DB satırları.
-    pending = db.read_pending(domain, method)
+    pending = db.read_pending(domain, method, client_ip)
     rows = pending + db_rows
 
     context = _base_ctx(request, 'queries')
     context.update(
-        q=domain, method=method, methods=METHODS, rows=rows,
+        q=domain, method=method, ip=client_ip, methods=METHODS, rows=rows,
         next_offset=offset + len(db_rows), has_more=len(db_rows) == QUERIES_CHUNK,
         pending_count=len(pending),
     )
@@ -356,8 +354,9 @@ async def queries_export(request):
         return gate
     domain = request.GET.get('q', '').strip()
     method = request.GET.get('method', '').strip()
+    client_ip = request.GET.get('ip', '').strip()
     try:
-        rows = await db.get_queries_for_export(domain=domain, method=method)
+        rows = await db.get_queries_for_export(domain=domain, method=method, client_ip=client_ip)
     except Exception as exc:
         _fail(exc)
         return redirect('dashboard:queries')
@@ -384,33 +383,47 @@ async def servers(request):
 
     if request.method == 'POST':
         method = request.POST.get('method', '')
+        action = request.POST.get('action', 'toggle')
         if method not in METHODS:
             msg = ('error', 'Geçersiz yöntem.')
         else:
-            # Port ayarı panelden KALDIRILDI (setup.sh ile yapılır) — yalnız aç/kapat.
-            enabled = request.POST.get('enabled') == '1'
-            if method == 'udp' and not enabled:
-                msg = ('error', 'UDP kapatılamaz (temel çözümleme).')
-            else:
-                try:
-                    await db.set_method_enabled(method, enabled)
+            cfg = config_store.get_config()
+            m = cfg['methods'][method]
+            if action == 'toggle':
+                enabled = request.POST.get('enabled') == '1'
+                if method == 'udp' and not enabled:
+                    msg = ('error', 'UDP kapatılamaz (temel çözümleme).')
+                else:
+                    m['enabled'] = enabled
+                    config_store.write_config(cfg)
                     durum = 'açıldı' if enabled else 'kapatıldı'
                     msg = ('ok', f'{METHOD_LABELS[method]} {durum} — resolver ~5 sn içinde uygular.')
-                except Exception as exc:
-                    msg = ('error', _fail(exc))
+            elif action == 'ports':
+                def _port(name, cur):
+                    try:
+                        p = int(request.POST.get(name, cur))
+                        return p if 1 <= p <= 65535 else cur
+                    except (TypeError, ValueError):
+                        return cur
+                new_cp = _port('container_port', m['container_port'])
+                new_ep = _port('external_port', m['external_port'])
+                new_pub = request.POST.get('publish') == '1'
+                host_changed = (new_ep != m['external_port']) or (new_pub != m['publish'])
+                m['container_port'], m['external_port'], m['publish'] = new_cp, new_ep, new_pub
+                config_store.write_config(cfg)
+                if host_changed:
+                    msg = ('ok', f'{METHOD_LABELS[method]} portları kaydedildi — host yayınının '
+                                 'etki etmesi için sunucuda ./start.sh çalıştır.')
+                else:
+                    msg = ('ok', f'{METHOD_LABELS[method]} iç portu kaydedildi — resolver ~5 sn içinde uygular.')
 
-    try:
-        cfg = await db.get_resolver_config()
-        app_settings = await db.get_settings()
-    except Exception as exc:
-        context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
-        return render(request, 'dashboard/servers.html', context)
-
+    cfg = config_store.get_config()
     context['methods'] = [{
         'key': m, 'label': METHOD_LABELS[m],
-        'port': app_settings.get(PORT_KEY[m], str(METHOD_PORTS[m])),   # container içi dinleme portu
-        'local_port': os.getenv(EXTERNAL_KEY[m], '').strip(),          # host (yayın) portu — bilgi
-        'enabled': cfg.get(m, False), 'needs_cert': m in NEEDS_CERT,
+        'container_port': cfg['methods'][m]['container_port'],
+        'external_port': cfg['methods'][m]['external_port'],
+        'publish': cfg['methods'][m]['publish'],
+        'enabled': cfg['methods'][m]['enabled'], 'needs_cert': m in NEEDS_CERT,
     } for m in METHODS]
     context['msg'] = msg
     return render(request, 'dashboard/servers.html', context)
@@ -961,22 +974,19 @@ async def certificate(request):
         cert_file = request.POST.get('cert_file', '').strip()
         key_file = request.POST.get('key_file', '').strip()
         try:
+            cfg = config_store.get_config()
             if cert_file:
-                await db.set_setting('cert_file', cert_file)
+                cfg['cert_file'] = cert_file
             if key_file:
-                await db.set_setting('key_file', key_file)
+                cfg['key_file'] = key_file
+            config_store.write_config(cfg)
             msg = ('ok', "Sertifika yolları kaydedildi — Sunucular'dan DoT/DoH/DoQ'yu kapatıp açınca yeni sertifika yüklenir.")
         except Exception as exc:
             msg = ('error', _fail(exc))
 
-    try:
-        settings = await db.get_settings()
-    except Exception as exc:
-        context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
-        return render(request, 'dashboard/certificate.html', context)
-
-    cert_file = settings.get('cert_file', '')
-    key_file = settings.get('key_file', '')
+    cfg = config_store.get_config()
+    cert_file = cfg.get('cert_file', '')
+    key_file = cfg.get('key_file', '')
     context.update(
         msg=msg, cert_file=cert_file, key_file=key_file,
         cert=check_cert(cert_file),
@@ -1010,18 +1020,30 @@ def _server_ips():
     return ips
 
 
-def _connection_endpoints(cfg, ports, domain, addrs):
-    """Açık yöntemlere göre bağlantı uç noktaları. Domain = STANDART port (host dış
-    yayını 443/853'ü iç porta eşler → domainde port yazılmaz); dns-net IP = konteynerin
-    İÇ portu (doğrudan erişim)."""
+# Metot -> şemadaki STANDART port (domain URL'sinde bu port gizlenir).
+_STD_PORT = {'udp': '53', 'doh': '443', 'dot': '853', 'doq': '853'}
+
+
+def _connection_endpoints(cfg, cports, eports, domain, container_ip):
+    """Açık yöntemlere göre bağlantı uç noktaları — iki erişim yolu:
+      * domain (cihaz erişimi; host yayını / Cloudflare Tunnel): **DIŞ (external) port**
+        gösterilir, standart ise (443/853/53) gizlenir → cihaz URL'si.
+      * dns-net container IP (aynı ağdaki tünel/konteyner): **İÇ (container) port**.
+    Şifreli yöntemler cert'i <b>domain</b>'e doğrular → IP ile bağlanmak cert-adı
+    uyuşmazlığı verir; o yüzden şifreli metotta rastgele host IP'leri LİSTELENMEZ,
+    yalnız domain + dns-net origin gösterilir."""
+    def _dom(scheme, key, path):
+        ep = eports.get(key, '')
+        port = '' if ep == _STD_PORT[key] else ':' + ep
+        return scheme + domain + port + path
+
     conn = []
     if cfg.get('udp'):
         items = []
         if domain:
-            items.append(domain)                                    # standart 53
-        items += [a + ':' + ports['udp'] for a in addrs]            # dns-net: iç port
-        conn.append({'m': 'UDP', 'label': 'Düz DNS (UDP/TCP)', 'cert': False,
-                     'items': items or ['<sunucu-ip>:' + ports['udp']]})
+            items.append(_dom('', 'udp', ''))                       # dış port (53 gizli)
+        items.append(container_ip + ':' + cports['udp'])           # dns-net: iç port
+        conn.append({'m': 'UDP', 'label': 'Düz DNS (UDP/TCP)', 'cert': False, 'items': items})
     enc = [
         ('doh', 'DoH', 'DNS-over-HTTPS', 'https://', '/dns-query'),
         ('dot', 'DoT', 'DNS-over-TLS', 'tls://', ''),
@@ -1030,13 +1052,11 @@ def _connection_endpoints(cfg, ports, domain, addrs):
     for key, m, label, scheme, path in enc:
         if not cfg.get(key):
             continue
-        p = ports[key]
         items = []
         if domain:
-            items.append(scheme + domain + path)                    # standart 443/853
-        items += [scheme + a + ':' + p + path for a in addrs]       # dns-net: iç port
-        conn.append({'m': m, 'label': label, 'cert': True,
-                     'items': items or [scheme + '<sunucu-ip>:' + p + path]})
+            items.append(_dom(scheme, key, path))                  # cihaz URL'si (dış port)
+        items.append(scheme + container_ip + ':' + cports[key] + path)  # dns-net origin (iç port)
+        conn.append({'m': m, 'label': label, 'cert': True, 'items': items})
     return conn
 
 
@@ -1046,41 +1066,29 @@ async def guide(request):
         return gate
 
     context = _base_ctx(request, 'guide')
-    # Canlı iç portlar (Sunucular'dan ayarlanır); DB yoksa varsayılan.
-    ports = {m: str(p) for m, p in METHOD_PORTS.items()}
-    cfg = {'udp': True, 'doh': False, 'dot': False, 'doq': False}
-    try:
-        app_settings = await db.get_settings()
-        for m, key in PORT_KEY.items():
-            if app_settings.get(key):
-                ports[m] = app_settings[key]
-    except Exception:
-        pass
-    try:
-        cfg = await db.get_resolver_config()
-    except Exception:
-        pass
+    # Portlar + hangi metot açık → TEK kaynak config_store. İç (container) portlar
+    # dns-net doğrudan erişim; dış (external) portlar cihaz/domain erişimi içindir.
+    _sc = config_store.get_config()
+    cports = {m: str(_sc['methods'][m]['container_port']) for m in METHODS}
+    eports = {m: str(_sc['methods'][m]['external_port']) for m in METHODS}
+    cfg = {m: _sc['methods'][m]['enabled'] for m in METHODS}
 
-    # "Nerede çalışıyorsa ona göre": panele eriştiğin host + sunucunun IP'leri.
     try:
         req_host = request.get_host()
     except Exception:
         req_host = ''
-    req_addr = req_host.split(':')[0]
     ips = _server_ips()
-    addrs = list(ips)
-    if req_addr and req_addr not in addrs and req_addr != 'localhost' and not req_addr.startswith('127.'):
-        addrs.insert(0, req_addr)          # domain/LAN ile eriştiysen onu öne al
 
-    domain = os.getenv('ALLOWED_HOST', '').strip()
-    if domain in ('localhost', '127.0.0.1'):
+    domain = _sc.get('allowed_host', '').strip()
+    if domain in ('localhost', '127.0.0.1', 'dns.example.com'):
         domain = ''
 
+    container_ip = '172.27.17.2'
     context.update(
-        ports=ports,
-        conn=_connection_endpoints(cfg, ports, domain, addrs),
+        ports=cports, eports=eports,
+        conn=_connection_endpoints(cfg, cports, eports, domain, container_ip),
         req_host=req_host, server_ips=ips, domain=domain,
-        subnet='172.27.17.0/24', host_ip='172.27.17.1', container_ip='172.27.17.2',
+        subnet='172.27.17.0/24', host_ip='172.27.17.1', container_ip=container_ip,
         install_dir='/opt/DNS_RESOLVER', db_name='dns_db', db_user='dns_user',
     )
     return render(request, 'dashboard/guide.html', context)

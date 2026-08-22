@@ -6,58 +6,44 @@ services:
     # PID 1'i tini yapar: zombi toplama + sinyalleri run_all.py'ye iletir.
     init: true
     environment:
-      - BIND_ADDRESS=0.0.0.0
-      - CONTAINER_UDP_PORT=${CONTAINER_UDP_PORT:-5300}
-      - CONTAINER_HTTPS_PORT=${CONTAINER_HTTPS_PORT:-44300}
-      - CONTAINER_DOQ_PORT=${CONTAINER_DOQ_PORT:-8530}
-      - ALLOWED_HOST=${ALLOWED_HOST:-dns.example.com}
-      - ENABLE_UDP_SERVER=${ENABLE_UDP_SERVER:-true}
-      - ENABLE_HTTPS_SERVER=${ENABLE_HTTPS_SERVER:-false}
-      - ENABLE_DOT_SERVER=${ENABLE_DOT_SERVER:-false}
-      - ENABLE_DOQ_SERVER=${ENABLE_DOQ_SERVER:-false}
-      - CONTAINER_DOT_PORT=${CONTAINER_DOT_PORT:-8853}
-      # Host (yayın) portları — panelde yalnız BİLGİ olarak gösterilir (ayar setup.sh'te).
-      - EXTERNAL_UDP_PORT=${EXTERNAL_UDP_PORT:-53}
-      - EXTERNAL_HTTPS_PORT=${EXTERNAL_HTTPS_PORT:-443}
-      - EXTERNAL_DOT_PORT=${EXTERNAL_DOT_PORT:-853}
-      - EXTERNAL_DOQ_PORT=${EXTERNAL_DOQ_PORT:-853}
-      - CERT_FILE=${CERT_FILE:-/app/certificates/fullchain.pem}
-      - KEY_FILE=${KEY_FILE:-/app/certificates/privkey.pem}
-      # DB ayarları host'taki .env'den okunur (install.sh yazar); imajın
-      # içindeki .env bilerek boştur (.dockerignore) - değerler buradan geçer.
+      # NOT: Sunucu topolojisi (hangi metot açık + iç/dış portlar + cert yolları +
+      # allowed_host + site_port) artık .env/DB'de DEĞİL → config/servers.json
+      # (aşağıda ./config bind ile bağlı). setup.sh / start.sh / panel yazar.
+      # .env yalnız SIR + DB + Django içindir.
+      #
+      # DB ayarları host'taki .env'den okunur (install.sh yazar); imajın içindeki
+      # .env bilerek boştur (.dockerignore) — değerler buradan geçer.
       - DB_HOST=${DB_HOST:-172.27.17.1}
       - DB_PORT=${DB_PORT:-3306}
       - DB_USER=${DB_USER:-dns_user}
       - DB_PASSWORD=${DB_PASSWORD:-}
       - DB_NAME=${DB_NAME:-dns_db}
-      # --- Web sitesi (Django, aiomysql ile aynı dns_db'yi OKUR) ---
-      - SITE_PORT=${SITE_PORT:-8444}
+      # --- Web paneli (Django) ---
       - DJANGO_DEBUG=${DJANGO_DEBUG:-False}
-      # DEBUG=False iken zorunlu. Site 127.0.0.1'e/ tünele bağlı olduğundan "*"
+      # DEBUG=False iken zorunlu. Site 127.0.0.1'e/tünele bağlı olduğundan "*"
       # kabul edilebilir; herkese açık yayınlanacaksa gerçek domain'e daralt.
       - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-*}
       # Prod'da MUTLAKA .env'de kendi rastgele anahtarını ver.
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-}
       # Panel çerezleri: HttpOnly + SameSite her zaman açık. "Secure" bayrağı
-      # çerezi yalnız HTTPS'te gönderir → düz-HTTP SSH tüneli (127.0.0.1)
-      # girişini bozmasın diye varsayılan False; paneli SALT HTTPS'te
-      # yayınlıyorsan True yap.
+      # çerezi yalnız HTTPS'te gönderir → düz-HTTP SSH tüneli (127.0.0.1) girişini
+      # bozmasın diye varsayılan False; paneli SALT HTTPS'te yayınlıyorsan True yap.
       - DJANGO_SECURE_COOKIES=${DJANGO_SECURE_COOKIES:-False}
       # Domain/ters proxy arkasından form POST'u için (ör. https://dns.example.com).
       - DJANGO_CSRF_TRUSTED_ORIGINS=${DJANGO_CSRF_TRUSTED_ORIGINS:-}
       # DNS sorgu günlüğünde client_ip'yi at-rest şifrelemek için (opsiyonel).
       # Boşsa şifreleme kapalı (IP düz saklanır). Anahtar üretimi logcrypto.py'de.
       - DNS_LOG_KEY=${DNS_LOG_KEY:-}
-    # DNS portları host'a açılmaz (sadece dns-net; setup.sh override üretir).
-    # Web sitesi ayrı bir portta: auth henüz YOK, o yüzden yalnızca host'un
-    # 127.0.0.1'ine publish edilir (SSH tünel / yereldeki reverse proxy ile
-    # erişilir, public DEĞİL). Container ayrıca dns-net'te 172.27.17.2:${SITE_PORT}
-    # üzerinden Cloudflare Tunnel'a da açıktır. Port env'den ayarlanır (varsayılan 8444).
-    ports:
-      - "127.0.0.1:${SITE_PORT:-8444}:${SITE_PORT:-8444}"
+    # Host'a port YAYINI (site paneli + yayınlanan DNS metotları) start.sh tarafından
+    # config/servers.json'dan üretilen docker-compose.override.yml ile yapılır
+    # (Docker, override.yml'i otomatik birleştirir). Base compose port açmaz.
+    # Container yine dns-net'te 172.27.17.2 üzerinden erişilebilir (Cloudflare Tunnel).
     volumes:
       # Django'nun SQLite'ı (auth/session) recreate'lerde kaybolmasın.
       - django-data:/app/data
+      # Sunucu topolojisi TEK kaynak (setup.sh/start.sh/panel yazar; resolver okur).
+      # PATH bind (ayrı named volume DEĞİL) → host'tan düzenlenebilir + kalıcı.
+      - ./config:/app/config
       # TLS sertifikaları: imaja gömülmez (.dockerignore), host'tan salt-okunur bağlanır.
       # Böylece yenilenen sertifikalar rebuild gerektirmeden yansır.
       - ./certificates:/app/certificates:ro

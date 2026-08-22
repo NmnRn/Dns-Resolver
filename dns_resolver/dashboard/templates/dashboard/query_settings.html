@@ -27,10 +27,15 @@
 
                 <label class="modelbl">{% trans "Upstream sunucular (satır başına bir tane)" %}</label>
                 <textarea class="upst" name="upstreams" rows="5" spellcheck="false" placeholder="1.1.1.1&#10;udp://8.8.8.8&#10;tcp://9.9.9.9&#10;tls://dns.google&#10;https://dns.quad9.net/dns-query&#10;quic://dns.adguard.com">{{ upstreams }}</textarea>
-                <p class="setnote">{% trans "Her satırın başına <b>yöntem</b> yazabilirsin (AdGuard gibi):" %}
-                    <span class="mono">udp://</span> · <span class="mono">tcp://</span> · <span class="mono">tls://</span> (DoT) · <span class="mono">https://</span> (DoH) · <span class="mono">quic://</span> (DoQ).
-                    {% trans "Ön ek yoksa <b>düz UDP/53</b>. Port için <span class='mono'>host:port</span> (varsayılan port: UDP/TCP <b>53</b>, DoT/DoQ <b>853</b>). Yalnız 'Kendi çekirdeğimizi kullan' KAPALIYKEN devreye girer." %}</p>
-                <p class="setnote" style="color:var(--muted-2)"><span class="mono">quic://</span> {% trans "(DoQ) şu an <b>deneysel — henüz desteklenmiyor</b> (girilirse atlanır)." %}</p>
+                <p class="setnote">{% trans "Her satırın başına <b>yöntem</b> (protokol) yaz — AdGuard gibi. Ön ek yoksa satır <b>düz UDP/53 (şifresiz)</b> sayılır:" %}</p>
+                <ul class="methods">
+                    <li><span class="m-pre mono">udp://</span><span class="m-desc"><b>UDP</b> · {% trans "port" %} <b>53</b> · <span class="m-plain">{% trans "şifresiz" %}</span></span><span class="m-ex mono">udp://8.8.8.8</span></li>
+                    <li><span class="m-pre mono">tcp://</span><span class="m-desc"><b>TCP</b> · {% trans "port" %} <b>53</b> · <span class="m-plain">{% trans "şifresiz" %}</span></span><span class="m-ex mono">tcp://9.9.9.9</span></li>
+                    <li><span class="m-pre mono">tls://</span><span class="m-desc"><b>DoT</b> · {% trans "port" %} <b>853</b> · <span class="m-enc">{% trans "TLS şifreli" %}</span></span><span class="m-ex mono">tls://dns.google</span></li>
+                    <li><span class="m-pre mono">https://</span><span class="m-desc"><b>DoH</b> · {% trans "port" %} <b>443</b> · <span class="m-enc">{% trans "HTTPS şifreli" %}</span></span><span class="m-ex mono">https://dns.quad9.net/dns-query</span></li>
+                    <li><span class="m-pre mono">quic://</span><span class="m-desc"><b>DoQ</b> · {% trans "port" %} <b>853</b> · <span class="m-enc">{% trans "QUIC şifreli" %}</span> · <span class="m-exp">{% trans "deneysel — henüz desteklenmiyor, girilirse atlanır" %}</span></span><span class="m-ex mono">quic://dns.adguard.com</span></li>
+                </ul>
+                <p class="setnote">{% trans "Farklı port için <span class='mono'>host:port</span> yaz (varsayılan: UDP/TCP <b>53</b>, DoT/DoQ <b>853</b>, DoH <b>443</b>). Bu liste <b>yalnızca</b> yukarıdaki <b>'Kendi çekirdeğimizi kullan' KAPALIYKEN</b> devreye girer — açıkken sorgular kendi özyineli çözümleyicimizle çözülür." %}</p>
                 <p class="setwarn">⚠ <b>{% trans "Kendi adresini upstream yazma." %}</b> <span class="mono">localhost</span>, <span class="mono">127.0.0.1</span>, <span class="mono">::1</span> {% trans "ve bu sunucunun kendi IP'si (Docker container adresi) resolver'ın <b>KENDİSİDİR</b> → sorgu kendine iletilip <b>sonsuz döngüye</b> girer (tek sorgu defalarca loglanır). Upstream, 'çözemezsem soracağım <b>başka</b> bir sunucu' olmalıdır." %}</p>
 
                 <label class="modelbl">{% trans "Sorgu stratejisi (forwarding)" %}</label>

@@ -4,9 +4,9 @@
 #
 # Yalnizca git ile IZLENEN (tracked) dosyalari gunceller: kod (app.py,
 # servers/, db_ops/ ...), Dockerfile, docker-compose.yml. Senin YEREL
-# dosyalarina — .env, docker-compose.override.yml, certificates/ — HIC
-# dokunmaz; bunlar git tarafindan gormezden gelindigi icin (.gitignore)
-# guncelleme sirasinda oldugu gibi korunur.
+# dosyalarina — .env, config/servers.json, docker-compose.override.yml,
+# certificates/ — HIC dokunmaz; bunlar git tarafindan gormezden gelindigi
+# icin (.gitignore) guncelleme sirasinda oldugu gibi korunur.
 #
 # Calistirmak icin: ./upgrade.sh  (ya da: bash upgrade.sh)
 

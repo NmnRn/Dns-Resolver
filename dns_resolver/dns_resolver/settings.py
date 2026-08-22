@@ -91,6 +91,21 @@ SECURE_REFERRER_POLICY = 'same-origin'
 # çalışır). Panel yalnız 127.0.0.1'e + tünele bağlı olduğundan başlık sahtelenemez.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# HSTS: tarayıcıya "bu siteye bir daha HTTP deneme" der; YALNIZ HTTPS'te gönderilir.
+# Düz-HTTP SSH tünelinden erişimi kilitlememek için VARSAYILAN 0 (kapalı). Paneli
+# SALT HTTPS'te (domain / Cloudflare Tunnel) yayınlıyorsan DJANGO_HSTS_SECONDS=31536000.
+SECURE_HSTS_SECONDS = int(os.getenv('DJANGO_HSTS_SECONDS', '0') or '0')
+SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
+# HTTP → HTTPS yönlendirme. SSH tüneli / düz-HTTP erişimi bozmasın diye varsayılan
+# KAPALI; salt-HTTPS yayınında DJANGO_SSL_REDIRECT=True yap.
+SECURE_SSL_REDIRECT = os.getenv('DJANGO_SSL_REDIRECT', 'False').lower() == 'true'
+# Clickjacking: panel hiçbir sitede iframe içine alınamasın (XFrameOptionsMiddleware).
+X_FRAME_OPTIONS = 'DENY'
+# Oturum ömrü (sn) — varsayılan 2 hafta; çalınan imzalı çerez sonsuza dek geçerli
+# olmasın (signed_cookies server-side iptal edilemez, o yüzden süre sınırı önemli).
+SESSION_COOKIE_AGE = int(os.getenv('DJANGO_SESSION_AGE', str(60 * 60 * 24 * 14)))
+
 # Oturum imzalı çerezde tutulur (DB'siz) → async view'lardan request.session
 # erişimi SynchronousOnlyOperation üretmez. Kimlik doğrulamasız erişilemesin.
 SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'

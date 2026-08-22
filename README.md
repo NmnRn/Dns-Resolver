@@ -59,12 +59,12 @@ Tek konteyner, iki süreç (`run_all.py` yönetir):
 #    (dns-python-website = panelli tam sürüm; main = panelsiz resolver)
 curl -fsSL https://raw.githubusercontent.com/NmnRn/Dns-Resolver/dns-python-website/install.sh | sudo bash
 
-# 2) Sunucu ayarları sihirbazı (.env: portlar, şifreli sunucular, güvenlik anahtarları)
+# 2) Ayar sihirbazı: sunucu topolojisi → config/servers.json, sırlar → .env
 cd /opt/DNS_RESOLVER
 sudo ./setup.sh
 
-# 3) Başlat
-sudo docker compose up -d --build
+# 3) Başlat (config/servers.json'dan host port yayınını üretir + imajı derler)
+sudo ./start.sh
 ```
 
 > Betikleri **sudo** ile çağır: `install.sh` paket/servis kurar, `setup.sh` port-dolu
@@ -76,10 +76,21 @@ dns-net ağı · MariaDB **bind-address'e `172.27.17.1` ekler** (mevcutları kor
 yedekli) · `dns_user@172.27.17.%` + veritabanı + GRANT · `.env`'e DB ayarları (parola `openssl` ile) ·
 **bağlantı testi** (dinleyici + kimlik).
 
-`setup.sh` şunları sorar/yazar: dinleme portları, **web panel host portu (`SITE_PORT`)**, DoH/DoT/DoQ
-aç-kapa + sertifika, dışarı-port açma (varsayılan **hayır** — açık resolver uyarısıyla), DNS log
-şifreleme, ve **`DJANGO_SECRET_KEY` (512-bit) + `DNS_LOG_KEY` üretimi**. Sonunda ayarlanan host
-portlarının **boşta olup olmadığını** (`ss` ile) kontrol edip çakışma varsa uyarır.
+`setup.sh` iki dosya üretir:
+- **`config/servers.json`** — sunucu topolojisi: her metot (UDP/DoH/DoT/DoQ) **aç-kapa**, **iç
+  (container) port**, **host'a yayın** (publish) + **dış port**, panel portu, sertifika yolları,
+  DNS domain'i (`allowed_host`). Port çakışmasını `ss` ile kontrol eder.
+- **`.env`** — yalnız **sır/DB/Django**: `DJANGO_SECRET_KEY` (512-bit) + `DNS_LOG_KEY` üretimi,
+  CSRF/çerez ayarları. `install.sh`'in yazdığı `DB_*` satırları **korunur**.
+
+`start.sh` `config/servers.json`'u okuyup **`docker-compose.override.yml`**'i üretir (host'a
+yayınlanacak portlar + panel portu) ve `docker compose up -d --build` çalıştırır. Portu/publish'i
+değiştirdiğinde yeniden `./start.sh` çalıştır.
+
+> **TEK KAYNAK:** hangi metot açık + tüm portlar artık **`config/servers.json`** dosyasında
+> (MariaDB'de/`.env`'de **değil**). Panel **Sunucular** sayfası da bu dosyaya yazar: **aç/kapa** ve
+> **iç port** ~5 sn'de canlı uygulanır (resolver yeniden başlamaz); **dış port/publish** değişimi
+> Docker gereği `./start.sh` ister.
 
 ---
 
@@ -96,23 +107,33 @@ yönetici erişimlidir** — sonradan eklenen her hesap da yöneticidir.
 > bir HTTPS adresten açıyorsan) — `.env`'de **`DJANGO_CSRF_TRUSTED_ORIGINS=https://dns.example.com`**
 > (şema şart, sonda `/` yok; çoklu için virgülle) ve **`DJANGO_SECURE_COOKIES=True`** olmalı. Yoksa
 > **ilk kurulumdaki** form gönderimi bile _"CSRF verification failed (403)"_ verir. `setup.sh` bunu sorar;
-> elle eklersen ardından `docker compose up -d`.
+> elle eklersen ardından `./start.sh`.
 
 ---
 
-## Yapılandırma (`.env`)
+## Yapılandırma
 
-Tüm değişkenler ve açıklamaları **`.env.example`** dosyasında. Gerçek `.env` git ile izlenmez.
-Çoğu değeri `install.sh` (DB) + `setup.sh` (sunucu + anahtarlar) otomatik yazar. Öne çıkanlar:
+Sunucu topolojisi **`config/servers.json`**'da (setup.sh/start.sh/panel yazar; şablon:
+`config/servers.example.json`). Sır/DB/Django ise **`.env`**'de (şablon: `.env.example`). İkisi de
+git ile izlenmez.
+
+**`config/servers.json`** — sunucu topolojisi (TEK kaynak):
+
+| Alan | Açıklama |
+|---|---|
+| `methods.<m>.enabled` | Metodu aç/kapat (udp/doh/dot/doq) — **canlı** (~5 sn) |
+| `methods.<m>.container_port` | Konteyner içi dinleme portu — **canlı** (~5 sn) |
+| `methods.<m>.publish` + `.external_port` | Host'a yayın + dış port — **`./start.sh` ister** |
+| `cert_file` / `key_file` | DoH/DoT/DoQ ortak TLS sertifikası (host'tan salt-okunur mount) |
+| `allowed_host` | DoH/DoT sunucu domain'i (SNI/Host doğrulaması) |
+| `site_port` | Panel portu (127.0.0.1'e publish) |
+
+**`.env`** — sır/DB/Django:
 
 | Değişken | Açıklama |
 |---|---|
 | `DB_*` | MariaDB bağlantısı (install.sh yazar) |
-| `ENABLE_HTTPS/DOT/DOQ_SERVER` | Şifreli sunucuları aç (sertifika ister) |
-| `CERT_FILE` / `KEY_FILE` | DoH/DoT/DoQ ortak TLS sertifikası (host'tan salt-okunur mount) |
-| `EXTERNAL_*` | Host'a (dışarı) açılacak portlar — **dikkat: açık resolver riski** |
-| `SITE_PORT` | Panel portu (127.0.0.1'e publish) |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | Domain/tünel/proxy arkasında **zorunlu** (`https://dns.example.com`) — yoksa CSRF 403 |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Domain/tünel/proxy arkasında **zorunlu** — yoksa CSRF 403 |
 | `DJANGO_SECRET_KEY` | Panel gizli anahtarı (setup.sh 512-bit üretir) |
 | `DNS_LOG_KEY` | Sorgu günlüğü at-rest şifreleme (boş = kapalı) |
 | `DJANGO_SECURE_COOKIES` | Paneli **salt HTTPS**'te sunuyorsan `True` |
@@ -121,16 +142,17 @@ Tüm değişkenler ve açıklamaları **`.env.example`** dosyasında. Gerçek `.
 
 ## Portlar
 
-| Servis | Konteyner | Host'a publish | Not |
+| Servis | Konteyner (vars.) | Host'a publish | Not |
 |---|---|---|---|
-| Panel | 8444 | **`127.0.0.1:8444`** | Public değil (tünel/proxy ile eriş) |
-| Do53 (UDP/TCP) | 5300 | Varsayılan **kapalı** | `setup.sh` ile `53` açılabilir |
-| DoH | 44300 | kapalı → `443` | Sertifika ister |
+| Panel | 8444 | **`127.0.0.1:<site_port>`** | Public değil (tünel/proxy ile eriş) |
+| Do53 (UDP/TCP) | 5300 | varsayılan **kapalı** → `53` | `publish=true` ile açılır |
+| DoH (**HTTP/2**) | 44300 | kapalı → `443` | Sertifika ister (yoksa düz HTTP/1.1) |
 | DoT | 8853 | kapalı → `853` | Sertifika şart |
 | DoQ | 8530 | kapalı → `853/udp` | Sertifika şart |
 
-Dışarı portlar `docker-compose.override.yml` ile açılır (git-izlenmez; `setup.sh` üretir). **Varsayılan:
-hiçbir DNS portu host'a açılmaz** — sadece dns-net iç ağı.
+Portlar **`config/servers.json`**'da tutulur; **panel → Sunucular** sayfasından ya da `./setup.sh` ile
+düzenlenir. `./start.sh` bunlardan `docker-compose.override.yml` üretir (git-izlenmez). **Varsayılan:
+hiçbir DNS portu host'a açılmaz** — yalnız dns-net iç ağı (Cloudflare Tunnel bu ağdan erişir).
 
 ---
 

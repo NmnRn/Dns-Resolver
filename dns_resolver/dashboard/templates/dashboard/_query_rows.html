@@ -3,7 +3,7 @@
     <span class="qdot {% if r.pending %}live{% elif r.blocked %}blk{% else %}ok{% endif %}" title="{% if r.pending %}{% trans 'canlı — flush bekliyor' %}{% elif r.blocked %}{% trans 'engellendi' %}{% else %}{% trans 'çözüldü' %}{% endif %}"></span>
     <div class="qmain">
         <div class="qdom">{{ r.domain }}{% if r.blocked %}<span class="bblk" title="{% blocktrans with by=r.blocked_by %}{{ by }} listesinden engellendi{% endblocktrans %}">⛔ {{ r.blocked_by|truncatechars:26 }}</span>{% endif %}</div>
-        <div class="qmeta"><span class="qip">{{ r.client_ip }}</span><span class="qsep">·</span>{{ r.resolved_by|default:"—" }}{% if r.user_id %}<span class="qsep">·</span>{% blocktrans with uid=r.user_id %}kullanıcı #{{ uid }}{% endblocktrans %}{% endif %}</div>
+        <div class="qmeta">{% if r.client_ip %}<a class="qip" href="{% url 'dashboard:queries' %}?ip={{ r.client_ip|urlencode }}" title="{% trans 'Bu IP ile filtrele' %}">{{ r.client_ip }}</a>{% else %}<span class="qip">—</span>{% endif %}<span class="qsep">·</span>{{ r.resolved_by|default:"—" }}{% if r.user_id %}<span class="qsep">·</span>{% blocktrans with uid=r.user_id %}kullanıcı #{{ uid }}{% endblocktrans %}{% endif %}</div>
     </div>
     <div class="qtags"><span class="tag t-{{ r.record_type }}">{{ r.record_type }}</span><span class="qmeth m-{{ r.method }}">{{ r.method|upper }}</span></div>
     <span class="qtime"><span class="lt" data-utc="{{ r.queried_at }}">{{ r.queried_at }}</span></span>

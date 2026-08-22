@@ -263,8 +263,10 @@ async def get_record_type_breakdown(limit: int = 8) -> list[dict]:
     )
 
 
-async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25, offset: int = 0) -> list[dict]:
-    """Son sorgular; opsiyonel domain (LIKE) + method (tam) filtresi, LIMIT/OFFSET sayfalama."""
+async def get_recent_queries(domain: str = '', method: str = '', client_ip: str = '', limit: int = 25, offset: int = 0) -> list[dict]:
+    """Son sorgular; opsiyonel domain + method (tam) + istemci IP filtresi, LIMIT/OFFSET
+    sayfalama. Şifre AÇIKKEN domain/IP filtresi TAM-eşleşmedir (deterministik şifreli
+    sütunda alt-dizi aranamaz); şifre kapalıyken LIKE (alt-dizi)."""
     where = []
     params: list = []
     if domain:
@@ -279,6 +281,14 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
     if method:
         where.append('method = %s')
         params.append(method)
+    if client_ip:
+        ip = client_ip.strip()
+        if logcrypto.enabled():
+            where.append('client_ip = %s')       # deterministik şifreli → tam eşleşme
+            params.append(logcrypto.enc(ip))
+        else:
+            where.append('client_ip LIKE %s')    # düz → alt-dizi (alt-ağ araması mümkün)
+            params.append(f'%{ip}%')
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
     params.append(limit)
     params.append(offset)
@@ -299,9 +309,9 @@ async def get_recent_queries(domain: str = '', method: str = '', limit: int = 25
     return rows
 
 
-async def get_queries_for_export(domain: str = '', method: str = '', limit: int = 100000) -> list[dict]:
+async def get_queries_for_export(domain: str = '', method: str = '', client_ip: str = '', limit: int = 100000) -> list[dict]:
     """CSV dışa aktarma: filtreli sorgu satırları (OFFSET yok, yüksek üst sınır).
-    client_ip + domain çözülür (okunur CSV); şifreliyken domain filtresi tam-eşleşme."""
+    client_ip + domain çözülür (okunur CSV); şifreliyken domain/IP filtresi tam-eşleşme."""
     where = []
     params: list = []
     if domain:
@@ -314,6 +324,14 @@ async def get_queries_for_export(domain: str = '', method: str = '', limit: int 
     if method:
         where.append('method = %s')
         params.append(method)
+    if client_ip:
+        ip = client_ip.strip()
+        if logcrypto.enabled():
+            where.append('client_ip = %s')
+            params.append(logcrypto.enc(ip))
+        else:
+            where.append('client_ip LIKE %s')
+            params.append(f'%{ip}%')
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
     params.append(int(limit))
     rows = await _fetch_all(
@@ -334,7 +352,7 @@ async def get_queries_for_export(domain: str = '', method: str = '', limit: int 
     return rows
 
 
-def read_pending(domain: str = '', method: str = '') -> list[dict]:
+def read_pending(domain: str = '', method: str = '', client_ip: str = '') -> list[dict]:
     """
     Resolver'ın flush bekleyen tamponu (paylaşılan dosya) — henüz DB'de olmayan
     sorgular, en yeni önce, domain/method filtreli. Panel bunu DB ile birleştirir.
@@ -346,18 +364,22 @@ def read_pending(domain: str = '', method: str = '') -> list[dict]:
     except (OSError, ValueError):
         return []
     dom = domain.lower()
+    ipf = client_ip.strip()
     out = []
     for it in reversed(items):  # append sırası → en yeni önce
-        # pending küçük + bellekte → domain'i çözüp alt-string filtre yapabiliriz
+        # pending küçük + bellekte → domain/IP'yi çözüp alt-string filtre yapabiliriz
         # (DB tarafında şifreli sütunda alt-string aranamaz; burada Python'da olur).
         d = (logcrypto.dec(it.get('domain')) or '').rstrip('.')  # çöz + sondaki DNS noktasını at
         if dom and dom not in d.lower():
             continue
         if method and it.get('method') != method:
             continue
+        cip = logcrypto.dec(it.get('client_ip')) or ''
+        if ipf and ipf not in cip:
+            continue
         out.append({
             'domain': d, 'record_type': it.get('record_type'),
-            'client_ip': logcrypto.dec(it.get('client_ip')), 'queried_at': it.get('queried_at'),
+            'client_ip': cip, 'queried_at': it.get('queried_at'),
             'method': it.get('method'), 'user_id': None, 'pending': True,
             'blocked': it.get('blocked', False), 'blocked_by': it.get('blocked_by'),
             'resolved_by': it.get('resolved_by'),
@@ -383,32 +405,8 @@ async def get_top_clients(limit: int = 10) -> list[dict]:
     return rows
 
 
-# --------------------------------------------------------------------------- #
-# resolver_config — panelden canlı sunucu aç/kapa (resolver ~5 sn'de uygular).
-# Havuz autocommit=True olduğu için UPDATE anında commit'lenir.
-# --------------------------------------------------------------------------- #
-_METHOD_ORDER = ['udp', 'doh', 'dot', 'doq']
-
-
-async def get_resolver_config() -> dict:
-    """Metot -> bool ('udp'/'doh'/'dot'/'doq' hangileri açık). Eksikler False."""
-    rows = await _fetch_all("SELECT method, enabled FROM resolver_config")
-    cfg = {r['method']: bool(r['enabled']) for r in rows}
-    return {m: cfg.get(m, False) for m in _METHOD_ORDER}
-
-
-async def set_method_enabled(method: str, enabled: bool) -> None:
-    """Bir yöntemin enabled bayrağını yazar (yalnız bilinen yöntemler)."""
-    if method not in _METHOD_ORDER:
-        return
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                "UPDATE resolver_config SET enabled = %s WHERE method = %s",
-                (1 if enabled else 0, method),
-            )
-
+# NOT: Sunucu aç/kapa + portlar artık DB'de DEĞİL — TEK kaynak config_store
+# (config/servers.json). Panel views doğrudan config_store.get/write_config kullanır.
 
 # --------------------------------------------------------------------------- #
 # blocklist / allowlist — panelden filtre yönetimi (resolver ~15 sn'de uygular).

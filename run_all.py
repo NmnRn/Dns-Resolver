@@ -29,7 +29,13 @@ DJANGO_DIR = BASE_DIR / "dns_resolver"
 PYTHON = sys.executable
 
 SITE_BIND = os.getenv("SITE_BIND", "0.0.0.0")
-SITE_PORT = os.getenv("SITE_PORT", "8444")
+# site_port TEK kaynak: config/servers.json (config_store). Dosya yoksa/okunamazsa
+# .env SITE_PORT, o da yoksa 8444.
+try:
+    import config_store
+    SITE_PORT = str(config_store.get_config()["site_port"])
+except Exception:
+    SITE_PORT = os.getenv("SITE_PORT", "8444")
 
 # (isim, Popen) çiftleri
 procs: list[tuple[str, subprocess.Popen]] = []

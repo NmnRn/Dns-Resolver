@@ -9,8 +9,8 @@
             <p class="sub" style="margin:4px 0 0;">{% trans "Canlı log akışı · en yeni üstte · zamanlar yerel · aşağı kaydırdıkça otomatik yüklenir" %}</p>
         </div>
         <div class="qactions">
-            <a class="btn ghost" href="{% url 'dashboard:queries_export' %}?q={{ q|urlencode }}&amp;method={{ method }}" data-no-ajax>⭳ {% trans "CSV indir" %}</a>
-            <a class="btn ghost" href="{% url 'dashboard:queries' %}?q={{ q|urlencode }}&amp;method={{ method }}">↻ {% trans "Yenile" %}</a>
+            <a class="btn ghost" href="{% url 'dashboard:queries_export' %}?q={{ q|urlencode }}&amp;method={{ method }}&amp;ip={{ ip|urlencode }}" data-no-ajax>⭳ {% trans "CSV indir" %}</a>
+            <a class="btn ghost" href="{% url 'dashboard:queries' %}?q={{ q|urlencode }}&amp;method={{ method }}&amp;ip={{ ip|urlencode }}">↻ {% trans "Yenile" %}</a>
         </div>
     </div>
 
@@ -23,8 +23,12 @@
             <option value="">{% trans "Tüm yöntemler" %}</option>
             {% for m in methods %}<option value="{{ m }}" {% if m == method %}selected{% endif %}>{{ m|upper }}</option>{% endfor %}
         </select>
+        <label class="qsearch qsearch-ip">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C8.7 2 6 4.7 6 8c0 4.5 6 12 6 12s6-7.5 6-12c0-3.3-2.7-6-6-6z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="8" r="2.3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            <input type="text" name="ip" value="{{ ip }}" placeholder="{% trans 'İstemci IP (tam)' %}" autocomplete="off" spellcheck="false">
+        </label>
         <button type="submit" class="btn">{% trans "Filtrele" %}</button>
-        {% if q or method %}<a class="clear" href="{% url 'dashboard:queries' %}">{% trans "Temizle" %}</a>{% endif %}
+        {% if q or method or ip %}<a class="clear" href="{% url 'dashboard:queries' %}">{% trans "Temizle" %}</a>{% endif %}
     </form>
 
     {% if error %}
@@ -36,7 +40,7 @@
                 {% if pending_count %}<span class="qlive"><span class="qdot live"></span>{% blocktrans count n=pending_count %}{{ n }} canlı{% plural %}{{ n }} canlı{% endblocktrans %}</span>{% endif %}
             </div>
             <div class="qfeed" id="qrows">{% include "dashboard/_query_rows.html" with rows=rows first=True %}</div>
-            <div id="qmore" class="qmore" data-offset="{{ next_offset }}" data-q="{{ q }}" data-method="{{ method }}" data-more="{% if has_more %}1{% else %}0{% endif %}">
+            <div id="qmore" class="qmore" data-offset="{{ next_offset }}" data-q="{{ q }}" data-method="{{ method }}" data-ip="{{ ip }}" data-more="{% if has_more %}1{% else %}0{% endif %}">
                 <span id="qspin" class="muted" style="display:none;">{% trans "Yükleniyor…" %}</span>
                 <button type="button" class="btn ghost" id="loadmore" {% if not has_more %}hidden{% endif %}>{% trans "Daha fazla yükle" %}</button>
                 <span id="qdone" class="muted" style="{% if has_more %}display:none;{% endif %}">{% trans "Tümü yüklendi" %}</span>
@@ -67,7 +71,8 @@
                 var off = wrap.dataset.offset;
                 var url = base + '?partial=1&offset=' + encodeURIComponent(off)
                         + '&q=' + encodeURIComponent(wrap.dataset.q)
-                        + '&method=' + encodeURIComponent(wrap.dataset.method);
+                        + '&method=' + encodeURIComponent(wrap.dataset.method)
+                        + '&ip=' + encodeURIComponent(wrap.dataset.ip);
                 fetch(url, { headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
                     .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
                     .then(function (html) {

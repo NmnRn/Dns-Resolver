@@ -12,38 +12,29 @@ load_dotenv(settings.PROJECT_DIRECTORY / ".env")
 from logs.dns_logs import logger
 
 import servers.normal_udp as udp_server
-import servers.https_server as https_server
 import servers.dot_server as dot_server
 import servers.doq_server as doq_server
 import servers.manager as server_manager
 from project_control.check_ssl_certificate import SSLCertificateChecker
 
 import db_ops
+import config_store
 
 def build_udp_server(core):
-    port = int(os.getenv("CONTAINER_UDP_PORT", "5300"))
-    bind = os.getenv("BIND_ADDRESS", "127.0.0.1")
+    cfg = config_store.get_config()
+    port = cfg["methods"]["udp"]["container_port"]
+    bind = cfg["bind"]
     from dnslib.server import DNSServer
     server = DNSServer(udp_server.DNSResolver(core), port=port, address=bind,
                        logger=udp_server.QuietDNSLogger())
     return server.start, server.stop
 
 
-def build_https_server(core):
-    port = int(os.getenv("CONTAINER_HTTPS_PORT", "44300"))
-    bind = os.getenv("BIND_ADDRESS", "127.0.0.1")
-    certfile = os.getenv("CERT_FILE", "/app/certificates/fullchain.pem")
-    keyfile = os.getenv("KEY_FILE", "/app/certificates/privkey.pem")
-    server = https_server.build_server(core, bind=bind, port=port, certfile=certfile, keyfile=keyfile)
-    return server.serve_forever, server.shutdown
-
-
 def build_dot_server(core):
-    port = int(os.getenv("CONTAINER_DOT_PORT", "8853"))
-    bind = os.getenv("BIND_ADDRESS", "127.0.0.1")
-    certfile = os.getenv("CERT_FILE", "/app/certificates/fullchain.pem")
-    keyfile = os.getenv("KEY_FILE", "/app/certificates/privkey.pem")
-    server = dot_server.build_server(core, bind=bind, port=port, certfile=certfile, keyfile=keyfile)
+    cfg = config_store.get_config()
+    port = cfg["methods"]["dot"]["container_port"]
+    server = dot_server.build_server(core, bind=cfg["bind"], port=port,
+                                     certfile=cfg["cert_file"], keyfile=cfg["key_file"])
     if server is None:
         return None
     return server.start, server.stop
@@ -73,9 +64,10 @@ def _check_certificates():
     TLS/HTTPS/QUIC motorlarından önce sertifikaları kontrol et.
     .env dosyasından CERT_FILE ve KEY_FILE yollarını oku ve geçerliliğini kontrol et.
     """
-    cert_file = os.getenv("CERT_FILE", "/app/certificates/fullchain.pem")
-    key_file = os.getenv("KEY_FILE", "/app/certificates/privkey.pem")
-    
+    cfg = config_store.get_config()
+    cert_file = cfg["cert_file"]
+    key_file = cfg["key_file"]
+
     logger.info("Sertifikalar kontrol ediliyor... {cert_file=%s, key_file=%s}", cert_file, key_file)
     
     from pathlib import Path
@@ -123,55 +115,64 @@ def _check_certificates():
         return True  # Bilinmeyen durum, yine de devam et
 
 
+def _desired_servers():
+    """ServerManager için istenen durum: {method: {enabled, container_port}} —
+    TEK kaynak config_store (config/servers.json). Port değişimi de burada görünür
+    → reconcile ilgili metodu yeniden başlatır."""
+    cfg = config_store.get_config()
+    return {m: {"enabled": d["enabled"], "container_port": d["container_port"]}
+            for m, d in cfg["methods"].items()}
+
+
 def make_starters(core, loop):
     """
     Her metot için bir "starter" üretir: çağrıldığında sunucuyu başlatıp bir
     stop() fonksiyonu döndüren (başlatılamazsa None) async fonksiyon.
-    ServerManager bunları DB'deki resolver_config'e göre çağırır.
+    ServerManager bunları config_store'daki (config/servers.json) istenen duruma
+    göre çağırır.
 
     Thread-tabanlı sunucular (udp/doh/dot) blocking start ile executor'da koşar;
     DoQ (aioquic) event loop'ta koşar. Port/bind/cert değerleri build_* içinde
-    env'den okunur.
+    config_store'dan okunur (env/DB değil).
     """
 
-    # Panelden ayarlanan cert yolları + iç dinleme portlarını env'e uygula →
-    # build_* değerleri env'den okur. Bir sunucu (re)start edildiğinde çağrılır;
-    # değişikliğin yansıması için metodun kapat-aç edilmesi (UDP'de resolver
-    # restart) gerekir — ServerManager port değişiminde otomatik restart etmez.
-    _SETTING_ENV = {
-        'cert_file': 'CERT_FILE',
-        'key_file': 'KEY_FILE',
-        'udp_port': 'CONTAINER_UDP_PORT',
-        'https_port': 'CONTAINER_HTTPS_PORT',
-        'dot_port': 'CONTAINER_DOT_PORT',
-        'doq_port': 'CONTAINER_DOQ_PORT',
-    }
-
-    async def _apply_settings_env():
-        for key, env in _SETTING_ENV.items():
-            val = await core.db_manager.get_setting(key)
-            if val:
-                os.environ[env] = str(val)
-
     async def start_udp():
-        await _apply_settings_env()
         start_fn, stop_fn = build_udp_server(core)
         fut = loop.run_in_executor(None, start_fn)
         fut.add_done_callback(_make_server_error_logger("udp"))
         return stop_fn
 
     async def start_doh():
-        await _apply_settings_env()
-        built = build_https_server(core)
-        if built is None:
-            return None
-        start_fn, stop_fn = built
-        fut = loop.run_in_executor(None, start_fn)
-        fut.add_done_callback(_make_server_error_logger("doh"))
-        return stop_fn
+        # DoH: ASGI app + Hypercorn (HTTP/2 + HTTP/1.1). Event loop'ta TASK olarak
+        # koşar (thread değil). Hypercorn lazy import → kurulu değilse app.py yine
+        # import edilebilir (testler hypercorn'suz çalışır).
+        import hypercorn.asyncio
+        from hypercorn.config import Config as HConfig
+        from servers import doh_app
+
+        cfg = config_store.get_config()
+        doh = cfg["methods"]["doh"]
+        hconf = HConfig()
+        hconf.bind = [f"{cfg['bind']}:{doh['container_port']}"]
+        hconf.accesslog = None       # per-request log KAPALI → domain/IP sızmaz
+        certfile, keyfile = cfg["cert_file"], cfg["key_file"]
+        if os.path.exists(certfile) and os.path.exists(keyfile):
+            hconf.certfile = certfile
+            hconf.keyfile = keyfile
+            hconf.alpn_protocols = ["h2", "http/1.1"]   # HTTP/2 (TLS+ALPN) + h1 fallback
+        else:
+            hconf.alpn_protocols = ["http/1.1"]          # cert yok → düz HTTP/1.1 (proxy arkası)
+            logger.warning("DoH sertifikasız başlatılıyor: düz HTTP/1.1 (H2 için TLS+ALPN şart).")
+
+        shutdown = asyncio.Event()
+        task = loop.create_task(
+            hypercorn.asyncio.serve(doh_app.make_app(core), hconf,
+                                    shutdown_trigger=shutdown.wait)
+        )
+        task.add_done_callback(_make_server_error_logger("doh"))
+        return shutdown.set          # ServerManager stop() → graceful shutdown
 
     async def start_dot():
-        await _apply_settings_env()
         built = build_dot_server(core)  # sertifika yoksa None
         if built is None:
             return None
@@ -181,11 +182,13 @@ def make_starters(core, loop):
         return stop_fn
 
     async def start_doq():
-        await _apply_settings_env()
+        cfg = config_store.get_config()
         server = await doq_server.build_server(  # sertifika yoksa None
             core,
-            bind=os.getenv("BIND_ADDRESS", "127.0.0.1"),
-            port=int(os.getenv("CONTAINER_DOQ_PORT", "8530")),
+            bind=cfg["bind"],
+            port=cfg["methods"]["doq"]["container_port"],
+            certfile=cfg["cert_file"],
+            keyfile=cfg["key_file"],
         )
         if server is None:
             return None
@@ -198,9 +201,10 @@ def main():
     db_manager = db_ops.DBManager()
     core = udp_server.DNSCore(db_manager=db_manager)
 
-    # Sertifika bilgisini (yapılandırılmışsa) logla. DoT/DoQ başlatılırken cert'i
-    # zaten kendisi kontrol eder; burası yalnızca bilgilendirme amaçlı.
-    if os.getenv("CERT_FILE", "no") not in ("no", "") and os.getenv("KEY_FILE", "no") not in ("no", ""):
+    # Sertifika bilgisini (varsa) logla. DoT/DoQ başlatılırken cert'i zaten kendisi
+    # kontrol eder; burası yalnızca bilgilendirme amaçlı. Yollar config_store'dan.
+    _cfg = config_store.get_config()
+    if os.path.exists(_cfg["cert_file"]) and os.path.exists(_cfg["key_file"]):
         _check_certificates()
 
     loop = asyncio.new_event_loop()
@@ -234,12 +238,13 @@ def main():
     snapshot_task = loop.create_task(_pending_snapshot())
     snapshot_task.add_done_callback(_log_task_error)
 
-    # DNS sunucuları artık DB'deki resolver_config'e göre ÇALIŞIRKEN yönetilir:
-    # web panelinden bir metodu açıp kapatmak, prosesi yeniden başlatmadan
-    # ~birkaç saniyede etki eder. Güvenli varsayılan: sadece UDP açık.
+    # DNS sunucuları config_store'daki (config/servers.json) istenen duruma göre
+    # ÇALIŞIRKEN yönetilir: panelden bir metodu açıp kapatmak (ya da iç portunu
+    # değiştirmek), prosesi yeniden başlatmadan ~birkaç saniyede etki eder.
+    # Güvenli varsayılan: sadece UDP açık.
     manager = server_manager.ServerManager(make_starters(core, loop))
     reconcile_task = loop.create_task(
-        manager.reconcile_loop(db_manager.get_resolver_config, interval=5)
+        manager.reconcile_loop(_desired_servers, interval=5)
     )
     reconcile_task.add_done_callback(_log_task_error)
 

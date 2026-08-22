@@ -198,20 +198,9 @@ class DB_CON():
                     random_key VARCHAR(255) DEFAULT NULL
                 );
             """)
-            # Hangi DNS metotlarının açık olduğu — web panelinden yönetilir,
-            # resolver çalışırken okuyup sunucuları başlatıp durdurur.
-            await cursor.execute("""
-                CREATE TABLE IF NOT EXISTS resolver_config (
-                    method VARCHAR(16) PRIMARY KEY,
-                    enabled BOOLEAN NOT NULL DEFAULT FALSE
-                )
-            """)
-            # GÜVENLİ VARSAYILAN: sadece düz UDP açık; DoH/DoT/DoQ kapalı.
-            # INSERT IGNORE => mevcut satırlar (kullanıcının seçimleri) korunur.
-            await cursor.execute("""
-                INSERT IGNORE INTO resolver_config (method, enabled) VALUES
-                ('udp', TRUE), ('doh', FALSE), ('dot', FALSE), ('doq', FALSE)
-            """)
+            # NOT: Hangi DNS metodunun açık olduğu + portlar artık DB'de DEĞİL.
+            # TEK kaynak: config_store (config/servers.json) — resolver oradan okur,
+            # panel oraya yazar. (Eski 'resolver_config' tablosu kaldırıldı.)
             # Engelleme listeleri (AdGuard tarzı): blocklist + allowlist.
             # Yeni tablolar → migrasyon gerekmez (IF NOT EXISTS yeter).
             await cursor.execute("""
@@ -267,19 +256,13 @@ class DB_CON():
             await cursor.execute(
                 "CREATE TABLE IF NOT EXISTS app_settings (k VARCHAR(64) PRIMARY KEY, v VARCHAR(512))"
             )
+            # NOT: cert yolları + iç/dış portlar artık DB'de DEĞİL → config_store.
+            # Burada yalnız DNS ÇÖZÜM davranışı ayarları tutulur (port/topoloji değil).
             await cursor.execute(
                 "INSERT IGNORE INTO app_settings (k, v) VALUES "
-                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),"
-                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),"
-                "(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
-                ('cert_file', os.getenv('CERT_FILE', 'certificates/fullchain.pem'),
-                 'key_file', os.getenv('KEY_FILE', 'certificates/privkey.pem'),
-                 # İç dinleme portları (build_* env'den okur; dış/host yayını ayrı).
-                 'udp_port', os.getenv('CONTAINER_UDP_PORT', '5300'),
-                 'https_port', os.getenv('CONTAINER_HTTPS_PORT', '44300'),
-                 'dot_port', os.getenv('CONTAINER_DOT_PORT', '8853'),
-                 'doq_port', os.getenv('CONTAINER_DOQ_PORT', '8530'),
-                 # Genel ayarlar (panelden; resolver periyodik uygular).
+                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),"
+                "(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s),(%s,%s)",
+                (# Genel ayarlar (panelden; resolver periyodik uygular).
                  'log_queries', '1',        # sorgu geçmişi aç/kapa
                  'cache_enabled', '1',      # önbellek aç/kapa
                  'cache_min_ttl', '0',      # alt sınır (0 = yok)
@@ -297,13 +280,6 @@ class DB_CON():
                  'log_retention_days', '0'),  # N günden eski geçmişi sil (0 = sonsuz)
             )
             await conn.commit()
-
-    async def get_resolver_config(self):
-        """Metot -> bool sözlüğü ('udp'/'doh'/'dot'/'doq' hangileri açık)."""
-        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
-            await cursor.execute("SELECT method, enabled FROM resolver_config")
-            rows = await cursor.fetchall()
-        return {r['method']: bool(r['enabled']) for r in rows}
 
     async def get_filter_lists(self):
         """

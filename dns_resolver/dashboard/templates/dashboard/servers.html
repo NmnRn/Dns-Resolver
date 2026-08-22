@@ -4,38 +4,50 @@
 {% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/servers.css' %}?v={{ static_v }}">{% endblock %}
 {% block content %}
     <h1>{% trans "Sunucular" %}</h1>
-    <p class="sub">{% trans "DNS yöntemlerini canlı aç/kapat — değişiklik ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık." %}</p>
+    <p class="sub">{% trans "DNS yöntemlerini canlı aç/kapat ve portlarını ayarla — aç/kapa ve iç port ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık." %}</p>
 
     {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
 
-    {% if error %}
-        <div class="error">{% blocktrans %}Ayarlar veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
-    {% else %}
-        <div class="srv-cards">
-            {% for m in methods %}
-            <form method="post" class="srv">
-                {% csrf_token %}
-                <input type="hidden" name="method" value="{{ m.key }}">
-                <div class="top">
-                    <span class="name"><span class="dotc b-{{ m.key }}"></span> {{ m.label }}</span>
+    <div class="srv-cards">
+        {% for m in methods %}
+        <div class="srv">
+            <div class="top">
+                <span class="name"><span class="dotc b-{{ m.key }}"></span> {{ m.label }}</span>
+                <form method="post" style="margin:0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="method" value="{{ m.key }}">
+                    <input type="hidden" name="action" value="toggle">
                     <button type="submit" name="enabled" value="{% if m.enabled %}0{% else %}1{% endif %}"
                             class="toggle" aria-checked="{{ m.enabled|yesno:'true,false' }}"
                             aria-label="{% blocktrans %}{{ m.label }} aç/kapat{% endblocktrans %}"
                             {% if m.key == 'udp' %}disabled title="{% trans 'UDP kapatılamaz (temel çözümleme)' %}"{% endif %}></button>
-                </div>
-                <div class="meta">
-                    <span>{% trans "Container portu" %}</span><b class="mono">{{ m.port }}</b>
-                    <span>{% trans "Local (host) portu" %}</span><b class="mono">{{ m.local_port|default:"—" }}</b>
-                    <span>{% trans "Durum" %}</span><b style="color:{% if m.enabled %}var(--ok){% else %}var(--muted){% endif %}">{% if m.enabled %}{% trans "açık" %}{% else %}{% trans "kapalı" %}{% endif %}</b>
-                    {% if m.needs_cert %}<span>{% trans "Sertifika" %}</span><b>{% trans "gerekli" %}</b>{% endif %}
-                </div>
+                </form>
+            </div>
+            <div class="meta">
+                <span>{% trans "Durum" %}</span><b style="color:{% if m.enabled %}var(--ok){% else %}var(--muted){% endif %}">{% if m.enabled %}{% trans "açık" %}{% else %}{% trans "kapalı" %}{% endif %}</b>
+                {% if m.needs_cert %}<span>{% trans "Sertifika" %}</span><b>{% trans "gerekli" %}</b>{% endif %}
+            </div>
+            <form method="post" class="srv-ports">
+                {% csrf_token %}
+                <input type="hidden" name="method" value="{{ m.key }}">
+                <input type="hidden" name="action" value="ports">
+                <label>{% trans "Container portu" %}
+                    <input type="number" name="container_port" value="{{ m.container_port }}" min="1" max="65535" inputmode="numeric">
+                </label>
+                <label>{% trans "Host (dış) portu" %}
+                    <input type="number" name="external_port" value="{{ m.external_port }}" min="1" max="65535" inputmode="numeric">
+                </label>
+                <label class="pub"><input type="checkbox" name="publish" value="1" {% if m.publish %}checked{% endif %}> {% trans "Host'a yayınla" %}</label>
+                <button type="submit" class="btn ghost">{% trans "Portları kaydet" %}</button>
             </form>
-            {% endfor %}
         </div>
-        <p class="sub" style="margin-top:18px;">{% trans "DoT/DoH/DoQ için geçerli sertifika yoksa açık istenip başlatılamaz (resolver güvenli şekilde atlar)." %}</p>
-        <div class="srvnote">
-            🛠️ <b>{% trans "Portlar buradan değiştirilmez — yalnızca bilgi." %}</b> <span class="mono">{% trans "Container portu" %}</span>
-            {% trans "= konteyner içindeki dinleme portu;" %} <span class="mono">{% trans "Local (host) portu" %}</span> {% trans "= dışarı yayınlanan port. Değiştirmek için sunucu klasöründe" %} <span class="mono">./setup.sh</span> {% trans "çalıştır (her iki portu da sorar), sonra" %} <span class="mono">docker compose up -d</span>.
-        </div>
-    {% endif %}
+        {% endfor %}
+    </div>
+
+    <p class="sub" style="margin-top:18px;">{% trans "DoT/DoH/DoQ için geçerli sertifika yoksa açık istenip başlatılamaz (resolver güvenli şekilde atlar)." %}</p>
+    <div class="srvnote">
+        🛠️ <b>{% trans "İç port (Container) ~5 sn içinde canlı uygulanır." %}</b>
+        <span class="mono">{% trans "Host (dış) portu" %}</span> {% trans "ya da" %} <span class="mono">{% trans "Host'a yayınla" %}</span>
+        {% trans "değişince — Docker gereği — sunucuda" %} <span class="mono">./start.sh</span> {% trans "çalıştırman gerekir (konteyner yeniden oluşturulur). Tüm bu ayarlar" %} <span class="mono">config/servers.json</span> {% trans "dosyasında tutulur (DB'de değil)." %}
+    </div>
 {% endblock %}

@@ -7,6 +7,7 @@
 .qsearch svg{ position:absolute; left:13px; width:16px; height:16px; pointer-events:none; }
 .qsearch input{ width:100%; padding-left:38px; }
 .qfilter select{ min-width:155px; }
+.qsearch-ip{ flex:0 0 auto; min-width:150px; max-width:190px; }
 
 .qpanel{ background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow); overflow:hidden; }
 .qhead{ display:flex; align-items:center; gap:14px; font:700 11px/1 var(--sans); letter-spacing:.09em; text-transform:uppercase; color:var(--muted); padding:15px 20px; border-bottom:1px solid var(--border); }
@@ -31,6 +32,9 @@
 .qdom{ font:700 14px var(--sans); letter-spacing:-.01em; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .qmeta{ font:500 12px var(--mono); color:var(--muted-2); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .qmeta .qsep{ margin:0 7px; opacity:.5; }
+a.qip{ color:inherit; text-decoration:none; border-bottom:1px dashed color-mix(in srgb,currentColor 35%,transparent); transition:color .14s ease; }
+a.qip:hover{ color:var(--accent-deep); border-bottom-color:currentColor; }
+:root[data-theme="dark"] a.qip:hover{ color:var(--accent); }
 
 .qtags{ display:flex; gap:6px; align-items:center; flex:none; }
 .qmeth{ font:700 11px var(--mono); letter-spacing:.02em; }

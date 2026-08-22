@@ -16,3 +16,5 @@ dns_resolver/staticfiles/
 secret_key.txt
 pending.json
 design/
+# Sunucu topolojisi (setup.sh/start.sh üretir; sırlar YOK ama ortama özel)
+config/servers.json
