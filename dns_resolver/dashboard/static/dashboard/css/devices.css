@@ -44,6 +44,12 @@
 .dnote b{ color:var(--accent-deep); }
 :root[data-theme="dark"] .dnote b{ color:var(--accent); }
 
+/* WHOIS arama kutusu (IP ya da alan adı) */
+.whois-search{ display:flex; gap:10px; margin:0 0 18px; flex-wrap:wrap; }
+.whois-search input{ flex:1; min-width:220px; padding:9px 12px; background:var(--panel-2);
+    border:1px solid var(--border-strong); border-radius:8px; color:var(--text); font:13px var(--mono); }
+.whois-search input:focus{ outline:none; border-color:var(--accent); }
+
 /* Görülen IP'ler → tıklanabilir rozetler (WHOIS) */
 .ipwrap{ display:flex; flex-wrap:wrap; gap:6px; }
 .ipbadge{ font:600 11.5px var(--mono); color:var(--text); background:var(--panel-2);

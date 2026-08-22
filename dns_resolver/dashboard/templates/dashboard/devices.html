@@ -14,6 +14,11 @@
         {% if devices %}<form method="post" style="margin-left:auto;">{% csrf_token %}<input type="hidden" name="action" value="clear_devices"><button type="submit" class="btn ghost" style="padding:8px 14px;font-size:12px;text-transform:none;" onclick="return confirm('{% trans "Tüm cihaz kayıtları silinsin mi? (bir sonraki açılışta yeniden toplanır)" %}')">🗑 {% trans "Kayıtları temizle" %}</button></form>{% endif %}
     </div>
 
+    <form class="whois-search" onsubmit="return false;">
+        <input type="text" id="whoisQ" placeholder="{% trans 'WHOIS: IP ya da alan adı — ör. 1.1.1.1 · example.com' %}" autocomplete="off" spellcheck="false" data-no-ajax>
+        <button type="button" class="btn" id="whoisGo" data-no-ajax>{% trans "WHOIS sorgula" %}</button>
+    </form>
+
     <div class="devlist">
         {% for d in devices %}
         <details class="devcard">
@@ -65,28 +70,33 @@
             <div class="whois-foot">{% trans "Sorgu IANA + ilgili RIR'e (ARIN/RIPE/APNIC…) gider — dış istektir." %}</div>
         </div>
     </div>
-    <script>/* IP rozetine tıkla → WHOIS (same-origin; sonuç modalda gösterilir) */
+    <script>/* IP rozeti / WHOIS kutusu → WHOIS (same-origin; sonuç modalda) */
     (function(){
         if(window.__whoisBound) return; window.__whoisBound = true;   // ajax gezinmede tek bağla
         var URL = '{% url "dashboard:whois" %}';
+        function run(q){
+            q = (q || '').trim(); if(!q) return;
+            var modal = document.getElementById('whoisModal'); if(!modal) return;
+            document.getElementById('whoisIp').textContent = q;
+            document.getElementById('whoisBody').textContent = '{% trans "Sorgulanıyor…" %}';
+            modal.hidden = false;
+            fetch(URL + '?ip=' + encodeURIComponent(q),
+                  {credentials:'same-origin', headers:{'X-Requested-With':'fetch'}})
+                .then(function(r){ return r.json(); })
+                .then(function(d){ document.getElementById('whoisBody').textContent = d.whois || d.error || '—'; })
+                .catch(function(){ document.getElementById('whoisBody').textContent = '{% trans "Hata" %}'; });
+        }
         document.addEventListener('click', function(e){
             var modal = document.getElementById('whoisModal');
             var b = e.target.closest('.ipbadge');
-            if(b){
-                if(!modal) return;
-                document.getElementById('whoisIp').textContent = b.dataset.ip;
-                document.getElementById('whoisBody').textContent = '{% trans "Sorgulanıyor…" %}';
-                modal.hidden = false;
-                fetch(URL + '?ip=' + encodeURIComponent(b.dataset.ip),
-                      {credentials:'same-origin', headers:{'X-Requested-With':'fetch'}})
-                    .then(function(r){ return r.json(); })
-                    .then(function(d){ document.getElementById('whoisBody').textContent = d.whois || d.error || '—'; })
-                    .catch(function(){ document.getElementById('whoisBody').textContent = '{% trans "Hata" %}'; });
-                return;
-            }
+            if(b){ run(b.dataset.ip); return; }
+            if(e.target.id === 'whoisGo'){ run((document.getElementById('whoisQ') || {}).value); return; }
             if(modal && !modal.hidden && (e.target === modal || e.target.classList.contains('whois-x'))){
                 modal.hidden = true;
             }
+        });
+        document.addEventListener('keydown', function(e){
+            if(e.key === 'Enter' && e.target && e.target.id === 'whoisQ'){ e.preventDefault(); run(e.target.value); }
         });
     })();
     </script>

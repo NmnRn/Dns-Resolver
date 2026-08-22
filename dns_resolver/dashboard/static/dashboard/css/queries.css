@@ -26,7 +26,8 @@
 .qdot.blk{ background:var(--err); }
 .qdot.nx{ background:var(--warn); }
 .qdot.err{ background:var(--err); }
-.qstat{ font-size:13px; line-height:1; flex:none; }
+.qstat{ display:inline-flex; align-items:center; justify-content:center; width:18px; flex:none;
+    font-size:13px; line-height:1; }   /* sabit genişlik → ✓/⛔/∅/⚠ hizalı, satırlar kaymaz */
 .qstat.s-ok{ color:var(--ok); }
 .qstat.s-blk{ color:var(--err); }
 .qstat.s-nx{ color:var(--warn); }

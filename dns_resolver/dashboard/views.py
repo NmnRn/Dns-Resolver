@@ -809,51 +809,64 @@ def devices(request):
     return render(request, 'dashboard/devices.html', context)
 
 
-def _whois(ip):
-    """2 adımlı WHOIS: whois.iana.org:43 sorumlu RIR'i döndürür → o RIR sorgulanır.
-    Ham metin döner. IP çağırandan ÖNCE doğrulanmalı (enjeksiyon/SSRF önle).
-    NOT: sorgu IANA + ilgili RIR'e (ARIN/RIPE/APNIC...) port 43 ile GİDER (dış istek)."""
-    def q(server, query):
-        with socket.create_connection((server, 43), timeout=5) as s:
-            s.sendall((query + '\r\n').encode('ascii', 'ignore'))
+def _whois(query):
+    """IP YA DA alan adı için 2 adımlı WHOIS: whois.iana.org:43 sorumlu sunucuyu
+    (RIR ya da TLD registry) döndürür → tam sorgu oraya yapılır. Ham metin döner.
+    query çağırandan ÖNCE doğrulanmalı (IP/alan adı → enjeksiyon/SSRF önle).
+    NOT: dış istek (IANA + ilgili RIR/registry, port 43)."""
+    try:
+        ipaddress.ip_address(query)
+        iana_q = query                        # IP → doğrudan sorgula
+    except ValueError:
+        iana_q = query.rsplit('.', 1)[-1]     # alan adı → TLD ile sorumlu registry'yi bul
+
+    def q(server, s):
+        with socket.create_connection((server, 43), timeout=5) as sock:
+            sock.sendall((s + '\r\n').encode('ascii', 'ignore'))
             data = b''
             while len(data) < 200_000:
-                chunk = s.recv(8192)
+                chunk = sock.recv(8192)
                 if not chunk:
                     break
                 data += chunk
         return data.decode('utf-8', 'replace')
 
-    top = q('whois.iana.org', ip)
+    top = q('whois.iana.org', iana_q)
     refer = ''
     for line in top.splitlines():
-        if line.lower().startswith('refer:'):
+        low = line.lower()
+        if low.startswith('refer:') or low.startswith('whois:'):   # IP→refer, TLD→whois
             refer = line.split(':', 1)[1].strip()
             break
-    if refer and re.match(r'^[A-Za-z0-9.\-]+$', refer):   # RIR ana bilgisayar adı (temiz)
+    if refer and re.match(r'^[A-Za-z0-9.\-]+$', refer):   # sorumlu sunucu adı (temiz)
         try:
-            return q(refer, ip)
+            return q(refer, query)
         except OSError:
             return top
     return top
 
 
 def whois_lookup(request):
-    """AJAX: bir IP için WHOIS (yalnız yönetici). IP doğrulanır → enjeksiyon önlenir.
-    Sync view → uvicorn threadpool'unda koşar (bloklayan soket olay döngüsünü tutmaz)."""
+    """AJAX: bir IP ya da alan adı için WHOIS (yalnız yönetici). Girdi doğrulanır →
+    enjeksiyon önlenir. Sync view → uvicorn threadpool'unda koşar (bloklayan soket
+    olay döngüsünü tutmaz)."""
     uid = request.session.get('_auth_user_id')
     if not uid or not User.objects.filter(id=uid, is_superuser=True).exists():
         return JsonResponse({'error': 'auth'}, status=403)
-    ip = (request.GET.get('ip', '') or '').strip()
+    q = (request.GET.get('ip', '') or '').strip().lower().rstrip('.')
+    ok = False
     try:
-        ipaddress.ip_address(ip)
+        ipaddress.ip_address(q)
+        ok = True
     except ValueError:
-        return JsonResponse({'error': 'Geçersiz IP'}, status=400)
+        ok = _valid_domain(q)
+    if not ok:
+        return JsonResponse({'error': 'Geçersiz IP / alan adı'}, status=400)
     try:
-        text = _whois(ip)
+        text = _whois(q)
     except Exception as exc:   # noqa: BLE001 — dış WHOIS hatası sayfayı bozmasın
         return JsonResponse({'error': f'WHOIS başarısız: {type(exc).__name__}'}, status=502)
-    return JsonResponse({'ip': ip, 'whois': (text or '').strip()[:8000]})
+    return JsonResponse({'query': q, 'whois': (text or '').strip()[:8000]})
 
 
 def device_record(request):

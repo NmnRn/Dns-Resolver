@@ -138,3 +138,111 @@ def verify_rrsig(rrset_owner: str, rrset, rrsig, dnskey) -> bool:
         return False                  # desteklenmeyen algoritma → doğrulama yok
     except Exception:
         return False                  # fail-closed: imza tutmuyorsa/parse hatası → geçersiz
+
+
+# --- Trust anchor + zincir bağları ------------------------------------------ #
+# IANA kök trust anchor (DS kaydı olarak). Kök KSK-2017: key tag 20326,
+# algoritma 8 (RSASHA256), digest tipi 2 (SHA-256).
+# ⚠️ Kaynak: IANA root-anchors.xml (https://data.iana.org/root-anchors/).
+#    KSK rollover'da DEĞİŞİR — üretimde buradan doğrula/güncelle (yeni KSK-2024
+#    key tag 38696 eklendiğinde listeye ekle). (tag, alg, digest_type, digest_hex)
+ROOT_TRUST_ANCHORS = [
+    (20326, 8, 2, "e06d44b80b8f1d39a95c0b0d7c65d08458e880409bbc683457104237c7f8ec8d"),
+]
+
+
+def dnskey_matches_ds(owner, dnskey, ds_list):
+    """dnskey'in DS özeti, ds_list'teki (tag, alg, digest_type, digest_hex) kayıtlarından
+    biriyle eşleşiyor mu? Üst bölge DS'i ↔ alt bölge DNSKEY bağını doğrular.
+    Eşleşen DS 4'lüsünü döner, yoksa None."""
+    kt = key_tag(dnskey)
+    for entry in ds_list:
+        tag, alg, dtype, digest_hex = entry
+        if tag != kt or alg != dnskey.algorithm:
+            continue
+        try:
+            calc = dnskey_to_ds(owner, dnskey, dtype).hex()
+        except ValueError:
+            continue
+        if calc == digest_hex.lower():
+            return entry
+    return None
+
+
+def find_and_verify(owner, rrset, rrsigs, dnskeys):
+    """rrset'i, rrsigs içindeki bir RRSIG + dnskeys içindeki EŞLEŞEN (key_tag+alg)
+    DNSKEY ile doğrula. Herhangi bir (rrsig, dnskey) çifti tutarsa True (fail-closed)."""
+    for rrsig in rrsigs:
+        for dk in dnskeys:
+            if key_tag(dk) == rrsig.key_tag and dk.algorithm == rrsig.algorithm:
+                if verify_rrsig(owner, rrset, rrsig, dk):
+                    return True
+    return False
+
+
+# --- Zincir doğrulama (kökten aşağı) ---------------------------------------- #
+SECURE = "secure"      # imza zinciri kökten doğrulandı → AD biti
+INSECURE = "insecure"  # imzasız bölge (DS yok) → normal döner, AD yok
+BOGUS = "bogus"        # imzalı AMA doğrulanamadı → SERVFAIL
+
+
+def _parent_zone(zone):
+    z = zone.rstrip(".")
+    if not z or "." not in z:
+        return "."
+    return z.split(".", 1)[1] + "."
+
+
+def _ds_digest_hex(ds):
+    d = ds.digest
+    return d.hex() if isinstance(d, (bytes, bytearray)) else str(d).replace(" ", "").lower()
+
+
+def get_zone_dnskeys(zone, fetch, anchors=None, _depth=0):
+    """zone apex'inin DOĞRULANMIŞ DNSKEY'lerini döndür (kökten zincirle).
+    Dönüş: (durum, dnskeys). fetch(name, rtype) -> (rrset, rrsigs).
+    Kök: DNSKEY'i trust anchor DS'iyle doğrular; alt bölgeler: DS'i parent DNSKEY
+    ile doğrular + DNSKEY'in DS ile eşleşen KSK'sıyla imzasını denetler."""
+    anchors = anchors if anchors is not None else ROOT_TRUST_ANCHORS
+    zone = zone if zone.endswith(".") else zone + "."
+    if _depth > 20:
+        return BOGUS, []
+
+    # fetch RRset'i RR nesnesi listesi olarak döndürür; DNSKEY/DS "RD" alanları rr.rdata'da.
+    dnskey_rrs, dk_sigs = fetch(zone, "DNSKEY")
+    if not dnskey_rrs:
+        return INSECURE, []                      # bölge imzalı değil gibi
+    dnskeys = [rr.rdata for rr in dnskey_rrs]    # DNSKEY RD'leri (key/flags/algorithm)
+
+    if zone == ".":
+        ds_list = list(anchors)
+    else:
+        ds_rrs, ds_sigs = fetch(zone, "DS")      # child'ın DS'i parent'ta yayınlanır
+        if not ds_rrs:
+            return INSECURE, []                  # güvenli delegasyon yok → insecure
+        st, parent_keys = get_zone_dnskeys(_parent_zone(zone), fetch, anchors, _depth + 1)
+        if st != SECURE:
+            return (BOGUS if st == BOGUS else INSECURE), []
+        if not find_and_verify(zone, ds_rrs, ds_sigs, parent_keys):
+            return BOGUS, []                     # DS RRSIG parent'la tutmuyor
+        ds_list = [(d.rdata.key_tag, d.rdata.algorithm, d.rdata.digest_type, _ds_digest_hex(d.rdata))
+                   for d in ds_rrs]
+
+    ksks = [dk for dk in dnskeys if dnskey_matches_ds(zone, dk, ds_list)]
+    if not ksks:
+        return BOGUS, []                         # hiçbir DNSKEY DS ile eşleşmiyor
+    if not find_and_verify(zone, dnskey_rrs, dk_sigs, ksks):
+        return BOGUS, []                         # DNSKEY RRset öz-imzası tutmuyor
+    return SECURE, dnskeys                        # doğrulanmış DNSKEY RD listesi
+
+
+def validate_rrset(owner, rrset, rrsigs, fetch, anchors=None):
+    """Bir RRset'in DNSSEC durumu: SECURE / INSECURE / BOGUS.
+    owner: RRset sahibi ad; rrsigs: bu RRset'i kaplayan RRSIG'ler; fetch: zincir çekici."""
+    if not rrsigs:
+        return INSECURE                          # imza yok → doğrulanamaz (insecure)
+    zone = str(rrsigs[0].name)                   # imzalayan bölge (RRSIG signer name)
+    st, keys = get_zone_dnskeys(zone, fetch, anchors)
+    if st != SECURE:
+        return st
+    return SECURE if find_and_verify(owner, rrset, rrsigs, keys) else BOGUS

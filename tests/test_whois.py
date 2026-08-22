@@ -44,3 +44,22 @@ def test_whois_no_referral_returns_iana(monkeypatch):
     monkeypatch.setattr(views.socket, "create_connection", fake_conn)
     out = views._whois("2.2.2.2")
     assert "bir yer" in out
+
+
+def test_whois_domain_uses_tld_then_registry(monkeypatch):
+    # alan adı → IANA'ya TLD ('com') sorulur, 'whois:' referral'ı takip edilir,
+    # sonra tam alan adı registry'ye sorulur.
+    responses = {
+        "whois.iana.org": b"whois:        whois.verisign-grs.com\n",
+        "whois.verisign-grs.com": b"Domain Name: EXAMPLE.COM\nRegistrar: Test Reg\n",
+    }
+    calls = []
+
+    def fake_conn(addr, timeout=None):
+        calls.append(addr[0])
+        return _FakeSock(responses.get(addr[0], b""))
+
+    monkeypatch.setattr(views.socket, "create_connection", fake_conn)
+    out = views._whois("example.com")
+    assert "Test Reg" in out
+    assert calls == ["whois.iana.org", "whois.verisign-grs.com"]
