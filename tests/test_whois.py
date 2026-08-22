@@ -1,5 +1,7 @@
 """WHOIS yardımcısı (dashboard.views._whois): IANA referral'ı takip eder → RIR'i
 sorgular. Soket MOCK'lanır → CANLI ağ YOK."""
+import ipaddress
+
 import pytest
 
 django = pytest.importorskip("django")
@@ -63,3 +65,20 @@ def test_whois_domain_uses_tld_then_registry(monkeypatch):
     out = views._whois("example.com")
     assert "Test Reg" in out
     assert calls == ["whois.iana.org", "whois.verisign-grs.com"]
+
+
+def test_local_ip_note_private_and_loopback():
+    assert "yerel" in views._local_ip_note(ipaddress.ip_address("192.168.1.5")).lower()
+    assert views._local_ip_note(ipaddress.ip_address("10.5.5.5")) is not None      # RFC1918
+    assert views._local_ip_note(ipaddress.ip_address("127.0.0.1")) is not None     # loopback
+
+
+def test_local_ip_note_public_is_none(monkeypatch):
+    monkeypatch.setattr(views, "_server_ips", lambda: [])   # dns-net /24 eşleşmesin
+    assert views._local_ip_note(ipaddress.ip_address("1.1.1.1")) is None
+
+
+def test_local_ip_note_dns_net_subnet(monkeypatch):
+    monkeypatch.setattr(views, "_server_ips", lambda: ["172.27.17.2"])   # konteyner IP
+    note = views._local_ip_note(ipaddress.ip_address("172.27.17.9"))
+    assert note is not None and "dns-net" in note

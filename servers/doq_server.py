@@ -8,7 +8,7 @@ from project_control import settings
 
 from dnslib import QTYPE, RCODE, DNSRecord
 from logs.dns_logs import logger
-from servers.normal_udp import status_for
+from servers.normal_udp import status_for, _clean_reply
 
 load_dotenv(settings.PROJECT_DIRECTORY / ".env")
 
@@ -57,7 +57,7 @@ class DoQProtocol(QuicConnectionProtocol):
             qname += "."
         qtype = QTYPE[parsed.q.qtype]
         
-        reply = parsed.reply()
+        reply = _clean_reply(parsed)
 
         try:
             # aioquic'in özel (private) alanı; sürüm güncellemesinde değişebilir.

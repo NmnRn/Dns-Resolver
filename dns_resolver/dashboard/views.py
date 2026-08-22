@@ -809,6 +809,28 @@ def devices(request):
     return render(request, 'dashboard/devices.html', context)
 
 
+def _local_ip_note(ip):
+    """ip (ipaddress nesnesi) yerel/özel ise açıklama döndür (gerçek WHOIS anlamsız —
+    RIR yalnız 'özel alan' der), değilse None. Kendi dns-net /24'ümüz ayrıca belirtilir."""
+    try:
+        for sip in _server_ips():                       # konteynerin dns-net IP'leri (172.27.17.2…)
+            if ip in ipaddress.ip_network(f"{sip}/24", strict=False):
+                return ("Bu adres DNS sunucumuzun yerel ağına (dns-net) ait — genel WHOIS kaydı "
+                        "YOKTUR. Bir yerel/konteyner cihazıdır.")
+    except (ValueError, OSError):
+        pass
+    if ip.is_loopback:
+        return "Loopback adresi (127.0.0.1 / ::1) — bu makinenin kendisi; WHOIS kaydı yoktur."
+    if ip.is_link_local:
+        return "Link-local adres (169.254.x / fe80::) — yerel cihaz; WHOIS kaydı yoktur."
+    if ip.is_private:
+        return ("Özel/yerel ağ adresi (RFC 1918) — genel WHOIS kaydı YOKTUR. "
+                "Bu bir yerel cihazdır (LAN / VPN / konteyner).")
+    if ip.is_reserved or ip.is_unspecified or ip.is_multicast:
+        return "Özel-amaçlı / ayrılmış adres — genel WHOIS kaydı yoktur."
+    return None
+
+
 def _whois(query):
     """IP YA DA alan adı için 2 adımlı WHOIS: whois.iana.org:43 sorumlu sunucuyu
     (RIR ya da TLD registry) döndürür → tam sorgu oraya yapılır. Ham metin döner.
@@ -854,14 +876,16 @@ def whois_lookup(request):
     if not uid or not User.objects.filter(id=uid, is_superuser=True).exists():
         return JsonResponse({'error': 'auth'}, status=403)
     q = (request.GET.get('ip', '') or '').strip().lower().rstrip('.')
-    ok = False
     try:
-        ipaddress.ip_address(q)
-        ok = True
+        ip_obj = ipaddress.ip_address(q)
     except ValueError:
-        ok = _valid_domain(q)
-    if not ok:
+        ip_obj = None
+    if ip_obj is None and not _valid_domain(q):
         return JsonResponse({'error': 'Geçersiz IP / alan adı'}, status=400)
+    if ip_obj is not None:                              # yerel/özel IP → dış WHOIS'e GİTME
+        note = _local_ip_note(ip_obj)
+        if note:
+            return JsonResponse({'query': q, 'whois': note, 'local': True})
     try:
         text = _whois(q)
     except Exception as exc:   # noqa: BLE001 — dış WHOIS hatası sayfayı bozmasın

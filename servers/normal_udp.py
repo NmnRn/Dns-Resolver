@@ -37,6 +37,21 @@ def status_for(rcode, blocked):
     if rcode == RCODE.SERVFAIL:
         return "servfail"
     return "ok"
+
+
+def _clean_reply(request):
+    """Recursive resolver yanıtı için doğru bayraklar. dnslib'in reply()'ı varsayılan
+    aa=1 verir + istek bitmap'ini (RD/AD dahil) kopyalar → yanıltıcı olur:
+      * aa=0  → yetkili değiliz (recursive),
+      * ad=0  → DNSSEC DOĞRULAMASI YAPMADIKÇA 'authenticated' iddia etme
+                (istemci sahte AD'yi 'doğrulandı' sanmasın — güvenlik),
+      * ra=1  → özyineleme sağlıyoruz.
+    (DNSSEC wiring geldiğinde yalnız doğrulanan cevapta ad=1 set edilecek.)"""
+    reply = request.reply()
+    reply.header.aa = 0
+    reply.header.ad = 0
+    reply.header.ra = 1
+    return reply
 MAX_TTL = 86400          # cache'te bir kaydı en fazla tutma süresi (sn)
 NEG_TTL_CAP = 900        # negatif (NXDOMAIN/NODATA) cache üst sınırı (sn)
 CACHE_MAX_ENTRIES = 10000  # bellek-içi cache girdi üst sınırı (unique-query flood DoS'a karşı)
@@ -835,14 +850,14 @@ class DNSResolver(BaseResolver):
         qtype = QTYPE[request.q.qtype]
         client_ip = handler.client_address[0]
         if not self.core.access_ok(client_ip):   # ACL / rate limit → reddet
-            reply = request.reply()
+            reply = _clean_reply(request)
             reply.header.rcode = RCODE.REFUSED
             return reply
 
         src = ["—"]
         rcode, records = self.core.resolve(qname, qtype, source=src)
 
-        reply = request.reply()
+        reply = _clean_reply(request)
         if rcode == RCODE.NXDOMAIN:
             reply.header.rcode = RCODE.NXDOMAIN
         elif rcode == RCODE.SERVFAIL:

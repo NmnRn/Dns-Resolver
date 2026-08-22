@@ -19,7 +19,7 @@ from dnslib import QTYPE, RCODE, DNSRecord
 
 import config_store
 from logs.dns_logs import logger
-from servers.normal_udp import status_for
+from servers.normal_udp import status_for, _clean_reply
 
 DNS_QUERY_PATH = "/dns-query"
 DNS_MSG = b"application/dns-message"
@@ -99,7 +99,7 @@ def make_app(core):
         client_ip = (scope.get("client") or ("", 0))[0]
 
         if not core.access_ok(client_ip):          # ACL / rate limit → sessiz REFUSED
-            reply = request.reply()
+            reply = _clean_reply(request)
             reply.header.rcode = RCODE.REFUSED
             await _send(send, 200, reply.pack(), DNS_MSG)
             return
@@ -110,7 +110,7 @@ def make_app(core):
         rcode, records = await loop.run_in_executor(
             None, lambda: core.resolve(qname, qtype, source=src)
         )
-        reply = request.reply()
+        reply = _clean_reply(request)
         if rcode == RCODE.NXDOMAIN:
             reply.header.rcode = RCODE.NXDOMAIN
         elif rcode == RCODE.SERVFAIL:
