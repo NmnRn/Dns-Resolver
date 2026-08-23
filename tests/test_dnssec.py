@@ -66,6 +66,40 @@ def test_ecdsa_p256_roundtrip():
     assert dnssec.verify_rrsig(OWNER, _rrset("8.8.8.8"), rrsig, dk) is False
 
 
+def _signed_rrsig(priv, dk, sig_inc, sig_exp):
+    """Verilen pencereyle imzalı bir RRSIG üret (kripto DOĞRU, yalnız zaman değişir)."""
+    rrset = _rrset()
+    rrsig = RRSIG(covered=QTYPE.A, algorithm=dnssec.ALG_ED25519, labels=2, orig_ttl=3600,
+                  sig_exp=sig_exp, sig_inc=sig_inc, key_tag=dnssec.key_tag(dk),
+                  name=OWNER, sig=b"")
+    rrsig.sig = priv.sign(dnssec._signed_data(OWNER, rrset, rrsig))
+    return rrset, rrsig
+
+
+def test_rrsig_expired_fails():
+    priv = ed25519.Ed25519PrivateKey.generate()
+    dk = DNSKEY(flags=257, protocol=3, algorithm=dnssec.ALG_ED25519, key=priv.public_key().public_bytes_raw())
+    now = int(time.time())
+    rrset, rrsig = _signed_rrsig(priv, dk, now - 7200, now - 3600)   # süresi 1 saat önce doldu
+    assert dnssec.verify_rrsig(OWNER, rrset, rrsig, dk) is False     # kripto doğru AMA süresi dolmuş
+
+
+def test_rrsig_not_yet_valid_fails():
+    priv = ed25519.Ed25519PrivateKey.generate()
+    dk = DNSKEY(flags=257, protocol=3, algorithm=dnssec.ALG_ED25519, key=priv.public_key().public_bytes_raw())
+    now = int(time.time())
+    rrset, rrsig = _signed_rrsig(priv, dk, now + 3600, now + 7200)   # 1 saat sonra başlıyor
+    assert dnssec.verify_rrsig(OWNER, rrset, rrsig, dk) is False
+
+
+def test_rrsig_within_window_ok():
+    priv = ed25519.Ed25519PrivateKey.generate()
+    dk = DNSKEY(flags=257, protocol=3, algorithm=dnssec.ALG_ED25519, key=priv.public_key().public_bytes_raw())
+    now = int(time.time())
+    rrset, rrsig = _signed_rrsig(priv, dk, now - 3600, now + 3600)   # pencere içinde
+    assert dnssec.verify_rrsig(OWNER, rrset, rrsig, dk) is True
+
+
 def test_wrong_key_fails():
     priv = ed25519.Ed25519PrivateKey.generate()
     other = ed25519.Ed25519PrivateKey.generate().public_key().public_bytes_raw()

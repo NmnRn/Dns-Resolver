@@ -18,6 +18,7 @@ tam uygulanmadı — A/AAAA/DNSKEY/DS/TXT gibi ad-içermeyen tiplerde tam doğru
 """
 import hashlib
 import struct
+import time
 
 from dnslib import DNSBuffer, QTYPE
 
@@ -27,6 +28,11 @@ ALG_RSASHA512 = 10
 ALG_ECDSAP256 = 13
 ALG_ECDSAP384 = 14
 ALG_ED25519 = 15
+
+# RRSIG geçerlilik penceresi (RFC 4035 §5.3.1) için saat kayması toleransı (sn).
+# NTP'siz hafif drift TÜM imzaları kırmasın; süresi gerçekten dolmuş (saatlerce)
+# imzalar yine yakalanır. Saat çok yanlışsa imzalı alanlar SERVFAIL olur → NTP şart.
+RRSIG_SKEW = 300
 
 # DS digest tipleri
 DS_SHA256 = 2
@@ -94,6 +100,11 @@ def verify_rrsig(rrset_owner: str, rrset, rrsig, dnskey) -> bool:
     """rrset'in imzasını (rrsig) dnskey ile doğrula. True=geçerli. Kripto/parse hatası
     -> False (fail-closed). Desteklenen alg: RSA/SHA-256,512 · ECDSA P-256,384 · Ed25519."""
     try:
+        # Geçerlilik penceresi (RFC 4035 §5.3.1): şu an [inception, expiration] dışındaysa
+        # imza GEÇERSİZ — süresi dolmuş ya da henüz başlamamış. (Kripto doğru olsa bile.)
+        now = time.time()
+        if not (int(rrsig.sig_inc) - RRSIG_SKEW <= now <= int(rrsig.sig_exp) + RRSIG_SKEW):
+            return False
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.asymmetric import padding, rsa, ec, ed25519
         from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
