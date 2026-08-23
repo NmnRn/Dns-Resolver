@@ -228,10 +228,15 @@ async def get_dnssec_breakdown() -> dict:
     c = {r['d']: r['cnt'] for r in rows}
     secure, insecure, bogus = c.get('secure', 0), c.get('insecure', 0), c.get('bogus', 0)
     validated = secure + insecure + bogus
+    rate = None                              # None = hiç DNSSEC verisi yok
+    if validated:
+        r = 100 * secure / validated
+        # <10 iken 1 ondalık → 12/3813 gibi küçük ama SIFIR OLMAYAN oran "%0" görünmesin
+        rate = round(r, 1) if r < 10 else round(r)
     return {
         'secure': secure, 'insecure': insecure, 'bogus': bogus,
         'off': c.get('off', 0), 'total': sum(c.values()), 'validated': validated,
-        'rate': round(100 * secure / validated) if validated else None,   # None = hiç DNSSEC verisi yok
+        'rate': rate,
     }
 
 
