@@ -18,9 +18,9 @@
     /* forest-copper (açık): sıcak krem zemin + orman yeşili + bakır */
     --bg:#f6f3ec; --panel:#ffffff; --panel-2:#efece3;
     --border:#e4dfd4; --border-strong:#d2cbbc;
-    --text:#1a1712; --muted:#6a6357; --muted-2:#948b7e;
+    --text:#1a1712; --muted:#6a6357; --muted-2:#787061;   /* muted-2 WCAG AA (4.9:1) */
     --accent:#3f8a54; --accent-deep:#2f6b41; --accent-ink:#ffffff; --accent-soft:#e7f0e8;
-    --ok:#3f8a54; --err:#ac3f39; --warn:#b9842c;
+    --ok:#3f8a54; --err:#ac3f39; --warn:#8a6012;          /* warn metin AA (5.6:1) + NXDOMAIN etiketi */
     /* kayıt tipi + yöntem renkleri (iki temada da okunur) */
     --tc-a:#2563eb; --tc-aaaa:#0891b2; --tc-cname:#7c3aed; --tc-mx:#db2777; --tc-txt:#b45309; --tc-https:#16a34a;
     --udp:#16a34a; --doh:#2563eb; --dot:#b45309; --doq:#7c3aed;
@@ -33,7 +33,7 @@
     /* forest-copper (koyu): sıcak koyu zemin + orman yeşili + bakır */
     --bg:#171513; --panel:#1f1d1b; --panel-2:#26231f;
     --border:#2f2b28; --border-strong:#3c3630;
-    --text:#ece7e1; --muted:#a79d92; --muted-2:#7c7367;
+    --text:#ece7e1; --muted:#a79d92; --muted-2:#978c7e;   /* muted-2 WCAG AA (5.1:1) */
     --accent:#4fa467; --accent-deep:#63b97c; --accent-ink:#0f150e; --accent-soft:rgba(79,164,103,.16);
     --ok:#5cb877; --err:#d76a60; --warn:#cf9a3f;
     --tc-a:#60a5fa; --tc-aaaa:#38bdf8; --tc-cname:#c4b5fd; --tc-mx:#f9a8d4; --tc-txt:#cf9a3f; --tc-https:#5cb877;

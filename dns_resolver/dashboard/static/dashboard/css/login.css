@@ -9,7 +9,7 @@
 :root {
     /* forest-copper (açık): sıcak krem zemin + orman yeşili + bakır */
     --bg:#f6f3ec; --panel:#ffffff; --border:#e4dfd4; --border-strong:#d2cbbc;
-    --text:#1a1712; --muted:#6a6357; --muted-2:#948b7e;
+    --text:#1a1712; --muted:#6a6357; --muted-2:#787061;   /* WCAG AA */
     --accent:#3f8a54; --accent-deep:#2f6b41; --accent-ink:#ffffff; --accent-soft:#e7f0e8;
     --ok:#3f8a54; --err:#ac3f39;
     --mono:"SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
@@ -19,7 +19,7 @@
 :root[data-theme="dark"] {
     /* forest-copper (koyu): sıcak koyu zemin + orman yeşili + bakır */
     --bg:#171513; --panel:#1f1d1b; --border:#2f2b28; --border-strong:#3c3630;
-    --text:#ece7e1; --muted:#a79d92; --muted-2:#7c7367;
+    --text:#ece7e1; --muted:#a79d92; --muted-2:#978c7e;   /* WCAG AA */
     --accent:#4fa467; --accent-deep:#63b97c; --accent-ink:#0f150e; --accent-soft:rgba(79,164,103,.16);
     --ok:#5cb877; --err:#d76a60; --shadow-lg:0 14px 38px rgba(0,0,0,.55);
 }
