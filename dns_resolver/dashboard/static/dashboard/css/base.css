@@ -109,7 +109,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* Yerleşim + açılış animasyonu */
 .wrap { max-width: 1160px; margin: 0 auto; padding: 30px 22px 72px; animation: rise .42s cubic-bezier(.2,.7,.2,1) both; }
 body.ajax-busy { cursor: progress; }
-@keyframes rise { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+/* NOT: transform KULLANMA — .wrap içindeki position:fixed modallar (WHOIS, Liste Ekle)
+   için kapsayıcı-blok/stacking-context tuzağı oluşturur → modal topbar'ın altında kalır.
+   Yalnız opacity fade → tuzak yok, modal viewport köküne çıkar. */
+@keyframes rise { from { opacity: 0; } to { opacity: 1; } }
 .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; max-width: 72ch; }
 
 .box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); }

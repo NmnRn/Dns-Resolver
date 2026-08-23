@@ -618,20 +618,34 @@ async def filters(request):
             elif action == 'schedule_del':
                 await db.remove_schedule(request.POST.get('name', '').strip())
                 msg = ('ok', 'Zamanlama kaldırıldı.')
+            elif action in ('block_add', 'allow_add'):
+                # Çok satırlı: her satır (ya da boşluk/virgülle ayrılmış) bir alan adı.
+                raw = request.POST.get('domain', '')
+                cands = [c for c in re.split(r'[\s,]+', raw) if c.strip()]
+                adder = db.add_block if action == 'block_add' else db.add_allow
+                where = 'engel' if action == 'block_add' else 'izin'
+                added, invalid = 0, []
+                for c in cands:
+                    d = _norm_domain(c)
+                    if _valid_block_domain(d):
+                        await adder(d)
+                        added += 1
+                    else:
+                        invalid.append(c.strip())
+                if added and invalid:
+                    msg = ('ok', f'{added} alan adı {where} listesine eklendi · {len(invalid)} geçersiz atlandı: {", ".join(invalid[:4])}')
+                elif added:
+                    msg = ('ok', f'{added} alan adı {where} listesine eklendi.')
+                elif invalid:
+                    msg = ('error', f'Geçersiz alan adı: {", ".join(invalid[:6])}')
+                else:
+                    msg = ('error', 'Alan adı girilmedi.')
             else:
-                # --- Elle domain işlemleri ---
+                # --- Elle domain işlemleri (tekil silme / toplu yönetim) ---
                 domain = _norm_domain(request.POST.get('domain', ''))
-                if action in ('block_add', 'allow_add') and not _valid_block_domain(domain):
-                    msg = ('error', f'Geçersiz alan adı: {domain or "(boş)"}')
-                elif action == 'block_add':
-                    await db.add_block(domain)
-                    msg = ('ok', f'{domain} engellendi.')
-                elif action == 'block_del':
+                if action == 'block_del':
                     await db.remove_block(domain)
                     msg = ('ok', f'{domain} engel listesinden çıkarıldı.')
-                elif action == 'allow_add':
-                    await db.add_allow(domain)
-                    msg = ('ok', f'{domain} izin listesine eklendi.')
                 elif action == 'allow_del':
                     await db.remove_allow(domain)
                     msg = ('ok', f'{domain} izin listesinden çıkarıldı.')
