@@ -107,8 +107,9 @@ def make_app(core):
         # core.resolve BLOKLAYICI (ağ) → executor'a al (H2 kilitlenmesin).
         loop = asyncio.get_event_loop()
         src = ["—"]
+        ds = ["off"]
         rcode, records = await loop.run_in_executor(
-            None, lambda: core.resolve(qname, qtype, source=src)
+            None, lambda: core.resolve(qname, qtype, source=src, dnssec_out=ds)
         )
         reply = _clean_reply(request)
         if rcode == RCODE.NXDOMAIN:
@@ -117,6 +118,8 @@ def make_app(core):
             reply.header.rcode = RCODE.SERVFAIL
         else:
             reply.rr = list(records)
+        if ds[0] == "secure":
+            reply.header.ad = 1
         reply_bytes = reply.pack()
 
         log = logger.warning if rcode == RCODE.SERVFAIL else logger.info
@@ -126,7 +129,7 @@ def make_app(core):
         core.db_manager.add_to_cache(key=qname, value={
             "record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani,
             "method": "doh", "blocked": bool(blocked_by), "blocked_by": blocked_by,
-            "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by)),
+            "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by)), "dnssec": ds[0],
         })
         await _send(send, 200, reply_bytes, DNS_MSG)
 

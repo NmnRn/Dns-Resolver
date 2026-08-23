@@ -33,6 +33,26 @@
             </div>
         </div>
 
+        <div class="box" style="margin-bottom:16px;">
+            <h2>{% trans "DNSSEC Doğrulama" %} <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;">— {% trans "deneysel" %}</span></h2>
+            <div class="body">
+                {% if dnssec.rate is not None %}
+                    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
+                        <span style="font:800 34px var(--sans);color:var(--ok);line-height:1;">%{{ dnssec.rate }}</span>
+                        <span class="muted">{% blocktrans with n=dnssec.validated %}doğrulanan {{ n }} sorguda güvenli (secure) oranı{% endblocktrans %}</span>
+                    </div>
+                    <div style="display:flex;gap:18px;flex-wrap:wrap;font:600 13px var(--mono);">
+                        <span style="color:var(--ok);">✓ secure: {{ dnssec.secure }}</span>
+                        <span style="color:var(--muted);">— insecure: {{ dnssec.insecure }}</span>
+                        <span style="color:var(--err);">✗ bogus: {{ dnssec.bogus }}</span>
+                        <span class="muted">off: {{ dnssec.off }}</span>
+                    </div>
+                {% else %}
+                    <p class="muted">{% trans "Henüz DNSSEC verisi yok — Sorgu Ayarları'ndan DNSSEC doğrulamayı aç; yeni sorgular için oran burada birikir." %}</p>
+                {% endif %}
+            </div>
+        </div>
+
         {% if source_times %}
         <div class="box" style="margin-bottom:16px;">
             <h2>{% trans "Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / upstream)" %}</h2>

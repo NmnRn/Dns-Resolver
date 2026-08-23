@@ -66,18 +66,22 @@ class DoQProtocol(QuicConnectionProtocol):
             client_ip = "unknown"
 
         src = ["—"]
+        ds = ["off"]
         if not self.core.access_ok(client_ip):   # ACL / rate limit → reddet
             reply.header.rcode = RCODE.REFUSED
         else:
-            rcode, record = await loop.run_in_executor(None, self.core.resolve, qname, qtype, 0, src)
+            rcode, record = await loop.run_in_executor(
+                None, lambda: self.core.resolve(qname, qtype, 0, src, ds))
             if rcode == RCODE.NXDOMAIN:
                 reply.header.rcode = RCODE.NXDOMAIN
             elif rcode == RCODE.SERVFAIL:
                 reply.header.rcode = RCODE.SERVFAIL
             else:
                 reply.rr = list(record)
+            if ds[0] == "secure":
+                reply.header.ad = 1
             blocked_by = self.core.is_blocked(qname)
-            self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by))})
+            self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": "doq", "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by)), "dnssec": ds[0]})
         reply.header.id = 0
         reply_bytes = reply.pack()
         

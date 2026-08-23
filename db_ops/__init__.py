@@ -50,15 +50,15 @@ class DBManager(dbops.DB_CON):
         params = [
             (domain, value['record_type'], value['client_ip'], value['queried_at'], value['method'],
              value.get('blocked', False), value.get('blocked_by'), value.get('resolved_by'),
-             value.get('status'))
+             value.get('status'), value.get('dnssec'))
             for domain, value in batch
         ]
         try:
             async with self.get_db_cursor() as (cursor, conn):
                 await cursor.executemany(
                     """
-                    INSERT INTO dns_cache (domain, record_type, client_ip, queried_at, method, blocked, blocked_by, resolved_by, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO dns_cache (domain, record_type, client_ip, queried_at, method, blocked, blocked_by, resolved_by, status, dnssec)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     params,
                 )

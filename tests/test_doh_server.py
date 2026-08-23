@@ -41,7 +41,7 @@ class _Core:
         return self._allow
     def is_blocked(self, q):
         return self._blocked
-    def resolve(self, qname, qtype, source=None):
+    def resolve(self, qname, qtype, source=None, dnssec_out=None):
         if source is not None:
             source[0] = "test-kaynak"
         self.resolved.append((qname, qtype))

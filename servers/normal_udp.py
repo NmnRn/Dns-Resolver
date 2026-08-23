@@ -9,6 +9,7 @@ import urllib.request
 from time import time as now
 
 from dnslib import QTYPE, RCODE, EDNS0, DNSRecord, RR, CNAME, A, AAAA
+from servers import dnssec
 from dnslib.server import BaseResolver, DNSLogger
 from dotenv import load_dotenv
 
@@ -205,6 +206,7 @@ class DNSCore:
         self.use_recursion = True
         self.upstreams = []               # ['1.1.1.1', 'https://…/dns-query', 'tls://…'] (forwarding)
         self.upstreams_secondary = []     # yedek: 1.'ler HİÇ yanıt vermezse denenir
+        self.dnssec = False               # DNSSEC doğrulama (panelden; default KAPALI)
         self.upstream_strategy = "sequential"   # sequential | parallel | fastest
         # Koşullu forwarding: [(son-ek, upstream)] — eşleşen domaini belirli bir
         # upstream'e çözdürür (use_recursion'dan bağımsız). Panelden ayarlanır.
@@ -424,10 +426,11 @@ class DNSCore:
                 break
         return out, name
 
-    def _query(self, domain, qtype, server_ip, tcp=False, timeout=QUERY_TIMEOUT, port=53):
-        """Tek bir sunucuya sorgu at (varsayılan port 53). TC gelirse TCP'ye düş."""
+    def _query(self, domain, qtype, server_ip, tcp=False, timeout=QUERY_TIMEOUT, port=53, do=False):
+        """Tek bir sunucuya sorgu at (varsayılan port 53). TC gelirse TCP'ye düş.
+        do=True → EDNS DO biti (DNSSEC kayıtları RRSIG/DNSKEY istenir)."""
         q = DNSRecord.question(domain, qtype)
-        q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE))  # büyük cevaplar UDP'de kesilmesin
+        q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE, flags="do" if do else ""))  # DO → DNSSEC iste
         qid = q.header.id
         sock = None
         try:
@@ -465,18 +468,19 @@ class DNSCore:
                 except Exception:
                     pass
  
-    def _query_any(self, domain, qtype, server_ips, max_attempts=None):
+    def _query_any(self, domain, qtype, server_ips, max_attempts=None, do=False):
         """
         Verilen sunucu listesini sırayla dene, ilk cevabı dön.
         max_attempts verilirse, o kadar timeout'tan sonra (listenin tamamını
         denemeden) pes edip None döner -> çağıran upstream'e düşebilir.
+        do=True → EDNS DO biti (DNSSEC).
         """
         servers = list(server_ips)
         random.shuffle(servers)
         if max_attempts is not None:
             servers = servers[:max_attempts]
         for ip in servers:
-            resp = self._query(domain, qtype, ip)
+            resp = self._query(domain, qtype, ip, do=do)
             if resp is not None:
                 return resp
         return None
@@ -644,14 +648,71 @@ class DNSCore:
             self._cache_put(domain, qtype, RCODE.NOERROR, [], self._soa_ttl(resp.auth))
         return rcode, []
 
+    # --- DNSSEC doğrulama (deneysel; default KAPALI, panelden açılır) ---------
+    def _dnssec_fetch(self, name, rtype):
+        """DO'lu iteratif çekme: name/rtype için (RR listesi, RRSIG-RD listesi) döner.
+        Kökten delegasyonu izler. DNSKEY child'da, DS parent'ta YETKİLİ yanıtlanır →
+        aynı döngü ikisini de doğru getirir. (dnssec.validate_rrset'in fetch'i.)"""
+        name = name if name.endswith(".") else name + "."
+        servers = [v[0] for v in self.root_servers.values()]
+        for _ in range(MAX_HOPS):
+            resp = self._query_any(name, rtype, servers, max_attempts=3, do=True)
+            if resp is None:
+                return [], []
+            answers = [rr for rr in resp.rr if QTYPE[rr.rtype] == rtype]
+            sigs = [rr.rdata for rr in resp.rr
+                    if QTYPE[rr.rtype] == "RRSIG" and QTYPE[rr.rdata.covered] == rtype]
+            if answers or resp.header.rcode == RCODE.NXDOMAIN or resp.header.aa:
+                return answers, sigs                 # yetkili cevap (var / NODATA / NXDOMAIN)
+            ns_records = [a for a in resp.auth if QTYPE[a.rtype] == "NS"]
+            if not ns_records:
+                return answers, sigs
+            ns_names = {str(a.rdata).rstrip(".").lower() for a in ns_records}
+            glue = [str(r.rdata) for r in resp.ar
+                    if QTYPE[r.rtype] == "A" and str(r.rname).rstrip(".").lower() in ns_names]
+            if glue:
+                servers = glue
+            else:                                    # glue yok → NS adlarını ayrı çöz
+                servers = []
+                for ns in ns_records:
+                    _rc, _rr = self.resolve(str(ns.rdata), "A", MAX_DEPTH - 2)
+                    servers += [str(r.rdata) for r in _rr if QTYPE[r.rtype] == "A"]
+                if not servers:
+                    return [], []
+        return [], []
+
+    def validate(self, qname, qtype):
+        """qname/qtype cevabının DNSSEC durumu: 'secure'/'insecure'/'bogus'. Kendi DO'lu
+        çekmesini yapar (ana çözümlemeden bağımsız). Önbelleksiz → YAVAŞ (deneysel);
+        yalnız dnssec açıkken çağrılır. Hata → bogus (fail-closed)."""
+        try:
+            ans, sigs = self._dnssec_fetch(qname, qtype)
+            if not ans:
+                return dnssec.INSECURE
+            return dnssec.validate_rrset(qname, ans, sigs, self._dnssec_fetch)
+        except Exception:
+            logger.exception("dnssec dogrulama hatasi")
+            return dnssec.BOGUS
+
     # --- Asıl çözümleme ------------------------------------------------------
-    def resolve(self, domain, qtype, depth=0, source=None):
-        """En dış (depth 0) çağrıda işlem süresini kaynağa göre ölçen sarmalayıcı."""
+    def resolve(self, domain, qtype, depth=0, source=None, dnssec_out=None):
+        """En dış (depth 0) çağrıda işlem süresini kaynağa göre ölçen sarmalayıcı.
+        dnssec_out (1 elemanlı liste) verilir + DNSSEC AÇIKSA: cevabın durumu
+        (secure/insecure/bogus) yazılır; BOGUS ise cevap SERVFAIL'e çevrilir."""
         if depth != 0:
             return self._resolve(domain, qtype, depth, source)
         src = source if source is not None else ["—"]
         t0 = now()
         result = self._resolve(domain, qtype, 0, src)
+        if self.dnssec and dnssec_out is not None:
+            rc, recs = result
+            if rc == RCODE.NOERROR and recs:
+                st = self.validate(domain, qtype)
+                dnssec_out[0] = st
+                if st == dnssec.BOGUS:
+                    result = (RCODE.SERVFAIL, [])    # bogus cevabı istemciye VERME
+            else:
+                dnssec_out[0] = dnssec.INSECURE      # NXDOMAIN/NODATA → NSEC gerekir (sonraki faz)
         self.record_source_time(src[0], (now() - t0) * 1000.0)
         return result
 
@@ -880,7 +941,8 @@ class DNSResolver(BaseResolver):
             return reply
 
         src = ["—"]
-        rcode, records = self.core.resolve(qname, qtype, source=src)
+        ds = ["off"]                                   # DNSSEC durumu (açıksa validate doldurur)
+        rcode, records = self.core.resolve(qname, qtype, source=src, dnssec_out=ds)
 
         reply = _clean_reply(request)
         if rcode == RCODE.NXDOMAIN:
@@ -889,13 +951,15 @@ class DNSResolver(BaseResolver):
             reply.header.rcode = RCODE.SERVFAIL
         else:
             reply.rr = list(records)
+        if ds[0] == "secure":                          # yalnız DOĞRULANMIŞ cevapta AD biti
+            reply.header.ad = 1
 
         log = logger.warning if rcode == RCODE.SERVFAIL else logger.info
         # Mahremiyet: istemci IP + sorgulanan ad loglanmaz (DB'de gerçek tutulur).
         log("**** **** %s -> %s (%d kayıt)", qtype, RCODE[rcode], len(records))
 
         blocked_by = self.core.is_blocked(qname)  # None ya da eşleşen liste adı
-        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method, "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by))})
+        self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method, "blocked": bool(blocked_by), "blocked_by": blocked_by, "resolved_by": src[0], "status": status_for(rcode, bool(blocked_by)), "dnssec": ds[0]})
         
         return reply
  

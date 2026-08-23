@@ -219,6 +219,22 @@ async def get_method_breakdown() -> list[dict]:
     )
 
 
+async def get_dnssec_breakdown() -> dict:
+    """DNSSEC doğrulama kırılımı + oran. {secure, insecure, bogus, off, total, rate}.
+    rate = secure / (secure+insecure+bogus) (imzalı+imzasız ele alınanlar; 'off' hariç)."""
+    rows = await _fetch_all(
+        "SELECT COALESCE(dnssec, 'off') AS d, COUNT(*) AS cnt FROM dns_cache GROUP BY COALESCE(dnssec, 'off')"
+    )
+    c = {r['d']: r['cnt'] for r in rows}
+    secure, insecure, bogus = c.get('secure', 0), c.get('insecure', 0), c.get('bogus', 0)
+    validated = secure + insecure + bogus
+    return {
+        'secure': secure, 'insecure': insecure, 'bogus': bogus,
+        'off': c.get('off', 0), 'total': sum(c.values()), 'validated': validated,
+        'rate': round(100 * secure / validated) if validated else None,   # None = hiç DNSSEC verisi yok
+    }
+
+
 async def get_dns_devices(limit: int = 60) -> list[dict]:
     """DNS istemcilerini client_ip'ye göre grupla: kullanılan yöntem(ler), sorgu
     sayısı, ilk/son görülme. client_ip deterministik şifreli olduğundan GROUP BY

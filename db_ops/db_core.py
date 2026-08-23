@@ -11,7 +11,7 @@ import db_ops.db_control_users as dbusers
 # Şema sürümü: uyumsuz her şema değişikliğinde 1 artır ve MIGRATIONS'a
 # eski sürümü yeni sürüme taşıyan adımı ekle. Açılışta migrate_scheme()
 # kayıtlı sürümden güncel sürüme sırayla yürür.
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 MIGRATIONS = {
     # 1 -> 2: timestamp BIGINT yerine queried_at DATETIME (UTC). Log verisi
@@ -47,6 +47,10 @@ MIGRATIONS = {
     # 7 -> 8: sorgu sonucu durumu (ok/nxdomain/servfail/blocked) — panelde gösterge.
     7: (
         "ALTER TABLE dns_cache ADD COLUMN status VARCHAR(12) DEFAULT NULL",
+    ),
+    # 8 -> 9: DNSSEC doğrulama durumu (secure/insecure/bogus/off) — analiz oranı.
+    8: (
+        "ALTER TABLE dns_cache ADD COLUMN dnssec VARCHAR(10) DEFAULT NULL",
     ),
 }
 
@@ -190,6 +194,7 @@ class DB_CON():
                     blocked_by VARCHAR(255) DEFAULT NULL,
                     resolved_by VARCHAR(255) DEFAULT NULL,
                     status VARCHAR(12) DEFAULT NULL,
+                    dnssec VARCHAR(10) DEFAULT NULL,
                     INDEX idx_queried_at (queried_at),
                     INDEX idx_domain (domain),
                     INDEX idx_blocked (blocked)

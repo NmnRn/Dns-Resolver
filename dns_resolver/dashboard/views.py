@@ -681,7 +681,7 @@ async def analytics(request):
 
     context = _base_ctx(request, 'analytics')
     try:
-        stats, hourly, methods, rtypes, tdomains, tclients, blocks, bdomains = await asyncio.gather(
+        stats, hourly, methods, rtypes, tdomains, tclients, blocks, bdomains, dnssec = await asyncio.gather(
             db.get_stats(),
             db.get_hourly_detail(),
             db.get_method_breakdown(),
@@ -690,6 +690,7 @@ async def analytics(request):
             db.get_top_clients(10),
             db.get_block_breakdown(),
             db.get_top_blocked_domains(20),
+            db.get_dnssec_breakdown(),
         )
     except Exception as exc:
         context['error'] = _fail(exc, 'Veritabanına erişilemedi.')
@@ -705,6 +706,7 @@ async def analytics(request):
         blocks=_with_pct(blocks), block_total=stats.get('blocked', 0),
         blocked_domains=_with_pct(bdomains),
         source_times=_source_times(),
+        dnssec=dnssec,
     )
     return render(request, 'dashboard/analytics.html', context)
 
@@ -1349,6 +1351,7 @@ async def query_settings(request):
     if request.method == 'POST':
         try:
             await db.set_setting('use_recursion', '1' if request.POST.get('use_recursion') else '0')
+            await db.set_setting('dnssec', '1' if request.POST.get('dnssec') else '0')
             await db.set_setting('upstreams', request.POST.get('upstreams', '').strip())
             await db.set_setting('upstreams_secondary', request.POST.get('upstreams_secondary', '').strip())
             _strat = request.POST.get('upstream_strategy', 'sequential')
@@ -1378,6 +1381,7 @@ async def query_settings(request):
     context.update(
         msg=msg,
         use_recursion=s.get('use_recursion', '1') != '0',
+        dnssec=s.get('dnssec', '0') != '0',
         upstreams=s.get('upstreams', ''),
         upstreams_secondary=s.get('upstreams_secondary', ''),
         upstream_strategy=s.get('upstream_strategy', 'sequential'),

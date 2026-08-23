@@ -24,6 +24,13 @@
                     </div>
                     <label class="sw"><input type="checkbox" name="use_recursion" {% if use_recursion %}checked{% endif %}><span></span></label>
                 </div>
+                <div class="setrow">
+                    <div class="si">
+                        <div class="t">{% trans "DNSSEC doğrulama" %} <span class="mono" style="font-size:11px;color:var(--warn);">{% trans "deneysel" %}</span></div>
+                        <div class="d">{% trans "Açık: cevapların DNSSEC imza zincirini kökten doğrular (secure→AD biti, bogus→SERVFAIL). Ekstra sorgu → biraz yavaşlar; sorun olursa kapat. Analiz sayfasında doğrulama oranı görünür." %}</div>
+                    </div>
+                    <label class="sw"><input type="checkbox" name="dnssec" {% if dnssec %}checked{% endif %}><span></span></label>
+                </div>
 
                 <label class="modelbl">{% trans "Upstream sunucular (satır başına bir tane)" %}</label>
                 <textarea class="upst" name="upstreams" rows="5" spellcheck="false" placeholder="1.1.1.1&#10;udp://8.8.8.8&#10;tcp://9.9.9.9&#10;tls://dns.google&#10;https://dns.quad9.net/dns-query&#10;quic://dns.adguard.com">{{ upstreams }}</textarea>

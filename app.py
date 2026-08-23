@@ -344,6 +344,7 @@ def main():
                 except (TypeError, ValueError):
                     core.cache_max_ttl = udp_server.MAX_TTL
                 core.use_recursion = (str(await db_manager.get_setting('use_recursion', '1')) != '0')
+                core.dnssec = (str(await db_manager.get_setting('dnssec', '0')) != '0')   # default KAPALI
                 core.upstreams = _ups_list(await db_manager.get_setting('upstreams', ''))
                 # İkincil (yedek) upstream'ler: 1.'ler HİÇ yanıt vermezse denenir.
                 core.upstreams_secondary = _ups_list(await db_manager.get_setting('upstreams_secondary', ''))

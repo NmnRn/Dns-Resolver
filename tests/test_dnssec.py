@@ -201,3 +201,38 @@ def test_broken_ds_link_is_bogus():
     data[("example.tld.", "DS")] = (bad_ds, [_sign("example.tld.", bad_ds, tp, tk, QTYPE.DS, "tld.")])
     fetch = lambda n, t: data.get((n, t), ([], []))
     assert dnssec.validate_rrset("www.example.tld.", answer, [sig], fetch, anchors) == dnssec.BOGUS
+
+
+# --- Resolver entegrasyonu (DNSCore.validate + resolve hook) ----------------
+def test_core_validate_uses_engine(monkeypatch):
+    from servers.normal_udp import DNSCore
+    data, anchors, answer, sig, _ = _hierarchy()
+    monkeypatch.setattr(dnssec, "ROOT_TRUST_ANCHORS", anchors)
+    core = DNSCore(db_manager=None)
+    core._dnssec_fetch = lambda n, t: (answer, [sig]) if (n, t) == ("www.example.tld.", "A") else data.get((n, t), ([], []))
+    assert core.validate("www.example.tld.", "A") == dnssec.SECURE
+    core._dnssec_fetch = lambda n, t: ([], [])          # cevap/imza yok
+    assert core.validate("www.example.tld.", "A") == dnssec.INSECURE
+
+
+def test_resolve_dnssec_hook_bogus_and_secure():
+    from servers.normal_udp import DNSCore
+    from dnslib import RCODE
+    core = DNSCore(db_manager=None)
+    core.dnssec = True
+    core._resolve = lambda *a, **k: (RCODE.NOERROR, ["rr"])
+    core.validate = lambda q, t: dnssec.BOGUS
+    ds = ["off"]
+    rc, recs = core.resolve("x.com.", "A", 0, ["—"], ds)
+    assert rc == RCODE.SERVFAIL and recs == [] and ds[0] == "bogus"   # bogus → SERVFAIL
+    core.validate = lambda q, t: dnssec.SECURE
+    ds = ["off"]
+    rc, recs = core.resolve("x.com.", "A", 0, ["—"], ds)
+    assert rc == RCODE.NOERROR and recs == ["rr"] and ds[0] == "secure"
+
+    core.dnssec = False                                  # kapalıyken validate çağrılmaz
+    called = []
+    core.validate = lambda q, t: called.append(1) or dnssec.SECURE
+    ds = ["off"]
+    core.resolve("x.com.", "A", 0, ["—"], ds)
+    assert called == [] and ds[0] == "off"

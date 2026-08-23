@@ -36,7 +36,7 @@ class StubCore:
         self._lock = threading.Lock()
         self.db_manager = StubDBManager()
 
-    def resolve(self, domain, qtype, depth=0, source=None):
+    def resolve(self, domain, qtype, depth=0, source=None, dnssec_out=None):
         if source is not None:
             source[0] = "DNS çekirdeği"
         return self._rcode, self._records
