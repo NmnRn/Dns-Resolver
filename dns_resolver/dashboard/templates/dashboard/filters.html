@@ -104,47 +104,25 @@
         <div class="grid2">
             <div class="box">
                 <h2>{% blocktrans with cnt=block_count %}Engellenenler ({{ cnt }}){% endblocktrans %}</h2>
-                <form method="post" class="addf">
+                <form method="post" class="listedit">
                     {% csrf_token %}
-                    <input type="hidden" name="action" value="block_add">
-                    <textarea name="domain" rows="3" placeholder="{% trans 'Her satıra bir alan adı (ör. ads.example.com, *.example.com, *.onion)' %}" autocomplete="off" spellcheck="false"></textarea>
-                    <button class="btn" type="submit">{% trans "Engelle" %}</button>
-                </form>
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="block_manage">
-                    <ul class="flist">
-                        {% for b in blocklist %}
-                        <li>
-                            <label class="fchk"><input type="checkbox" name="domains" value="{{ b.domain }}"><span class="mono">{{ b.domain }}</span></label>
-                            <button class="xbtn danger" type="submit" name="one" value="{{ b.domain }}">{% trans "Sil" %}</button>
-                        </li>
-                        {% empty %}<li class="muted">{% trans "Liste boş" %}</li>{% endfor %}
-                    </ul>
-                    {% if blocklist %}<div class="bulkbar"><button class="xbtn danger" type="submit">{% trans "Seçilenleri sil" %}</button></div>{% endif %}
+                    <input type="hidden" name="action" value="block_sync">
+                    <textarea class="upst" name="domains" rows="12" spellcheck="false" autocomplete="off" placeholder="{% trans 'Her satıra bir alan adı — ör.&#10;ads.example.com&#10;*.example.com&#10;*.onion' %}">{% for b in blocklist %}{{ b.domain }}
+{% endfor %}</textarea>
+                    <p class="setnote">{% trans "Satır başına bir alan adı; <span class='mono'>*.example.com</span> alt alanları da kapsar. <span class='mono'>#</span> ile başlayan satırlar yorumdur. <b>Kaydet</b>'e basınca liste bununla eşitlenir (sildiğin satırlar listeden çıkar)." %}</p>
+                    <div class="listbar"><button class="btn" type="submit">{% trans "Kaydet" %}</button></div>
                 </form>
             </div>
 
             <div class="box">
                 <h2>{% blocktrans with cnt=allow_count %}İzin Verilenler ({{ cnt }}){% endblocktrans %}</h2>
-                <form method="post" class="addf">
+                <form method="post" class="listedit">
                     {% csrf_token %}
-                    <input type="hidden" name="action" value="allow_add">
-                    <textarea name="domain" rows="3" placeholder="{% trans 'Her satıra bir alan adı (ör. safe.example.com, *.example.com)' %}" autocomplete="off" spellcheck="false"></textarea>
-                    <button class="btn" type="submit">{% trans "İzin ver" %}</button>
-                </form>
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="allow_manage">
-                    <ul class="flist">
-                        {% for a in allowlist %}
-                        <li>
-                            <label class="fchk"><input type="checkbox" name="domains" value="{{ a.domain }}"><span class="mono">{{ a.domain }}</span></label>
-                            <button class="xbtn danger" type="submit" name="one" value="{{ a.domain }}">{% trans "Sil" %}</button>
-                        </li>
-                        {% empty %}<li class="muted">{% trans "Liste boş" %}</li>{% endfor %}
-                    </ul>
-                    {% if allowlist %}<div class="bulkbar"><button class="xbtn danger" type="submit">{% trans "Seçilenleri sil" %}</button></div>{% endif %}
+                    <input type="hidden" name="action" value="allow_sync">
+                    <textarea class="upst" name="domains" rows="12" spellcheck="false" autocomplete="off" placeholder="{% trans 'Her satıra bir alan adı — ör.&#10;safe.example.com&#10;*.example.com' %}">{% for a in allowlist %}{{ a.domain }}
+{% endfor %}</textarea>
+                    <p class="setnote">{% trans "İzin listesi engel listesinden önceliklidir. Satır başına bir alan adı; <span class='mono'>#</span> yorum. <b>Kaydet</b>'e basınca liste bununla eşitlenir." %}</p>
+                    <div class="listbar"><button class="btn" type="submit">{% trans "Kaydet" %}</button></div>
                 </form>
             </div>
         </div>

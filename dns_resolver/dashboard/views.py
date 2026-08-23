@@ -618,6 +618,39 @@ async def filters(request):
             elif action == 'schedule_del':
                 await db.remove_schedule(request.POST.get('name', '').strip())
                 msg = ('ok', 'Zamanlama kaldırıldı.')
+            elif action in ('block_sync', 'allow_sync'):
+                # Tüm liste tek textarea'da düzenlenir → DB ile diff'le eşitle
+                # (upstream kutusu gibi). Satır başına bir alan adı; # yorum.
+                is_block = action == 'block_sync'
+                new, invalid = set(), []
+                for line in request.POST.get('domains', '').splitlines():
+                    s = line.strip()
+                    if not s or s.startswith('#'):
+                        continue
+                    d = _norm_domain(s)
+                    if _valid_block_domain(d):
+                        new.add(d)
+                    else:
+                        invalid.append(s)
+                getter = db.get_blocklist if is_block else db.get_allowlist
+                adder = db.add_block if is_block else db.add_allow
+                remover = db.remove_block if is_block else db.remove_allow
+                current = {b['domain'] for b in await getter()}
+                to_add, to_remove = new - current, current - new
+                for d in to_add:
+                    await adder(d)
+                for d in to_remove:
+                    await remover(d)
+                parts = []
+                if to_add:
+                    parts.append(f'{len(to_add)} eklendi')
+                if to_remove:
+                    parts.append(f'{len(to_remove)} silindi')
+                if invalid:
+                    parts.append(f'{len(invalid)} geçersiz ({", ".join(invalid[:4])})')
+                label = 'Engel listesi' if is_block else 'İzin listesi'
+                msg = ('error' if invalid and not (to_add or to_remove) else 'ok',
+                       f'{label}: ' + (' · '.join(parts) if parts else 'değişiklik yok'))
             elif action in ('block_add', 'allow_add'):
                 # Çok satırlı: her satır (ya da boşluk/virgülle ayrılmış) bir alan adı.
                 raw = request.POST.get('domain', '')

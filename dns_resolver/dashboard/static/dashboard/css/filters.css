@@ -7,6 +7,13 @@
 .addf input,.addf textarea{flex:1}
 .addf textarea{resize:vertical;min-height:46px;line-height:1.55}
 .addf .btn{white-space:nowrap}
+/* Engel/İzin listesi — upstream kutusu gibi tek metin alanı (alt alta düzenle-kaydet) */
+.listedit{padding:14px 16px}
+.upst{width:100%;background:var(--panel-2);border:1px solid var(--border-strong);border-radius:6px;color:var(--text);font:13px/1.55 var(--mono);padding:9px 11px;resize:vertical;min-height:200px}
+.upst:focus{outline:none;border-color:var(--accent)}
+.setnote{font-size:12px;line-height:1.55;color:var(--muted);margin:10px 0 0}
+.setnote .mono{color:var(--text)}
+.listbar{margin-top:10px;text-align:right}
 /* Eklenen liste URL'si — tıklanabilir link (varsayılan sessiz, hover'da vurgu) */
 .srcurl{color:var(--muted);font:11px/1.4 var(--mono);text-decoration:none;word-break:break-all}
 .srcurl:hover{color:var(--accent-deep);text-decoration:underline}
