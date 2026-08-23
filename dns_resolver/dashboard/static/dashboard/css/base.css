@@ -15,28 +15,30 @@
 @font-face{font-family:'Plus Jakarta Sans';font-weight:700;font-display:swap;src:url(../fonts/plus-jakarta-sans-ext-700.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
 @font-face{font-family:'Plus Jakarta Sans';font-weight:800;font-display:swap;src:url(../fonts/plus-jakarta-sans-ext-800.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
 :root{
-    --bg:#faf9f2; --panel:#ffffff; --panel-2:#f4f5ea;
-    --border:#e7e8dc; --border-strong:#d7d9c5;
-    --text:#1a1c12; --muted:#6d7060; --muted-2:#9a9d88;
-    --accent:#6d8f2c; --accent-deep:#48651c; --accent-ink:#ffffff; --accent-soft:#edf2df;
-    --ok:#16a34a; --err:#dc2626; --warn:#d97706;
+    /* forest-copper (açık): sıcak krem zemin + orman yeşili + bakır */
+    --bg:#f6f3ec; --panel:#ffffff; --panel-2:#efece3;
+    --border:#e4dfd4; --border-strong:#d2cbbc;
+    --text:#1a1712; --muted:#6a6357; --muted-2:#948b7e;
+    --accent:#3f8a54; --accent-deep:#2f6b41; --accent-ink:#ffffff; --accent-soft:#e7f0e8;
+    --ok:#3f8a54; --err:#ac3f39; --warn:#b9842c;
     /* kayıt tipi + yöntem renkleri (iki temada da okunur) */
     --tc-a:#2563eb; --tc-aaaa:#0891b2; --tc-cname:#7c3aed; --tc-mx:#db2777; --tc-txt:#b45309; --tc-https:#16a34a;
     --udp:#16a34a; --doh:#2563eb; --dot:#b45309; --doq:#7c3aed;
     --mono:"SFMono-Regular", ui-monospace, Menlo, "Cascadia Code", Consolas, monospace;
     --sans:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --r:16px; --r-sm:11px; --r-lg:22px;
-    --shadow:0 2px 14px rgba(50,54,24,.06); --shadow-lg:0 12px 34px rgba(50,54,24,.10);
+    --shadow:0 2px 14px rgba(35,28,18,.06); --shadow-lg:0 12px 34px rgba(35,28,18,.11);
 }
 :root[data-theme="dark"]{
-    --bg:#14160f; --panel:#1c1f15; --panel-2:#23271a;
-    --border:rgba(180,220,120,.13); --border-strong:rgba(180,220,120,.22);
-    --text:#ecefe0; --muted:#9fa38c; --muted-2:#6f7359;
-    --accent:#a3c261; --accent-deep:#a3c261; --accent-ink:#171b0e; --accent-soft:rgba(163,194,97,.15);
-    --ok:#4ade80; --err:#fb7185; --warn:#fbbf24;
-    --tc-a:#60a5fa; --tc-aaaa:#38bdf8; --tc-cname:#c4b5fd; --tc-mx:#f9a8d4; --tc-txt:#fbbf24; --tc-https:#4ade80;
-    --udp:#4ade80; --doh:#60a5fa; --dot:#fbbf24; --doq:#c4b5fd;
-    --shadow:0 2px 16px rgba(0,0,0,.32); --shadow-lg:0 14px 38px rgba(0,0,0,.5);
+    /* forest-copper (koyu): sıcak koyu zemin + orman yeşili + bakır */
+    --bg:#171513; --panel:#1f1d1b; --panel-2:#26231f;
+    --border:#2f2b28; --border-strong:#3c3630;
+    --text:#ece7e1; --muted:#a79d92; --muted-2:#7c7367;
+    --accent:#4fa467; --accent-deep:#63b97c; --accent-ink:#0f150e; --accent-soft:rgba(79,164,103,.16);
+    --ok:#5cb877; --err:#d76a60; --warn:#cf9a3f;
+    --tc-a:#60a5fa; --tc-aaaa:#38bdf8; --tc-cname:#c4b5fd; --tc-mx:#f9a8d4; --tc-txt:#cf9a3f; --tc-https:#5cb877;
+    --udp:#5cb877; --doh:#60a5fa; --dot:#cf9a3f; --doq:#c4b5fd;
+    --shadow:0 2px 16px rgba(0,0,0,.42); --shadow-lg:0 14px 38px rgba(0,0,0,.55);
 }
 
 * { box-sizing: border-box; }
