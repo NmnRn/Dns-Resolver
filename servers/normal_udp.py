@@ -207,6 +207,10 @@ class DNSCore:
         self.upstreams = []               # ['1.1.1.1', 'https://…/dns-query', 'tls://…'] (forwarding)
         self.upstreams_secondary = []     # yedek: 1.'ler HİÇ yanıt vermezse denenir
         self.dnssec = False               # DNSSEC doğrulama (panelden; default KAPALI)
+        # DNSSEC hız: DNSKEY/DS RRset'lerini TTL'ine göre önbelleğe al — her doğrulamada
+        # kök+TLD+bölge anahtarını yeniden çekmeyelim. {(name,rtype): (expiry, answers, sigs)}
+        self._dnssec_fetch_cache = {}
+        self._dnssec_cache_lock = threading.Lock()
         self.upstream_strategy = "sequential"   # sequential | parallel | fastest
         # Koşullu forwarding: [(son-ek, upstream)] — eşleşen domaini belirli bir
         # upstream'e çözdürür (use_recursion'dan bağımsız). Panelden ayarlanır.
@@ -650,23 +654,41 @@ class DNSCore:
 
     # --- DNSSEC doğrulama (deneysel; default KAPALI, panelden açılır) ---------
     def _dnssec_fetch(self, name, rtype):
-        """DO'lu iteratif çekme: name/rtype için (RR listesi, RRSIG-RD listesi) döner.
+        """_dnssec_fetch_uncached'in önbellekli sarmalayıcısı. DNSKEY/DS gibi altyapı
+        RRset'leri (kök/TLD/bölge anahtarları) HER doğrulamada tekrar gerekir → TTL
+        boyunca önbellekten servis edilir (büyük hız kazancı). Pozitif cevaplar (asıl
+        RRset) önbelleklenmez — onlar zaten ana cache'te tutulur."""
+        name = name if name.endswith(".") else name + "."
+        cacheable = rtype in ("DNSKEY", "DS")
+        if cacheable:
+            with self._dnssec_cache_lock:
+                hit = self._dnssec_fetch_cache.get((name, rtype))
+            if hit and hit[0] > now():
+                return hit[1], hit[2]
+        answers, sigs = self._dnssec_fetch_uncached(name, rtype)
+        if cacheable and answers:
+            ttl = min((getattr(rr, "ttl", 0) or 0) for rr in answers)
+            ttl = max(60, min(ttl, 21600))          # 1 dk–6 sa (rollover güvenliği)
+            with self._dnssec_cache_lock:
+                self._dnssec_fetch_cache[(name, rtype)] = (now() + ttl, answers, sigs)
+        return answers, sigs
+
+    def _dnssec_walk(self, name, rtype):
+        """DO'lu iteratif çekme; YETKİLİ nihai yanıtı (DNSRecord, auth bölümü dahil) döner.
         Kökten delegasyonu izler. DNSKEY child'da, DS parent'ta YETKİLİ yanıtlanır →
-        aynı döngü ikisini de doğru getirir. (dnssec.validate_rrset'in fetch'i.)"""
+        aynı döngü ikisini de doğru getirir. Bulunamazsa None."""
         name = name if name.endswith(".") else name + "."
         servers = [v[0] for v in self.root_servers.values()]
         for _ in range(MAX_HOPS):
             resp = self._query_any(name, rtype, servers, max_attempts=3, do=True)
             if resp is None:
-                return [], []
+                return None
             answers = [rr for rr in resp.rr if QTYPE[rr.rtype] == rtype]
-            sigs = [rr.rdata for rr in resp.rr
-                    if QTYPE[rr.rtype] == "RRSIG" and QTYPE[rr.rdata.covered] == rtype]
             if answers or resp.header.rcode == RCODE.NXDOMAIN or resp.header.aa:
-                return answers, sigs                 # yetkili cevap (var / NODATA / NXDOMAIN)
+                return resp                          # yetkili cevap (var / NODATA / NXDOMAIN)
             ns_records = [a for a in resp.auth if QTYPE[a.rtype] == "NS"]
             if not ns_records:
-                return answers, sigs
+                return resp
             ns_names = {str(a.rdata).rstrip(".").lower() for a in ns_records}
             glue = [str(r.rdata) for r in resp.ar
                     if QTYPE[r.rtype] == "A" and str(r.rname).rstrip(".").lower() in ns_names]
@@ -678,8 +700,47 @@ class DNSCore:
                     _rc, _rr = self.resolve(str(ns.rdata), "A", MAX_DEPTH - 2)
                     servers += [str(r.rdata) for r in _rr if QTYPE[r.rtype] == "A"]
                 if not servers:
-                    return [], []
-        return [], []
+                    return None
+        return None
+
+    def _dnssec_fetch_uncached(self, name, rtype):
+        """name/rtype için (RR listesi, RRSIG-RD listesi) — dnssec.validate_rrset'in fetch'i."""
+        resp = self._dnssec_walk(name, rtype)
+        if resp is None:
+            return [], []
+        answers = [rr for rr in resp.rr if QTYPE[rr.rtype] == rtype]
+        sigs = [rr.rdata for rr in resp.rr
+                if QTYPE[rr.rtype] == "RRSIG" and QTYPE[rr.rdata.covered] == rtype]
+        return answers, sigs
+
+    def _dnssec_denial(self, qname, qtype):
+        """NXDOMAIN/NODATA için authority'den NSEC/NSEC3 yokluk kanıtını topla.
+        Dönüş: (zone, proofs) — zone: SOA sahibi bölge; proofs: dnssec.validate_denial
+        için kayıt kümeleri. Bulunamazsa (None, [])."""
+        resp = self._dnssec_walk(qname, qtype)
+        if resp is None:
+            return None, []
+        auth = resp.auth
+        soa = [a for a in auth if QTYPE[a.rtype] == "SOA"]
+        zone = str(soa[0].rname) if soa else None
+        sig_by = {}                                  # (owner, kapsanan_tip) -> [RRSIG-RD]
+        for a in auth:
+            if QTYPE[a.rtype] == "RRSIG":
+                sig_by.setdefault((str(a.rname), QTYPE[a.rdata.covered]), []).append(a.rdata)
+        proofs = []
+        for a in auth:
+            t = QTYPE[a.rtype]
+            owner = str(a.rname)
+            if t == "NSEC":
+                proofs.append({"kind": "nsec", "owner": owner,
+                               "next": str(a.rdata.label), "types": set(a.rdata.rrlist),
+                               "rrset": [a], "rrsigs": sig_by.get((owner, "NSEC"), [])})
+            elif t == "NSEC3":
+                raw = getattr(a.rdata, "data", None)
+                parsed = dnssec.parse_nsec3(raw) if raw else None
+                proofs.append({"kind": "nsec3", "owner": owner, "parsed": parsed,
+                               "rrset": [a], "rrsigs": sig_by.get((owner, "NSEC3"), [])})
+        return zone, proofs
 
     def validate(self, qname, qtype):
         """qname/qtype cevabının DNSSEC durumu: 'secure'/'insecure'/'bogus'. Kendi DO'lu
@@ -693,6 +754,20 @@ class DNSCore:
         except Exception:
             logger.exception("dnssec dogrulama hatasi")
             return dnssec.BOGUS
+
+    def validate_denial(self, qname, qtype):
+        """NXDOMAIN/NODATA cevabının DNSSEC yokluk durumu: 'secure'/'insecure'/'bogus'.
+        NSEC/NSEC3 kanıtını doğrular. Hata → insecure (fail-SAFE: kendi kanıt-mantığımızdaki
+        bir hata her NXDOMAIN'i SERVFAIL'e çevirmesin; gerçek tahrifat zaten validate_denial
+        içinde BOGUS döner). Yalnız dnssec açıkken çağrılır."""
+        try:
+            zone, proofs = self._dnssec_denial(qname, qtype)
+            if not zone or not proofs:
+                return dnssec.INSECURE
+            return dnssec.validate_denial(qname, qtype, zone, proofs, self._dnssec_fetch)
+        except Exception:
+            logger.exception("dnssec yokluk dogrulama hatasi")
+            return dnssec.INSECURE
 
     # --- Asıl çözümleme ------------------------------------------------------
     def resolve(self, domain, qtype, depth=0, source=None, dnssec_out=None):
@@ -711,8 +786,18 @@ class DNSCore:
                 dnssec_out[0] = st
                 if st == dnssec.BOGUS:
                     result = (RCODE.SERVFAIL, [])    # bogus cevabı istemciye VERME
+            elif rc == RCODE.NXDOMAIN and not self.is_blocked(domain):
+                st = self.validate_denial(domain, qtype)   # NSEC/NSEC3 yokluk kanıtı
+                dnssec_out[0] = st
+                if st == dnssec.BOGUS:
+                    result = (RCODE.SERVFAIL, [])    # sahte NXDOMAIN → istemciye VERME
+            elif rc == RCODE.NOERROR and not recs:  # NODATA (domain var, tip yok)
+                st = self.validate_denial(domain, qtype)
+                dnssec_out[0] = st
+                if st == dnssec.BOGUS:
+                    result = (RCODE.SERVFAIL, [])
             else:
-                dnssec_out[0] = dnssec.INSECURE      # NXDOMAIN/NODATA → NSEC gerekir (sonraki faz)
+                dnssec_out[0] = dnssec.INSECURE      # SERVFAIL / engellenmiş → doğrulama yok
         self.record_source_time(src[0], (now() - t0) * 1000.0)
         return result
 

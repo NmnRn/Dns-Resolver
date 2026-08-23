@@ -236,3 +236,182 @@ def test_resolve_dnssec_hook_bogus_and_secure():
     ds = ["off"]
     core.resolve("x.com.", "A", 0, ["—"], ds)
     assert called == [] and ds[0] == "off"
+
+
+# --- KSK-2024 + DNSKEY önbelleği -------------------------------------------- #
+def test_ksk_2024_anchor_present():
+    tags = {a[0] for a in dnssec.ROOT_TRUST_ANCHORS}
+    assert 20326 in tags and 38696 in tags               # KSK-2017 + KSK-2024
+
+
+def test_dnssec_fetch_caches_dnskey_not_positive():
+    from servers.normal_udp import DNSCore
+    core = DNSCore(db_manager=None)
+    calls = []
+
+    def uncached(n, t):
+        calls.append((n, t))
+        return [RR(rname=n, rtype=QTYPE.DNSKEY,
+                   rdata=DNSKEY(257, 3, dnssec.ALG_ED25519, b"\x00" * 32), ttl=3600)], []
+
+    core._dnssec_fetch_uncached = uncached
+    core._dnssec_fetch("example.tld.", "DNSKEY")
+    core._dnssec_fetch("example.tld.", "DNSKEY")
+    assert calls.count(("example.tld.", "DNSKEY")) == 1  # 2. çağrı önbellekten
+    core._dnssec_fetch("x.tld.", "A")
+    core._dnssec_fetch("x.tld.", "A")
+    assert calls.count(("x.tld.", "A")) == 2             # pozitif cevap önbeklenmez
+
+
+# --- NSEC / NSEC3 yokluk doğrulama birim testleri --------------------------- #
+def test_canonical_name_order_rfc4034():
+    # RFC 4034 §6.1 örnek sırası (alt küme)
+    names = ["example.", "a.example.", "yljkjljk.a.example.", "Z.a.example.", "z.example."]
+    assert sorted(names, key=dnssec._canon_labels) == \
+        ["example.", "a.example.", "yljkjljk.a.example.", "Z.a.example.", "z.example."]
+
+
+def test_nsec_covers_and_wrap():
+    assert dnssec._nsec_covers("example.", "z.example.", "a.example.") is True
+    assert dnssec._nsec_covers("example.", "z.example.", "zz.example.") is False
+    # zincir sonu: next <= owner sarar
+    assert dnssec._nsec_covers("z.example.", "example.", "zz.example.") is True
+
+
+def test_nsec3_hash_rfc5155_vectors():
+    salt = bytes.fromhex("aabbccdd")
+    assert dnssec.nsec3_hash("example.", salt, 12) == "0P9MHAVEQVM6T7VBL5LOP2U3T2RP3TOM"
+    assert dnssec.nsec3_hash("a.example.", salt, 12) == "35MTHGPGCU1QG68FAB165KLNSNK3DPVL"
+
+
+def test_parse_nsec3_roundtrip():
+    raw = bytes([1, 1]) + struct.pack("!H", 12) + bytes([4]) + bytes.fromhex("aabbccdd") \
+        + bytes([20]) + bytes(range(20)) + bytes([0, 1, 0x20])   # bitmap: NS(tip 2 → 0x80>>2)
+    p = dnssec.parse_nsec3(raw)
+    assert p["alg"] == 1 and p["flags"] == 1 and p["iterations"] == 12
+    assert p["salt"] == bytes.fromhex("aabbccdd") and p["flags"] & 0x01   # opt-out
+    assert "NS" in p["types"]
+
+
+def test_nsec3_covers_wrap():
+    assert dnssec._nsec3_covers("A" * 32, "Z" * 32, "M" * 32) is True
+    assert dnssec._nsec3_covers("A" * 32, "M" * 32, "Z" * 32) is False
+    assert dnssec._nsec3_covers("Z" * 32, "A" * 32, "0" * 32) is True   # sarma
+
+
+# --- NSEC / NSEC3 yokluk doğrulama entegrasyon (sentetik imzalı zincir) ------ #
+import struct  # noqa: E402
+from dnslib import NSEC, RD  # noqa: E402
+
+ZONE = "example.tld."
+
+
+def _denial_env(unsigned=False):
+    data, anchors, _a, _s, keys = _hierarchy()
+    if unsigned:
+        del data[("example.tld.", "DS")]        # güvenli delegasyon yok → insecure
+    fetch = lambda n, t: data.get((n, t), ([], []))
+    dp, dk = keys["dom"]
+    return fetch, anchors, dp, dk
+
+
+def _nsec_proof(owner, nxt, types, dp, dk):
+    r = _rr(owner, QTYPE.NSEC, NSEC(nxt, list(types)))
+    return {"kind": "nsec", "owner": owner, "next": nxt, "types": set(types),
+            "rrset": [r], "rrsigs": [_sign(owner, [r], dp, dk, QTYPE.NSEC, ZONE)]}
+
+
+def _b32d(s):
+    s = s.upper(); val = bits = 0; out = bytearray()
+    for ch in s:
+        val = (val << 5) | dnssec._B32HEX.index(ch); bits += 5
+        while bits >= 8:
+            bits -= 8; out.append((val >> bits) & 0xFF)
+    return bytes(out)
+
+
+def _nsec3_proof(owner_h, types, next_h, dp, dk, flags=0):
+    nums = sorted(getattr(QTYPE, t) for t in types)
+    blen = nums[-1] // 8 + 1
+    bm = bytearray(blen)
+    for t in types:
+        n = getattr(QTYPE, t); bm[n // 8] |= 0x80 >> (n % 8)
+    raw = bytes([1, flags]) + struct.pack("!H", 0) + bytes([0]) + bytes([20]) \
+        + _b32d(next_h) + bytes([0, blen]) + bytes(bm)
+    owner = owner_h.lower() + "." + ZONE
+    r = _rr(owner, QTYPE.NSEC3, RD(raw))
+    return {"kind": "nsec3", "owner": owner, "parsed": dnssec.parse_nsec3(raw),
+            "rrset": [r], "rrsigs": [_sign(owner, [r], dp, dk, QTYPE.NSEC3, ZONE)]}
+
+
+def test_nsec_nodata_secure():
+    fetch, anchors, dp, dk = _denial_env()
+    p = _nsec_proof("www.example.tld.", "zzz.example.tld.", ["A", "RRSIG", "NSEC"], dp, dk)
+    assert dnssec.validate_denial("www.example.tld.", "AAAA", ZONE, [p], fetch, anchors) == dnssec.SECURE
+
+
+def test_nsec_nxdomain_secure():
+    fetch, anchors, dp, dk = _denial_env()
+    # example. .. www. arası: absent. hem kendini hem *.example.tld.'yi kapsar
+    p = _nsec_proof("example.tld.", "www.example.tld.",
+                    ["A", "SOA", "RRSIG", "NSEC", "DNSKEY"], dp, dk)
+    assert dnssec.validate_denial("absent.example.tld.", "A", ZONE, [p], fetch, anchors) == dnssec.SECURE
+
+
+def test_nsec_denial_bogus_on_bad_signature():
+    fetch, anchors, dp, dk = _denial_env()
+    p = _nsec_proof("www.example.tld.", "zzz.example.tld.", ["A", "RRSIG", "NSEC"], dp, dk)
+    p["rrset"][0].rdata.rrlist = ["A", "AAAA"]   # imza sonrası kurcala → RRSIG tutmaz
+    assert dnssec.validate_denial("www.example.tld.", "MX", ZONE, [p], fetch, anchors) == dnssec.BOGUS
+
+
+def test_nsec_denial_insecure_when_zone_unsigned():
+    fetch, anchors, dp, dk = _denial_env(unsigned=True)
+    p = _nsec_proof("www.example.tld.", "zzz.example.tld.", ["A", "RRSIG", "NSEC"], dp, dk)
+    assert dnssec.validate_denial("www.example.tld.", "AAAA", ZONE, [p], fetch, anchors) == dnssec.INSECURE
+
+
+def test_nsec3_nodata_secure():
+    fetch, anchors, dp, dk = _denial_env()
+    h = dnssec.nsec3_hash("www.example.tld.", b"", 0)
+    p = _nsec3_proof(h, ["A", "RRSIG"], "V" * 32, dp, dk)
+    assert dnssec.validate_denial("www.example.tld.", "AAAA", ZONE, [p], fetch, anchors) == dnssec.SECURE
+
+
+def test_nsec3_nxdomain_secure():
+    fetch, anchors, dp, dk = _denial_env()
+    hce = dnssec.nsec3_hash("example.tld.", b"", 0)
+    ce = _nsec3_proof(hce, ["SOA", "NS", "DNSKEY", "RRSIG"], "V" * 32, dp, dk)   # CE match
+    cover = _nsec3_proof("0" * 31 + "1", ["A", "RRSIG"], "0" * 31 + "1", dp, dk)  # wrap kapsar
+    assert dnssec.validate_denial("absent.example.tld.", "A", ZONE, [ce, cover], fetch, anchors) == dnssec.SECURE
+
+
+def test_nsec3_optout_insecure():
+    fetch, anchors, dp, dk = _denial_env()
+    hce = dnssec.nsec3_hash("example.tld.", b"", 0)
+
+    def _inc(b32):
+        l = list(b32.upper()); l[-1] = dnssec._B32HEX[(dnssec._B32HEX.index(l[-1]) + 1) % 32]
+        return "".join(l)
+
+    ce = _nsec3_proof(hce, ["SOA", "NS", "DNSKEY", "RRSIG"], _inc(hce), dp, dk)   # dar menzil
+    optout = _nsec3_proof("0" * 31 + "1", ["A", "RRSIG"], "0" * 31 + "1", dp, dk, flags=1)
+    assert dnssec.validate_denial("absent.example.tld.", "A", ZONE, [ce, optout], fetch, anchors) == dnssec.INSECURE
+
+
+def test_resolve_denial_hook_nxdomain(monkeypatch):
+    from servers.normal_udp import DNSCore
+    from dnslib import RCODE
+    core = DNSCore(db_manager=None)
+    core.dnssec = True
+    core.is_blocked = lambda d: None
+    core._resolve = lambda *a, **k: (RCODE.NXDOMAIN, [])
+    calls = []
+    core.validate_denial = lambda q, t: calls.append((q, t)) or dnssec.SECURE
+    ds = ["off"]
+    rc, recs = core.resolve("nope.example.tld.", "A", 0, ["—"], ds)
+    assert calls and ds[0] == "secure" and rc == RCODE.NXDOMAIN
+    core.validate_denial = lambda q, t: dnssec.BOGUS      # sahte NXDOMAIN → SERVFAIL
+    ds = ["off"]
+    rc, recs = core.resolve("nope.example.tld.", "A", 0, ["—"], ds)
+    assert rc == RCODE.SERVFAIL and ds[0] == "bogus"

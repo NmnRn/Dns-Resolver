@@ -19,7 +19,7 @@ tam uygulanmadı — A/AAAA/DNSKEY/DS/TXT gibi ad-içermeyen tiplerde tam doğru
 import hashlib
 import struct
 
-from dnslib import DNSBuffer
+from dnslib import DNSBuffer, QTYPE
 
 # DNSSEC algoritma numaraları (IANA) — desteklenenler
 ALG_RSASHA256 = 8
@@ -141,13 +141,16 @@ def verify_rrsig(rrset_owner: str, rrset, rrsig, dnskey) -> bool:
 
 
 # --- Trust anchor + zincir bağları ------------------------------------------ #
-# IANA kök trust anchor (DS kaydı olarak). Kök KSK-2017: key tag 20326,
-# algoritma 8 (RSASHA256), digest tipi 2 (SHA-256).
+# IANA kök trust anchor'ları (DS kaydı olarak). Her ikisi de algoritma 8
+# (RSASHA256), digest tipi 2 (SHA-256). Kök herhangi biriyle doğrulanabilir.
 # ⚠️ Kaynak: IANA root-anchors.xml (https://data.iana.org/root-anchors/).
-#    KSK rollover'da DEĞİŞİR — üretimde buradan doğrula/güncelle (yeni KSK-2024
-#    key tag 38696 eklendiğinde listeye ekle). (tag, alg, digest_type, digest_hex)
+#    KSK rollover'da DEĞİŞİR — üretimde buradan doğrula/güncelle.
+#    (tag, alg, digest_type, digest_hex)
 ROOT_TRUST_ANCHORS = [
+    # KSK-2017 (validFrom 2017-02-02) — hâlâ yayında.
     (20326, 8, 2, "e06d44b80b8f1d39a95c0b0d7c65d08458e880409bbc683457104237c7f8ec8d"),
+    # KSK-2024 (validFrom 2024-07-18) — bir sonraki rollover için yayınlanan yedek.
+    (38696, 8, 2, "683d2d0acb8c9b712a1948b27f741219298d0a450d612c483af444a4c0fb2b16"),
 ]
 
 
@@ -246,3 +249,244 @@ def validate_rrset(owner, rrset, rrsigs, fetch, anchors=None):
     if st != SECURE:
         return st
     return SECURE if find_and_verify(owner, rrset, rrsigs, keys) else BOGUS
+
+
+# --- Yokluk doğrulama: NSEC / NSEC3 (RFC 4034/4035, RFC 5155) ---------------- #
+# NXDOMAIN ve NODATA cevaplarının kriptografik kanıtı. Fail-safe: bölge imzasız
+# ya da kanıt belirsizse INSECURE (NXDOMAIN kırılmaz); imzalı bölgede NSEC/NSEC3
+# imzası GEÇERSİZse BOGUS (tahrifat); kanıt tam tutarsa SECURE.
+
+def _canon_labels(name):
+    """Kanonik sıralama anahtarı (RFC 4034 §6.1): küçük harf label'lar, EN
+    ÖNEMSİZDEN (sağdan) sola. Python tuple karşılaştırması bu sırayı korur
+    (kısa olan, ortak önekte önce gelir)."""
+    n = str(name).rstrip(".").lower()
+    if not n:
+        return ()
+    labels = n.split(".")
+    labels.reverse()
+    return tuple(labels)
+
+
+def _name_eq(a, b):
+    return _canon_labels(a) == _canon_labels(b)
+
+
+def _nsec_covers(owner, next_name, qname):
+    """NSEC (owner..next) qname'i KAPSIYOR mu → qname yok demektir: owner < qname < next.
+    Zincirin son NSEC'i next=apex ile sarar (next <= owner) → owner < qname VEYA qname < next."""
+    o = _canon_labels(owner); nx = _canon_labels(next_name); q = _canon_labels(qname)
+    if nx <= o:                              # sarma (zincir sonu)
+        return q > o or q < nx
+    return o < q < nx
+
+
+def _ancestors(name, zone):
+    """qname'in ata adları: en uzundan (bir üst) zone'a kadar (zone dahil)."""
+    n = str(name).rstrip(".").lower(); z = str(zone).rstrip(".").lower()
+    labels = n.split(".") if n else []
+    out = []
+    for i in range(1, len(labels) + 1):
+        a = ".".join(labels[i:])
+        out.append((a + ".") if a else ".")
+        if a == z:
+            break
+    return out
+
+
+def _is_ancestor_or_eq(a, name):
+    a = str(a).rstrip(".").lower(); name = str(name).rstrip(".").lower()
+    if not a:
+        return True                          # kök herkesin atasıdır
+    return a == name or name.endswith("." + a)
+
+
+def _closest_encloser(qname, owner, nextn, zone):
+    """qname'in en yakın kapsayıcısı: qname'in atalarından, kapsayan NSEC'in
+    owner/next'iyle ortak EN UZUN olanı (yoksa zone)."""
+    for a in _ancestors(qname, zone):
+        if _is_ancestor_or_eq(a, owner) or _is_ancestor_or_eq(a, nextn):
+            return a
+    return zone if str(zone).endswith(".") else str(zone) + "."
+
+
+def _nsec_proves(qname, qtype, zone, proofs):
+    """NSEC kayıtları qname/qtype yokluğunu gösteriyor mu?"""
+    nsecs = [(p["owner"], p["next"], p["types"]) for p in proofs if p["kind"] == "nsec"]
+    if not nsecs:
+        return False
+    # NODATA: owner == qname ve qtype (+CNAME) bitmap'te YOK
+    for owner, _nxt, types in nsecs:
+        if _name_eq(owner, qname) and qtype not in types and "CNAME" not in types:
+            return True
+    # NXDOMAIN: (a) qname'i kapsayan NSEC + (b) *.CE'yi kapsayan/eşleşen NSEC
+    covering = None
+    for owner, nxt, _types in nsecs:
+        if _nsec_covers(owner, nxt, qname):
+            covering = (owner, nxt); break
+    if not covering:
+        return False
+    ce = _closest_encloser(qname, covering[0], covering[1], zone)
+    wildcard = "*." + ce.lstrip(".") if ce not in (".", "") else "*."
+    for owner, nxt, types in nsecs:
+        if _name_eq(owner, wildcard) and qtype not in types:
+            return True                      # wildcard var, tipi yok (wildcard-NODATA)
+        if _nsec_covers(owner, nxt, wildcard):
+            return True                      # wildcard yok
+    return False
+
+
+# NSEC3: base32hex (RFC 4648) + SHA-1 hash (RFC 5155 §5)
+_B32HEX = "0123456789ABCDEFGHIJKLMNOPQRSTUV"
+
+
+def _b32hex(data):
+    """base32hex kodla (padsız, büyük harf)."""
+    bits = 0; val = 0; out = []
+    for byte in data:
+        val = (val << 8) | byte; bits += 8
+        while bits >= 5:
+            bits -= 5; out.append(_B32HEX[(val >> bits) & 0x1F])
+    if bits:
+        out.append(_B32HEX[(val << (5 - bits)) & 0x1F])
+    return "".join(out)
+
+
+def nsec3_hash(name, salt, iterations):
+    """NSEC3 hash (RFC 5155 §5): H = SHA-1(name_wire || salt); iterations kez
+    H = SHA-1(H || salt). Dönüş: base32hex (büyük harf). Yalnız alg=1 (SHA-1)."""
+    digest = hashlib.sha1(encode_name(name) + salt).digest()
+    for _ in range(iterations):
+        digest = hashlib.sha1(digest + salt).digest()
+    return _b32hex(digest)
+
+
+def _type_name(t):
+    try:
+        return QTYPE[t]
+    except Exception:
+        return f"TYPE{t}"
+
+
+def _parse_type_bitmap(data):
+    """NSEC/NSEC3 tip bitmap → tip adları kümesi (RFC 4034 §4.1.2)."""
+    types = set(); i = 0
+    while i + 2 <= len(data):
+        window = data[i]; blen = data[i + 1]; i += 2
+        block = data[i:i + blen]; i += blen
+        for bi, byte in enumerate(block):
+            for bit in range(8):
+                if byte & (0x80 >> bit):
+                    types.add(_type_name(window * 256 + bi * 8 + bit))
+    return types
+
+
+def parse_nsec3(raw):
+    """NSEC3 RDATA ham baytlarını çöz → dict(alg,flags,iterations,salt,next_b32,types)."""
+    raw = bytes(raw)
+    alg = raw[0]; flags = raw[1]
+    iterations = int.from_bytes(raw[2:4], "big")
+    slen = raw[4]; i = 5
+    salt = raw[i:i + slen]; i += slen
+    hlen = raw[i]; i += 1
+    next_hashed = raw[i:i + hlen]; i += hlen
+    return {"alg": alg, "flags": flags, "iterations": iterations, "salt": salt,
+            "next_b32": _b32hex(next_hashed), "types": _parse_type_bitmap(raw[i:])}
+
+
+def _nsec3_covers(owner_h, next_h, target_h):
+    """NSEC3 (owner_h..next_h) target hash'ini KAPSIYOR mu (base32hex, büyük harf)."""
+    o = owner_h.upper(); n = next_h.upper(); t = target_h.upper()
+    if n <= o:                               # sarma
+        return t > o or t < n
+    return o < t < n
+
+
+def _next_closer(qname, ce):
+    """ce'nin bir label altındaki, qname'in atası olan ad (next closer name)."""
+    q = str(qname).rstrip(".").lower(); c = str(ce).rstrip(".").lower()
+    if c and not (q == c or q.endswith("." + c)):
+        return None
+    prefix = q[:-(len(c) + 1)] if c else q   # ce'den önceki kısım
+    plabels = prefix.split(".") if prefix else []
+    if not plabels:
+        return None
+    tail = ("." + c) if c else ""
+    return plabels[-1] + tail + "."
+
+
+def _nsec3_proves(qname, qtype, zone, proofs):
+    """NSEC3 kayıtları qname/qtype yokluğunu gösteriyor mu? (opt-out → güvenli değil)"""
+    items = []
+    for p in proofs:
+        if p["kind"] != "nsec3" or not p.get("parsed"):
+            continue
+        pa = p["parsed"]
+        if pa["alg"] != 1:                   # yalnız SHA-1 destekli → belirsiz
+            return False
+        owner_h = str(p["owner"]).split(".", 1)[0].upper()
+        items.append((owner_h, pa))
+    if not items:
+        return False
+    salt = items[0][1]["salt"]; iters = items[0][1]["iterations"]
+
+    def H(name):
+        return nsec3_hash(name, salt, iters)
+
+    # NODATA: qname hash'iyle EŞLEŞEN NSEC3 + qtype yok
+    hq = H(qname)
+    for oh, pa in items:
+        if oh == hq and qtype not in pa["types"] and "CNAME" not in pa["types"]:
+            return True
+    # NXDOMAIN: closest encloser kanıtı (3 NSEC3)
+    ce = None
+    for a in _ancestors(qname, zone):        # en uzundan
+        ha = H(a)
+        if any(oh == ha for oh, _ in items):
+            ce = a; break
+    if ce is None:
+        return False
+    nc = _next_closer(qname, ce)
+    if nc is None:
+        return False
+    hnc = H(nc); covered = False
+    for oh, pa in items:
+        if _nsec3_covers(oh, pa["next_b32"], hnc):
+            if pa["flags"] & 0x01:           # opt-out → güvenli değil (INSECURE)
+                return False
+            covered = True; break
+    if not covered:
+        return False
+    wc = ("*." + ce.rstrip(".")) if ce not in (".", "") else "*"
+    hw = H(wc)
+    for oh, pa in items:
+        if oh == hw and qtype not in pa["types"]:
+            return True
+        if _nsec3_covers(oh, pa["next_b32"], hw):
+            return True
+    return False
+
+
+def validate_denial(qname, qtype, zone, proofs, fetch, anchors=None):
+    """NXDOMAIN/NODATA cevabının DNSSEC yokluk durumu: SECURE / INSECURE / BOGUS.
+    proofs: authority'den çıkarılan NSEC/NSEC3 kümeleri; her biri
+      {'kind','owner','rrset','rrsigs', + NSEC:'next','types' / NSEC3:'parsed'}.
+    Karar: bölge güvenli değil / kanıt yok / kanıt belirsiz → INSECURE (fail-safe);
+    bölge güvenli AMA NSEC/NSEC3 imzası tutmuyor → BOGUS; kanıt tam → SECURE."""
+    if not proofs or not zone:
+        return INSECURE
+    st, keys = get_zone_dnskeys(zone, fetch, anchors)
+    if st != SECURE:
+        return st                            # imzasız → INSECURE; zincir bogus → BOGUS
+    # 1) Her NSEC/NSEC3 RRset'inin imzasını bölge anahtarıyla doğrula (fail-closed)
+    for p in proofs:
+        if not p.get("rrsigs") or not find_and_verify(p["owner"], p["rrset"], p["rrsigs"], keys):
+            return BOGUS                     # imzalı bölgede yokluk imzası yok/geçersiz → tahrifat
+    # 2) Kanıt gerçekten qname/qtype yokluğunu gösteriyor mu?
+    kind = proofs[0]["kind"]
+    try:
+        ok = _nsec_proves(qname, qtype, zone, proofs) if kind == "nsec" \
+            else _nsec3_proves(qname, qtype, zone, proofs)
+    except Exception:
+        ok = False
+    return SECURE if ok else INSECURE        # kanıt doğrulanamadıysa güvenli tarafta INSECURE
