@@ -39,14 +39,15 @@
                 {% if dnssec.rate is not None %}
                     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
                         <span style="font:800 34px var(--sans);color:var(--ok);line-height:1;">%{{ dnssec.rate }}</span>
-                        <span class="muted">{% blocktrans with n=dnssec.validated %}doğrulanan {{ n }} sorguda güvenli (secure) oranı{% endblocktrans %}</span>
+                        <span class="muted">{% blocktrans with n=dnssec.validated %}DNSSEC korumalı (secure) trafik — {{ n }} imzalı/imzasız sorguda{% endblocktrans %}</span>
                     </div>
-                    <div style="display:flex;gap:18px;flex-wrap:wrap;font:600 13px var(--mono);">
+                    <div style="display:flex;gap:18px;flex-wrap:wrap;font:600 13px var(--mono);margin-bottom:8px;">
                         <span style="color:var(--ok);">✓ secure: {{ dnssec.secure }}</span>
-                        <span style="color:var(--muted);">— insecure: {{ dnssec.insecure }}</span>
+                        <span style="color:var(--muted);">imzasız: {{ dnssec.insecure }}</span>
                         <span style="color:var(--err);">✗ bogus: {{ dnssec.bogus }}</span>
                         <span class="muted">off: {{ dnssec.off }}</span>
                     </div>
+                    <p class="muted" style="font-size:12px;margin:0;">{% trans "imzasız = alan DNSSEC kullanmıyor (internetin çoğu — <b>normal</b>, düşük oran beklenir). Asıl izlenecek: <b style='color:var(--err)'>bogus</b> = imzalı ama BOZUK; normalde ~0 olmalı, artıyorsa saldırı ya da yanlış yapılandırma. <b>off</b> = DNSSEC kapalıyken loglanmış eski sorgular." %}</p>
                 {% else %}
                     <p class="muted">{% trans "Henüz DNSSEC verisi yok — Sorgu Ayarları'ndan DNSSEC doğrulamayı aç; yeni sorgular için oran burada birikir." %}</p>
                 {% endif %}
