@@ -279,10 +279,10 @@ async def get_record_type_breakdown(limit: int = 8) -> list[dict]:
     )
 
 
-async def get_recent_queries(domain: str = '', method: str = '', client_ip: str = '', limit: int = 25, offset: int = 0) -> list[dict]:
-    """Son sorgular; opsiyonel domain + method (tam) + istemci IP filtresi, LIMIT/OFFSET
-    sayfalama. Şifre AÇIKKEN domain/IP filtresi TAM-eşleşmedir (deterministik şifreli
-    sütunda alt-dizi aranamaz); şifre kapalıyken LIKE (alt-dizi)."""
+async def get_recent_queries(domain: str = '', method: str = '', client_ip: str = '', dnssec: str = '', limit: int = 25, offset: int = 0) -> list[dict]:
+    """Son sorgular; opsiyonel domain + method + istemci IP + DNSSEC durumu filtresi,
+    LIMIT/OFFSET sayfalama. Şifre AÇIKKEN domain/IP filtresi TAM-eşleşmedir (deterministik
+    şifreli sütunda alt-dizi aranamaz); şifre kapalıyken LIKE (alt-dizi)."""
     where = []
     params: list = []
     if domain:
@@ -305,13 +305,16 @@ async def get_recent_queries(domain: str = '', method: str = '', client_ip: str 
         else:
             where.append('client_ip LIKE %s')    # düz → alt-dizi (alt-ağ araması mümkün)
             params.append(f'%{ip}%')
+    if dnssec:
+        where.append('dnssec = %s')
+        params.append(dnssec)
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
     params.append(limit)
     params.append(offset)
     rows = await _fetch_all(
         f"""
         SELECT id, domain, record_type, client_ip,
-               DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method, user_id, blocked, blocked_by, resolved_by, status
+               DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method, user_id, blocked, blocked_by, resolved_by, status, dnssec
         FROM dns_cache
         {clause}
         ORDER BY queried_at DESC
@@ -325,7 +328,7 @@ async def get_recent_queries(domain: str = '', method: str = '', client_ip: str 
     return rows
 
 
-async def get_queries_for_export(domain: str = '', method: str = '', client_ip: str = '', limit: int = 100000) -> list[dict]:
+async def get_queries_for_export(domain: str = '', method: str = '', client_ip: str = '', dnssec: str = '', limit: int = 100000) -> list[dict]:
     """CSV dışa aktarma: filtreli sorgu satırları (OFFSET yok, yüksek üst sınır).
     client_ip + domain çözülür (okunur CSV); şifreliyken domain/IP filtresi tam-eşleşme."""
     where = []
@@ -348,13 +351,16 @@ async def get_queries_for_export(domain: str = '', method: str = '', client_ip: 
         else:
             where.append('client_ip LIKE %s')
             params.append(f'%{ip}%')
+    if dnssec:
+        where.append('dnssec = %s')
+        params.append(dnssec)
     clause = ('WHERE ' + ' AND '.join(where)) if where else ''
     params.append(int(limit))
     rows = await _fetch_all(
         f"""
         SELECT domain, record_type, client_ip,
                DATE_FORMAT(queried_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS queried_at, method,
-               blocked, blocked_by, resolved_by, status
+               blocked, blocked_by, resolved_by, status, dnssec
         FROM dns_cache
         {clause}
         ORDER BY queried_at DESC
@@ -368,11 +374,11 @@ async def get_queries_for_export(domain: str = '', method: str = '', client_ip: 
     return rows
 
 
-def read_pending(domain: str = '', method: str = '', client_ip: str = '') -> list[dict]:
+def read_pending(domain: str = '', method: str = '', client_ip: str = '', dnssec: str = '') -> list[dict]:
     """
     Resolver'ın flush bekleyen tamponu (paylaşılan dosya) — henüz DB'de olmayan
-    sorgular, en yeni önce, domain/method filtreli. Panel bunu DB ile birleştirir.
-    Sync (küçük yerel dosya); dosya yoksa/bozuksa boş liste.
+    sorgular, en yeni önce, domain/method/IP/DNSSEC filtreli. Panel bunu DB ile
+    birleştirir. Sync (küçük yerel dosya); dosya yoksa/bozuksa boş liste.
     """
     try:
         with open(_PENDING_FILE, encoding='utf-8') as f:
@@ -393,12 +399,15 @@ def read_pending(domain: str = '', method: str = '', client_ip: str = '') -> lis
         cip = logcrypto.dec(it.get('client_ip')) or ''
         if ipf and ipf not in cip:
             continue
+        if dnssec and (it.get('dnssec') or 'off') != dnssec:
+            continue
         out.append({
             'domain': d, 'record_type': it.get('record_type'),
             'client_ip': cip, 'queried_at': it.get('queried_at'),
             'method': it.get('method'), 'user_id': None, 'pending': True,
             'blocked': it.get('blocked', False), 'blocked_by': it.get('blocked_by'),
             'resolved_by': it.get('resolved_by'), 'status': it.get('status'),
+            'dnssec': it.get('dnssec'),
         })
     return out
 

@@ -84,20 +84,6 @@
         </div>
         {% endif %}
 
-        {% if blocked_domains %}
-        <div class="box redlist" style="margin-bottom:16px;">
-            <h2>{% trans "En Çok Engellenen Alan Adları" %}</h2>
-            <div class="scroll5">
-                {% for d in blocked_domains %}
-                <div class="bl">
-                    <div class="bl-top"><span class="nm mono" style="color:var(--err);">{{ d.domain }}</span><span class="v">{{ d.cnt }}</span></div>
-                    <div class="track"><span class="fill" style="width:{{ d.pct }}%;background:var(--err);"></span></div>
-                </div>
-                {% empty %}<div class="empty">{% trans "Henüz engelleme yok" %}</div>{% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
         <div class="an-grid">
             <div class="box">
                 <h2>{% trans "Yönteme Göre" %}</h2>
@@ -139,7 +125,7 @@
 
             <div class="box">
                 <h2>{% trans "En Aktif İstemciler" %}</h2>
-                <div>
+                <div class="scroll5">
                     {% for c in tclients %}
                     <div class="bl">
                         <div class="bl-top"><span class="nm mono">{{ c.client_ip }}</span><span class="v">{{ c.cnt }}</span></div>
@@ -149,6 +135,20 @@
                 </div>
             </div>
         </div>
+
+        {% if blocked_domains %}
+        <div class="box redlist" style="margin-bottom:16px;">
+            <h2>{% trans "En Çok Engellenen Alan Adları" %}</h2>
+            <div class="scroll5">
+                {% for d in blocked_domains %}
+                <div class="bl">
+                    <div class="bl-top"><span class="nm mono" style="color:var(--err);">{{ d.domain }}</span><span class="v">{{ d.cnt }}</span></div>
+                    <div class="track"><span class="fill" style="width:{{ d.pct }}%;background:var(--err);"></span></div>
+                </div>
+                {% empty %}<div class="empty">{% trans "Henüz engelleme yok" %}</div>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
     {% endif %}
 
     <script>

@@ -314,6 +314,7 @@ async def queries(request):
     domain = request.GET.get('q', '').strip()
     method = request.GET.get('method', '').strip()
     client_ip = request.GET.get('ip', '').strip()
+    dnssec = request.GET.get('dnssec', '').strip()
     try:
         offset = int(request.GET.get('offset', 0))
     except (TypeError, ValueError):
@@ -322,12 +323,12 @@ async def queries(request):
     partial = request.GET.get('partial') == '1'
 
     try:
-        db_rows = await db.get_recent_queries(domain=domain, method=method, client_ip=client_ip, limit=QUERIES_CHUNK, offset=offset)
+        db_rows = await db.get_recent_queries(domain=domain, method=method, client_ip=client_ip, dnssec=dnssec, limit=QUERIES_CHUNK, offset=offset)
     except Exception as exc:
         if partial:
             return render(request, 'dashboard/_query_rows.html', {'rows': [], 'first': False})
         context = _base_ctx(request, 'queries')
-        context.update(q=domain, method=method, ip=client_ip, methods=METHODS, error=_fail(exc, 'Veritabanına erişilemedi.'))
+        context.update(q=domain, method=method, ip=client_ip, dnssec=dnssec, methods=METHODS, error=_fail(exc, 'Veritabanına erişilemedi.'))
         return render(request, 'dashboard/queries.html', context)
 
     if partial:
@@ -335,12 +336,12 @@ async def queries(request):
         return render(request, 'dashboard/_query_rows.html', {'rows': db_rows, 'first': False})
 
     # İlk sayfa = cache (resolver'ın flush bekleyen tamponu, en üstte) + DB satırları.
-    pending = db.read_pending(domain, method, client_ip)
+    pending = db.read_pending(domain, method, client_ip, dnssec)
     rows = pending + db_rows
 
     context = _base_ctx(request, 'queries')
     context.update(
-        q=domain, method=method, ip=client_ip, methods=METHODS, rows=rows,
+        q=domain, method=method, ip=client_ip, dnssec=dnssec, methods=METHODS, rows=rows,
         next_offset=offset + len(db_rows), has_more=len(db_rows) == QUERIES_CHUNK,
         pending_count=len(pending),
     )
@@ -355,18 +356,20 @@ async def queries_export(request):
     domain = request.GET.get('q', '').strip()
     method = request.GET.get('method', '').strip()
     client_ip = request.GET.get('ip', '').strip()
+    dnssec = request.GET.get('dnssec', '').strip()
     try:
-        rows = await db.get_queries_for_export(domain=domain, method=method, client_ip=client_ip)
+        rows = await db.get_queries_for_export(domain=domain, method=method, client_ip=client_ip, dnssec=dnssec)
     except Exception as exc:
         _fail(exc)
         return redirect('dashboard:queries')
     buf = io.StringIO()
     buf.write('\ufeff')                     # UTF-8 BOM → Excel Türkçe karakterleri doğru okusun
     w = csv.writer(buf)
-    w.writerow(['tarih (UTC)', 'domain', 'tip', 'istemci', 'yontem', 'engellendi', 'engelleyen', 'kaynak'])
+    w.writerow(['tarih (UTC)', 'domain', 'tip', 'istemci', 'yontem', 'engellendi', 'engelleyen', 'kaynak', 'dnssec'])
     for r in rows:
         w.writerow([r['queried_at'], r['domain'], r['record_type'], r['client_ip'], r['method'],
-                    'evet' if r['blocked'] else 'hayir', r.get('blocked_by') or '', r.get('resolved_by') or ''])
+                    'evet' if r['blocked'] else 'hayir', r.get('blocked_by') or '', r.get('resolved_by') or '',
+                    r.get('dnssec') or ''])
     fname = f"dns-gecmis-{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
     resp = HttpResponse(buf.getvalue(), content_type='text/csv; charset=utf-8')
     resp['Content-Disposition'] = f'attachment; filename="{fname}"'

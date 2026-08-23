@@ -125,6 +125,7 @@ class DBManager(dbops.DB_CON):
                     "blocked_by": v.get("blocked_by"),
                     "resolved_by": v.get("resolved_by"),
                     "status": v.get("status"),
+                    "dnssec": v.get("dnssec"),
                 }
                 for k, v in self.flush_cache
             ]

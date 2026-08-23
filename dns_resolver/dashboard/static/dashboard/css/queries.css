@@ -45,6 +45,8 @@
 .qdom{ font:700 14px var(--sans); letter-spacing:-.01em; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .qmeta{ font:500 12px var(--mono); color:var(--muted-2); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .qmeta .qsep{ margin:0 7px; opacity:.5; }
+.qds.sec{ color:var(--ok); }
+.qds.bog{ color:var(--err); font-weight:700; }
 a.qip{ color:inherit; text-decoration:none; border-bottom:1px dashed color-mix(in srgb,currentColor 35%,transparent); transition:color .14s ease; }
 a.qip:hover{ color:var(--accent-deep); border-bottom-color:currentColor; }
 :root[data-theme="dark"] a.qip:hover{ color:var(--accent); }
