@@ -1,6 +1,7 @@
 import concurrent.futures
 import ipaddress
 import random
+import secrets
 import socket
 import ssl
 import struct
@@ -148,6 +149,16 @@ def _min_ttl(records, default=300):
     return max(0, min(ttls))
  
  
+def _new_question(domain, qtype):
+    """DNS sorusu + KRIPTOGRAFİK transaction id. dnslib varsayılan header.id'yi
+    random (Mersenne Twister — CSPRNG DEĞİL) ile üretir; yeterli örnekle tahmin
+    edilebilir. Off-path cache-poisoning (Kaminsky) direnci için secrets ile üzerine
+    yaz — kaynak-port rastgeleliği + qname/bailiwick kontrolleriyle birlikte."""
+    q = DNSRecord.question(domain, qtype)
+    q.header.id = secrets.randbelow(65536)
+    return q
+
+
 class DNSCore:
     """Forwarder'sız, tamamen recursive çözümleme çekirdeği."""
  
@@ -433,7 +444,7 @@ class DNSCore:
     def _query(self, domain, qtype, server_ip, tcp=False, timeout=QUERY_TIMEOUT, port=53, do=False):
         """Tek bir sunucuya sorgu at (varsayılan port 53). TC gelirse TCP'ye düş.
         do=True → EDNS DO biti (DNSSEC kayıtları RRSIG/DNSKEY istenir)."""
-        q = DNSRecord.question(domain, qtype)
+        q = _new_question(domain, qtype)
         q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE, flags="do" if do else ""))  # DO → DNSSEC iste
         qid = q.header.id
         sock = None
@@ -491,7 +502,7 @@ class DNSCore:
 
     def _query_doh(self, domain, qtype, endpoint, timeout=QUERY_TIMEOUT):
         """RFC 8484 DoH — önce HTTP/2, olmazsa HTTP/1.1 (doh_client, ALPN)."""
-        q = DNSRecord.question(domain, qtype)
+        q = _new_question(domain, qtype)
         qid = q.header.id
         try:
             resp = DNSRecord.parse(doh_client.doh_query(endpoint, q.pack(), timeout, bootstrap=self.bootstrap_dns))
@@ -516,7 +527,7 @@ class DNSCore:
     # --- Forwarding (upstream'e iletme) --------------------------------------
     def _query_dot(self, domain, qtype, host, port=853, timeout=QUERY_TIMEOUT):
         """DoT istemci: host:port'a TLS ile bağlan, uzunluk-önekli DNS gönder/al."""
-        q = DNSRecord.question(domain, qtype)
+        q = _new_question(domain, qtype)
         q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE))
         qid = q.header.id
         sock = None

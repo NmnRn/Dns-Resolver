@@ -17,6 +17,7 @@ httpx kurulu değilse urllib'e (yalnız HTTP/1.1, POST) düşer. Resolver + pane
 import base64
 import ipaddress
 import logging
+import secrets
 import socket
 import urllib.request
 from urllib.parse import urlsplit, urlunsplit
@@ -53,6 +54,7 @@ def bootstrap_resolve(bootstrap_ip: str, hostname: str, timeout: float = 3.0) ->
     döndürür. Çözemezse hostname'i AYNEN döndürür → çağıran sistem çözümlemesine düşer."""
     try:
         q = DNSRecord.question(hostname, "A")
+        q.header.id = secrets.randbelow(65536)   # CSPRNG txid → off-path spoofing direnci
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(timeout)
         try:
@@ -60,7 +62,12 @@ def bootstrap_resolve(bootstrap_ip: str, hostname: str, timeout: float = 3.0) ->
             data, _ = s.recvfrom(4096)
         finally:
             s.close()
-        for rr in DNSRecord.parse(data).rr:
+        resp = DNSRecord.parse(data)
+        # Sahte/eski paketi reddet: yanıt id'si + soru adı sorguyla EŞLEŞMELİ.
+        if (resp.header.id != q.header.id or
+                str(resp.q.qname).rstrip(".").lower() != hostname.rstrip(".").lower()):
+            return hostname
+        for rr in resp.rr:
             if QTYPE[rr.rtype] == "A":
                 return str(rr.rdata)
     except Exception:
