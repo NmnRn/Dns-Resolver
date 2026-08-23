@@ -18,6 +18,10 @@
             <form method="post" class="body">
                 {% csrf_token %}
                 <div class="cfield">
+                    <label>{% trans "DNS alan adı (DoH/DoT/DoQ · SNI/Host + Kurulum adresleri)" %}</label>
+                    <input type="text" name="allowed_host" value="{{ allowed_host }}" class="mono" spellcheck="false" placeholder="dns.example.com">
+                </div>
+                <div class="cfield">
                     <label>{% trans "Sertifika (fullchain.pem)" %}</label>
                     <input type="text" name="cert_file" value="{{ cert_file }}" class="mono" spellcheck="false" placeholder="certificates/fullchain.pem">
                 </div>

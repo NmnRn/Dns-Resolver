@@ -20,6 +20,17 @@ from project_control.check_ssl_certificate import SSLCertificateChecker
 import db_ops
 import config_store
 
+def _ups_list(text):
+    """Upstream metnini listeye çevir: virgül/satır ile ayır, boşları at, '#' ile
+    başlayan YORUM satırlarını yok say."""
+    out = []
+    for ln in (text or '').replace(',', '\n').splitlines():
+        ln = ln.strip()
+        if ln and not ln.startswith('#'):
+            out.append(ln)
+    return out
+
+
 def build_udp_server(core):
     cfg = config_store.get_config()
     port = cfg["methods"]["udp"]["container_port"]
@@ -333,8 +344,9 @@ def main():
                 except (TypeError, ValueError):
                     core.cache_max_ttl = udp_server.MAX_TTL
                 core.use_recursion = (str(await db_manager.get_setting('use_recursion', '1')) != '0')
-                ups = await db_manager.get_setting('upstreams', '') or ''
-                core.upstreams = [ln.strip() for ln in ups.replace(',', '\n').splitlines() if ln.strip()]
+                core.upstreams = _ups_list(await db_manager.get_setting('upstreams', ''))
+                # İkincil (yedek) upstream'ler: 1.'ler HİÇ yanıt vermezse denenir.
+                core.upstreams_secondary = _ups_list(await db_manager.get_setting('upstreams_secondary', ''))
                 core.upstream_strategy = await db_manager.get_setting('upstream_strategy', 'sequential')
                 # Koşullu forwarding: satır başına "son-ek upstream" → [(son-ek, upstream)].
                 _cf = await db_manager.get_setting('conditional_forwards', '') or ''

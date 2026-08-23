@@ -956,7 +956,9 @@ def whois_lookup(request):
         try:
             text = _whois(q)
         except Exception as exc:   # noqa: BLE001 — dış sorgu hatası sayfayı bozmasın
-            return JsonResponse({'error': f'RDAP/WHOIS başarısız: {err or type(exc).__name__}'}, status=502)
+            return JsonResponse({'error': 'RDAP/WHOIS başarısız — sunucudan GİDEN 443 (RDAP) '
+                                          'ya da 43 (WHOIS) portu açık olmalı. '
+                                          f'({err or type(exc).__name__})'}, status=502)
     return JsonResponse({'query': q, 'whois': (text or '').strip()[:8000] or '—'})
 
 
@@ -1138,22 +1140,31 @@ async def certificate(request):
     if request.method == 'POST':
         cert_file = request.POST.get('cert_file', '').strip()
         key_file = request.POST.get('key_file', '').strip()
-        try:
-            cfg = config_store.get_config()
-            if cert_file:
-                cfg['cert_file'] = cert_file
-            if key_file:
-                cfg['key_file'] = key_file
-            config_store.write_config(cfg)
-            msg = ('ok', "Sertifika yolları kaydedildi — Sunucular'dan DoT/DoH/DoQ'yu kapatıp açınca yeni sertifika yüklenir.")
-        except Exception as exc:
-            msg = ('error', _fail(exc))
+        allowed_host = request.POST.get('allowed_host', '').strip().lower().rstrip('.')
+        if allowed_host and not _valid_domain(allowed_host):
+            msg = ('error', 'Geçersiz DNS alan adı.')
+        else:
+            try:
+                cfg = config_store.get_config()
+                if cert_file:
+                    cfg['cert_file'] = cert_file
+                if key_file:
+                    cfg['key_file'] = key_file
+                if allowed_host:
+                    cfg['allowed_host'] = allowed_host   # DoH/DoT SNI/Host + Kurulum adresleri
+                config_store.write_config(cfg)
+                msg = ('ok', "Kaydedildi — DNS alan adı Kurulum adreslerinde görünür; "
+                             "sertifika değişikliği Sunucular'dan metodu kapatıp açınca yüklenir.")
+            except Exception as exc:
+                msg = ('error', _fail(exc))
 
     cfg = config_store.get_config()
     cert_file = cfg.get('cert_file', '')
     key_file = cfg.get('key_file', '')
+    _ah = cfg.get('allowed_host', '')
     context.update(
         msg=msg, cert_file=cert_file, key_file=key_file,
+        allowed_host='' if _ah == 'dns.example.com' else _ah,   # placeholder'ı boş göster
         cert=check_cert(cert_file),
         key_exists=bool(key_file) and os.path.exists(_cert_path(key_file)),
     )
@@ -1267,7 +1278,7 @@ async def test_upstreams_ajax(request):
     Textarea'daki güncel (kaydedilmemiş olabilir) değerleri test eder."""
     if not request.session.get('_auth_user_id'):
         return JsonResponse({'error': 'auth'}, status=403)
-    ups = [ln.strip() for ln in request.POST.get('upstreams', '').replace(',', '\n').splitlines() if ln.strip()]
+    ups = [ln.strip() for ln in request.POST.get('upstreams', '').replace(',', '\n').splitlines() if ln.strip() and not ln.strip().startswith('#')]
     if not ups:
         return JsonResponse({'results': []})
     ups = ups[:20]   # üst sınır (uzun bekleme / kötüye kullanım önle)
@@ -1339,6 +1350,7 @@ async def query_settings(request):
         try:
             await db.set_setting('use_recursion', '1' if request.POST.get('use_recursion') else '0')
             await db.set_setting('upstreams', request.POST.get('upstreams', '').strip())
+            await db.set_setting('upstreams_secondary', request.POST.get('upstreams_secondary', '').strip())
             _strat = request.POST.get('upstream_strategy', 'sequential')
             await db.set_setting('upstream_strategy',
                                  _strat if _strat in ('sequential', 'parallel', 'fastest') else 'sequential')
@@ -1367,6 +1379,7 @@ async def query_settings(request):
         msg=msg,
         use_recursion=s.get('use_recursion', '1') != '0',
         upstreams=s.get('upstreams', ''),
+        upstreams_secondary=s.get('upstreams_secondary', ''),
         upstream_strategy=s.get('upstream_strategy', 'sequential'),
         conditional_forwards=s.get('conditional_forwards', ''),
         bootstrap_dns=s.get('bootstrap_dns', ''),
@@ -1393,7 +1406,7 @@ async def settings_page(request):
                 await db.clear_history()
                 msg = ('ok', 'Sorgu geçmişi (veritabanı) temizlendi.')
             elif 'test_upstreams' in request.POST:
-                _ups = [ln.strip() for ln in request.POST.get('upstreams', '').replace(',', '\n').splitlines() if ln.strip()]
+                _ups = [ln.strip() for ln in request.POST.get('upstreams', '').replace(',', '\n').splitlines() if ln.strip() and not ln.strip().startswith('#')]
                 if _ups:
                     test_results = list(await asyncio.gather(*[asyncio.to_thread(test_upstream, u) for u in _ups]))
                     msg = ('ok', f'{len(_ups)} sunucu test edildi.')
@@ -1499,7 +1512,7 @@ async def settings_page(request):
 
 def _upstream_rows(upstreams_raw):
     """Yapılandırılan upstream'leri ölçülen ortalama tepki süreleriyle eşle."""
-    ups = [ln.strip() for ln in upstreams_raw.replace(',', '\n').splitlines() if ln.strip()]
+    ups = [ln.strip() for ln in upstreams_raw.replace(',', '\n').splitlines() if ln.strip() and not ln.strip().startswith('#')]
     stats = db.read_source_stats()
     return [{'up': u, 'avg': stats.get(u, {}).get('avg_ms'),
              'count': stats.get(u, {}).get('count', 0)} for u in ups]

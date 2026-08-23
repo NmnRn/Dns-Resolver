@@ -186,6 +186,7 @@ class DNSCore:
         # Çözümleme modu: recursion (kendi çekirdeğimiz) vs forwarding (upstream'lere ilet).
         self.use_recursion = True
         self.upstreams = []               # ['1.1.1.1', 'https://…/dns-query', 'tls://…'] (forwarding)
+        self.upstreams_secondary = []     # yedek: 1.'ler HİÇ yanıt vermezse denenir
         self.upstream_strategy = "sequential"   # sequential | parallel | fastest
         # Koşullu forwarding: [(son-ek, upstream)] — eşleşen domaini belirli bir
         # upstream'e çözdürür (use_recursion'dan bağımsız). Panelden ayarlanır.
@@ -556,8 +557,15 @@ class DNSCore:
         return (t / c) if c else float("inf")
 
     def _forward(self, domain, qtype):
-        """Forwarding: stratejiye göre upstream'lere ilet → (cevap, kullanılan_upstream)."""
-        ups = list(self.upstreams)
+        """Forwarding: önce birincil upstream'ler; HİÇ yanıt gelmezse ikincil (yedek)
+        upstream'ler denenir → (cevap, kullanılan_upstream)."""
+        resp, up = self._forward_list(domain, qtype, list(self.upstreams))
+        if resp is None and self.upstreams_secondary:
+            resp, up = self._forward_list(domain, qtype, list(self.upstreams_secondary))
+        return resp, up
+
+    def _forward_list(self, domain, qtype, ups):
+        """Tek bir upstream listesini stratejiye göre dener → (cevap, upstream)."""
         if not ups:
             return None, None
         if self.upstream_strategy == "parallel":

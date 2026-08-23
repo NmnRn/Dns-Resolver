@@ -38,6 +38,10 @@
                 <p class="setnote">{% trans "Farklı port için <span class='mono'>host:port</span> yaz (varsayılan: UDP/TCP <b>53</b>, DoT/DoQ <b>853</b>, DoH <b>443</b>). Bu liste <b>yalnızca</b> yukarıdaki <b>'Kendi çekirdeğimizi kullan' KAPALIYKEN</b> devreye girer — açıkken sorgular kendi özyineli çözümleyicimizle çözülür." %}</p>
                 <p class="setwarn">⚠ <b>{% trans "Kendi adresini upstream yazma." %}</b> <span class="mono">localhost</span>, <span class="mono">127.0.0.1</span>, <span class="mono">::1</span> {% trans "ve bu sunucunun kendi IP'si (Docker container adresi) resolver'ın <b>KENDİSİDİR</b> → sorgu kendine iletilip <b>sonsuz döngüye</b> girer (tek sorgu defalarca loglanır). Upstream, 'çözemezsem soracağım <b>başka</b> bir sunucu' olmalıdır." %}</p>
 
+                <label class="modelbl">{% trans "İkincil (yedek) upstream'ler" %}</label>
+                <textarea class="upst" name="upstreams_secondary" rows="3" spellcheck="false" placeholder="# 1.'ler cevap vermezse denenir&#10;tls://dns.quad9.net&#10;9.9.9.9">{{ upstreams_secondary }}</textarea>
+                <p class="setnote">{% trans "Birincil upstream'lerin <b>hiçbiri</b> yanıt vermezse bu liste denenir (yedek). Aynı format; <span class='mono'>#</span> ile başlayan satırlar <b>yorumdur</b> (her iki listede de)." %}</p>
+
                 <label class="modelbl">{% trans "Sorgu stratejisi (forwarding)" %}</label>
                 <div class="strat">
                     <label class="stratopt"><input type="radio" name="upstream_strategy" value="sequential" {% if upstream_strategy == 'sequential' %}checked{% endif %}><span>{% trans "<b>Sıra sıra</b> — listedeki ilk yanıtlayanı kullan (en az trafik)" %}</span></label>
