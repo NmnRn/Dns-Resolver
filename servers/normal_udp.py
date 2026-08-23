@@ -52,6 +52,24 @@ def _clean_reply(request):
     reply.header.ad = 0
     reply.header.ra = 1
     return reply
+
+
+def _split_host_port(addr, default_port):
+    """host:port ayır — IPv6 farkındalıklı: [ipv6]:port, düz ipv6 (port yok), ipv4[:port]."""
+    addr = addr.strip()
+    if addr.startswith('['):                       # [ipv6]:port
+        host, _, rest = addr[1:].partition(']')
+        port = int(rest[1:]) if rest.startswith(':') and rest[1:].isdigit() else default_port
+        return host, port
+    if addr.count(':') >= 2:                        # düz IPv6 (port belirtilemez)
+        return addr, default_port
+    host, _, p = addr.partition(':')                # ipv4[:port] / host[:port]
+    return host, (int(p) if p.isdigit() else default_port)
+
+
+def _af_for(ip):
+    """Sunucu adresine göre soket ailesi (IPv6 ise AF_INET6)."""
+    return socket.AF_INET6 if ':' in ip else socket.AF_INET
 MAX_TTL = 86400          # cache'te bir kaydı en fazla tutma süresi (sn)
 NEG_TTL_CAP = 900        # negatif (NXDOMAIN/NODATA) cache üst sınırı (sn)
 CACHE_MAX_ENTRIES = 10000  # bellek-içi cache girdi üst sınırı (unique-query flood DoS'a karşı)
@@ -414,7 +432,7 @@ class DNSCore:
         sock = None
         try:
             if tcp:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock = socket.socket(_af_for(server_ip), socket.SOCK_STREAM)
                 sock.settimeout(timeout)
                 sock.connect((server_ip, port))
                 data = q.pack()
@@ -422,7 +440,7 @@ class DNSCore:
                 length = struct.unpack("!H", _recv_exact(sock, 2))[0]
                 resp_data = _recv_exact(sock, length)
             else:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock = socket.socket(_af_for(server_ip), socket.SOCK_DGRAM)
                 sock.settimeout(timeout)
                 sock.sendto(q.pack(), (server_ip, port))
                 resp_data, _ = sock.recvfrom(EDNS_UDP_SIZE)
@@ -526,19 +544,18 @@ class DNSCore:
             if low.startswith("https://"):
                 return self._query_doh(domain, qtype, u)
             if low.startswith("tls://"):
-                host, _, port = u[6:].partition(":")
-                return self._query_dot(domain, qtype, host, int(port) if port else 853)
+                host, port = _split_host_port(u[6:], 853)
+                return self._query_dot(domain, qtype, host, port)
             if low.startswith("quic://"):
                 logger.warning("DoQ upstream henuz desteklenmiyor, atlaniyor.")
                 return None
             if low.startswith("tcp://"):
-                host, _, port = u[6:].partition(":")
-                return self._query(domain, qtype, host, tcp=True,
-                                   port=int(port) if port.isdigit() else 53)
+                host, port = _split_host_port(u[6:], 53)
+                return self._query(domain, qtype, host, tcp=True, port=port)
             if low.startswith("udp://"):
                 u = u[6:]
-            host, _, port = u.partition(":")     # düz IP[:port] (port yoksa 53)
-            return self._query(domain, qtype, host, port=int(port) if port.isdigit() else 53)
+            host, port = _split_host_port(u, 53)     # düz IP[:port] (IPv6 farkındalıklı)
+            return self._query(domain, qtype, host, port=port)
         except Exception:
             return None
 
