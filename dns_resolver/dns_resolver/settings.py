@@ -136,6 +136,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # CSP + Permissions-Policy (self-hosted → default-src 'self'; savunma katmanı)
+    'dashboard.middleware.SecurityHeadersMiddleware',
 ]
 
 ROOT_URLCONF = 'dns_resolver.urls'
@@ -184,8 +186,8 @@ DATABASES = {
 DNS_DB = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': int(os.getenv('DB_PORT', 3306)),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', 'password'),
+    'user': os.getenv('DB_USER', 'dns_user'),
+    'password': os.getenv('DB_PASSWORD', ''),   # boş: yanlış yapılandırmada root/password'a SESSİZCE düşme
     'db': os.getenv('DB_NAME', 'dns_db'),
     'unix_socket': os.getenv('DB_UNIX_SOCKET') or None,
 }
