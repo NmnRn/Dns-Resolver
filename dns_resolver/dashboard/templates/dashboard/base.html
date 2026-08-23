@@ -27,6 +27,7 @@
     <header class="topbar">
         <div class="topbar-in">
             <div class="brand"><img class="brand-logo" src="{% static 'dashboard/img/logo.png' %}?v={{ static_v }}" alt="" width="26" height="21">dns.panel</div>
+            <button type="button" class="navtoggle" id="nav-toggle" data-no-ajax aria-label="{% trans 'Menü' %}" aria-expanded="false">☰</button>
             <nav>
                 <a href="{% url 'dashboard:logs' %}" class="{% if active == 'logs' %}active{% endif %}">{% trans "Genel Bakış" %}</a>
                 <a href="{% url 'dashboard:queries' %}" class="{% if active == 'queries' %}active{% endif %}">{% trans "Sorgu Geçmişi" %}</a>
@@ -76,6 +77,20 @@
             try{ localStorage.setItem('theme', dark?'light':'dark'); }catch(e){}
             icon();
             requestAnimationFrame(function(){ requestAnimationFrame(function(){ H.classList.remove('theme-anim-off'); }); });
+        });
+    })();
+    /* Mobil menü (hamburger) — topbar main.wrap dışında, ajax gezinmede korunur */
+    (function(){
+        var t=document.getElementById('nav-toggle'); if(!t) return;
+        var bar=document.querySelector('.topbar');
+        t.addEventListener('click', function(){
+            var open=bar.classList.toggle('open');
+            t.setAttribute('aria-expanded', open?'true':'false');
+        });
+        bar.addEventListener('click', function(e){       // linke tıklayınca paneli kapat
+            if(e.target.closest('nav a') || e.target.closest('.user a')){
+                bar.classList.remove('open'); t.setAttribute('aria-expanded','false');
+            }
         });
     })();
     </script>
