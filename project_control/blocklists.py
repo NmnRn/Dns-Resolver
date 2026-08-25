@@ -83,12 +83,25 @@ def _assert_safe_url(url: str) -> None:
             raise ValueError(f"engellenen iç adres (SSRF): {ip}")
 
 
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """SSRF: redirect HEDEFİNİ de kontrol et. İlk URL güvenli olsa bile bir 302
+    iç/metadata adrese (169.254.169.254 vb.) YÖNLENDİREMESİN — urllib varsayılanı
+    redirect'i sorgusuz izler."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        _assert_safe_url(newurl)                # geçersizse ValueError → redirect iptal
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+# Redirect'leri yeniden-doğrulayan ortak opener (varsayılan max 10 redirect korunur).
+_OPENER = urllib.request.build_opener(_SafeRedirectHandler)
+
+
 def download_and_parse(url: str, timeout: float = 30) -> set[str]:
     """URL'yi indirir (senkron; executor'da çağır) ve domain kümesi döndürür."""
     url = normalize_url(url)   # GitHub blob linki yapıştırıldıysa ham linke çevir
     _assert_safe_url(url)      # SSRF: iç/metadata adreslerini reddet
     req = urllib.request.Request(url, headers={"User-Agent": "dns-resolver-blocklist/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with _OPENER.open(req, timeout=timeout) as resp:
         data = resp.read(_MAX_BYTES)
     return parse_blocklist(data.decode("utf-8", errors="ignore"))
 
@@ -121,7 +134,7 @@ def check_link(url: str, timeout: float = 12) -> dict:
             url, method=method,
             headers={"User-Agent": "dns-resolver-blocklist/1.0", "Range": "bytes=0-0"},
         )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with _OPENER.open(req, timeout=timeout) as resp:
             code = getattr(resp, "status", None) or resp.getcode()
             return {"ok": True, "warn": False, "status": code, "detail": "erişilebilir"}
 

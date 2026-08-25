@@ -88,14 +88,14 @@ class _FakeResp:
 def test_download_and_parse(monkeypatch):
     resp = _FakeResp(b"0.0.0.0 ad.com\n||track.net^\n# yorum\n")
     monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)   # SSRF ağ kontrolünü atla
-    monkeypatch.setattr(bl.urllib.request, "urlopen", lambda req, timeout=None: resp)
+    monkeypatch.setattr(bl._OPENER, "open", lambda req, timeout=None: resp)
     assert download_and_parse("http://x/list.txt") == {"ad.com", "track.net"}
 
 
 def test_download_respects_size_cap(monkeypatch):
     resp = _FakeResp(b"0.0.0.0 ad.com\n")
     monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
-    monkeypatch.setattr(bl.urllib.request, "urlopen", lambda req, timeout=None: resp)
+    monkeypatch.setattr(bl._OPENER, "open", lambda req, timeout=None: resp)
     download_and_parse("http://x/list.txt")
     # read çağrısı en fazla _MAX_BYTES ister → sınırsız bellek tüketimi engellenir
     assert resp.read_n == bl._MAX_BYTES
@@ -146,7 +146,7 @@ def test_check_link_ssrf_returns_error_not_raise(monkeypatch):
 
 def test_check_link_ok_2xx(monkeypatch):
     monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
-    monkeypatch.setattr(bl.urllib.request, "urlopen", lambda req, timeout=None: _Resp(200))
+    monkeypatch.setattr(bl._OPENER, "open", lambda req, timeout=None: _Resp(200))
     r = bl.check_link("https://ok.example/list.txt")
     assert r["ok"] is True and r["status"] == 200
 
@@ -154,7 +154,7 @@ def test_check_link_ok_2xx(monkeypatch):
 def test_check_link_404_is_broken(monkeypatch):
     monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
     def _op(req, timeout=None): raise _http_error(404, "Not Found")
-    monkeypatch.setattr(bl.urllib.request, "urlopen", _op)
+    monkeypatch.setattr(bl._OPENER, "open", _op)
     r = bl.check_link("https://x.example/gone.txt")
     assert r["ok"] is False and r["warn"] is False and r["status"] == 404
 
@@ -163,7 +163,7 @@ def test_check_link_429_is_warn(monkeypatch):
     # GitHub raw HEAD'e 429 döndürebilir → kırık DEĞİL, uyarı
     monkeypatch.setattr(bl, "_assert_safe_url", lambda url: None)
     def _op(req, timeout=None): raise _http_error(429, "Too Many Requests")
-    monkeypatch.setattr(bl.urllib.request, "urlopen", _op)
+    monkeypatch.setattr(bl._OPENER, "open", _op)
     r = bl.check_link("https://raw.example/list.txt")
     assert r["ok"] is False and r["warn"] is True and r["status"] == 429
 
@@ -177,6 +177,6 @@ def test_check_link_head_403_falls_back_to_get(monkeypatch):
         if req.get_method() == "HEAD":
             raise _http_error(403, "Forbidden")
         return _Resp(200)
-    monkeypatch.setattr(bl.urllib.request, "urlopen", _op)
+    monkeypatch.setattr(bl._OPENER, "open", _op)
     r = bl.check_link("https://x.example/list.txt")
     assert r["ok"] is True and "HEAD" in calls and "GET" in calls
