@@ -34,6 +34,7 @@ from django.utils.translation import gettext as _
 import logcrypto  # DeviceProfile PII alanlarını at-rest şifreler/çözer (DNS_LOG_KEY)
 import config_store  # sunucu topolojisi (aç/kapa + portlar) TEK kaynak: config/servers.json
 from project_control.blocklists import normalize_url, check_link
+from asgiref.sync import async_to_sync
 from . import db
 from .catalog import catalog_grouped
 from .models import PanelLogin, DeviceProfile
@@ -100,6 +101,7 @@ def _login_note_fail(ip):
             _login_fails[ip] = (1, now)
         else:
             _login_fails[ip] = (rec[0] + 1, rec[1])
+        return _login_fails[ip][0]
 
 
 def _login_reset(ip):
@@ -194,8 +196,12 @@ def login_view(request):
                     return redirect(nxt)
                 return redirect('dashboard:logs')
             else:
-                _login_note_fail(ip)
+                n = _login_note_fail(ip)
                 logger.warning('başarısız panel girişi: ip=%s', ip)
+                if n == _LOGIN_MAX_FAILS:                 # kilit YENİ devreye girdi → bildir
+                    _notify('crit', 'security', 'Giriş kilidi (brute-force)',
+                            f'{ip} adresinden {n} başarısız giriş → 15 dk kilitlendi.',
+                            dedup_key=f'loginlock:{ip}', window=_LOGIN_LOCK_SECS)
                 error = _('Kullanıcı adı veya parola hatalı.')
     return render(request, 'dashboard/login.html', {
         'mode_title': _('Giriş'), 'submit': _('Giriş yap'), 'hint': _('Panele erişmek için giriş yap.'),
@@ -222,6 +228,15 @@ def _gate(request):
 def _base_ctx(request, active):
     return {'active': active, 'panel_username': request.session.get('panel_username', ''),
             'is_admin': request.session.get('is_admin', False)}
+
+
+def _notify(level, category, title, body='', dedup_key=None, window=3600):
+    """Sync view'lerden panel-içi bildirim üret (async db → async_to_sync). Best-effort:
+    bildirim yazımı asıl işlemi (login/kayıt) ASLA bloklamasın/bozmasın."""
+    try:
+        async_to_sync(db.add_notification)(level, category, title, body, dedup_key, window)
+    except Exception:  # noqa: BLE001 — bildirim ikincil; hata asıl akışı bozmasın
+        pass
 
 
 def _sparkline(values, w=280, h=54, pad=6):
@@ -1095,6 +1110,10 @@ def device_record(request):
     except Exception:   # noqa: BLE001 — kayıt sayfayı bozmasın
         logger.exception('cihaz fingerprint kaydi yazilamadi')
         return JsonResponse({'ok': False}, status=200)
+    if created:                                  # panele İLK kez erişen cihaz → bildir
+        _notify('warn', 'security', 'Yeni cihaz girişi',
+                f'{parsed.get("browser", "?")} · {parsed.get("os", "?")} — IP {ip}',
+                dedup_key=f'newdevice:{obj.pk}', window=86400)
     return JsonResponse({'ok': True, 'new': created})
 
 
@@ -1357,6 +1376,37 @@ async def check_sources_ajax(request):
         for s, c in zip(sources, checks)
     ]
     return JsonResponse({'results': results})
+
+
+async def notifications(request):
+    """Panel-içi bildirim listesi (çan). POST: tümünü okundu / temizle."""
+    gate = _gate(request)
+    if gate:
+        return gate
+    if request.method == 'POST':
+        act = request.POST.get('action', '')
+        if act == 'read_all':
+            await db.mark_notifications_read()
+        elif act == 'clear':
+            await db.clear_notifications()
+        return redirect('dashboard:notifications')
+    context = _base_ctx(request, 'notifications')
+    try:
+        context['items'] = await db.get_notifications(200)
+    except Exception as exc:  # noqa: BLE001
+        context['error'] = _fail(exc, 'Veritabanına erişilemedi.')
+    return render(request, 'dashboard/notifications.html', context)
+
+
+async def notif_count(request):
+    """Çan rozeti için okunmamış bildirim sayısı (JSON; JS periyodik çeker)."""
+    if not request.session.get('_auth_user_id'):
+        return JsonResponse({'count': 0})
+    try:
+        n = await db.notif_unread_count()
+    except Exception:  # noqa: BLE001
+        n = 0
+    return JsonResponse({'count': n})
 
 
 async def backup_export(request):

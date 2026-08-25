@@ -55,6 +55,7 @@
                         {% for code, name in LANGS %}<option value="{{ code }}"{% if code == CUR_LANG %} selected{% endif %}>{{ name }}</option>{% endfor %}
                     </select>
                 </form>
+                <a href="{% url 'dashboard:notifications' %}" class="notifbell {% if active == 'notifications' %}active{% endif %}" id="notif-bell" aria-label="{% trans 'Bildirimler' %}" title="{% trans 'Bildirimler' %}">🔔<span class="notifbadge" id="notif-badge" hidden></span></a>
                 <button type="button" class="themebtn" id="theme-toggle" data-no-ajax aria-label="{% trans 'Tema değiştir' %}" title="{% trans 'Açık / koyu tema' %}">🌙</button>
                 <span>{{ panel_username }} · <a href="{% url 'dashboard:logout' %}" data-no-ajax>{% trans "Çıkış" %}</a></span>
             </div>
@@ -92,6 +93,21 @@
                 bar.classList.remove('open'); t.setAttribute('aria-expanded','false');
             }
         });
+    })();
+    /* Bildirim çanı — okunmamış sayısını periyodik çek (topbar ajax gezinmede korunur) */
+    (function(){
+        var badge=document.getElementById('notif-badge'); if(!badge) return;
+        var url='{% url "dashboard:notif_count" %}';
+        function upd(){
+            fetch(url,{credentials:'same-origin',headers:{'X-Requested-With':'fetch'}})
+                .then(function(r){return r.json();})
+                .then(function(d){
+                    var n=d.count||0;
+                    if(n>0){ badge.textContent=n>99?'99+':n; badge.hidden=false; }
+                    else { badge.hidden=true; }
+                }).catch(function(){});
+        }
+        upd(); setInterval(upd, 60000);
     })();
     </script>
     <script>/* Cihaz izleme — SADECE bu panele (same-origin) gonderir; ucuncu tarafa

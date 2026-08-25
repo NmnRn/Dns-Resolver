@@ -1,0 +1,33 @@
+.nlist{ background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; box-shadow:var(--shadow); }
+.nrow{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:14px;
+    padding:14px 20px; border-bottom:1px solid var(--border); }
+.nrow:last-child{ border-bottom:0; }
+.nrow.unread{ background:color-mix(in srgb,var(--accent) 5%,transparent); }
+
+.ndot{ width:9px; height:9px; border-radius:50%; flex:none; background:var(--muted-2); }
+.nrow.unread .ndot{ background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.nrow.lv-warn .ndot{ background:var(--warn); }
+.nrow.lv-crit .ndot{ background:var(--err); box-shadow:0 0 0 3px color-mix(in srgb,var(--err) 22%,transparent); }
+
+.nmain{ min-width:0; }
+.ntitle{ font:700 14px var(--sans); color:var(--text); letter-spacing:-.01em; }
+.nbody{ font:500 12.5px var(--mono); color:var(--muted); margin-top:3px; word-break:break-word; }
+
+.nmeta{ display:flex; align-items:center; gap:12px; flex:none; }
+.ncat{ font:700 9.5px var(--mono); letter-spacing:.04em; text-transform:uppercase; padding:2px 7px;
+    border-radius:5px; color:var(--muted); background:var(--panel-2); border:1px solid var(--border); }
+.cat-security{ color:var(--err); border-color:color-mix(in srgb,var(--err) 30%,transparent);
+    background:color-mix(in srgb,var(--err) 8%,transparent); }
+.cat-health{ color:var(--warn); border-color:color-mix(in srgb,var(--warn) 30%,transparent);
+    background:color-mix(in srgb,var(--warn) 8%,transparent); }
+.cat-client, .cat-domain{ color:var(--accent-deep); border-color:color-mix(in srgb,var(--accent) 30%,transparent);
+    background:var(--accent-soft); }
+:root[data-theme="dark"] .cat-client, :root[data-theme="dark"] .cat-domain{ color:var(--accent); }
+.ntime{ font:600 12px var(--mono); color:var(--muted-2); white-space:nowrap; }
+
+.nempty{ padding:44px 20px; text-align:center; color:var(--muted-2); }
+
+@media(max-width:640px){
+    .nrow{ grid-template-columns:auto minmax(0,1fr); }
+    .nmeta{ grid-column:2 / -1; justify-content:flex-start; }
+}

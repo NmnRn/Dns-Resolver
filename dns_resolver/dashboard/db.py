@@ -596,3 +596,39 @@ def read_source_stats() -> dict:
             return json.load(f)
     except (OSError, ValueError):
         return {}
+
+
+# --- Bildirimler (panel-içi çan/liste; dış servise hiçbir şey gitmez) --------- #
+async def add_notification(level, category, title, body='', dedup_key=None, dedup_window=3600):
+    """Bildirim ekle. level: info|warn|crit · category: security|health|client|domain.
+    dedup_key verilir + son dedup_window sn içinde aynısı varsa ATLA (spam önle)."""
+    if dedup_key:
+        hit = await _fetch_one(
+            "SELECT 1 FROM notifications WHERE dedup_key=%s "
+            "AND created_at >= UTC_TIMESTAMP() - INTERVAL %s SECOND LIMIT 1",
+            (dedup_key, int(dedup_window)))
+        if hit:
+            return
+    await _write(
+        "INSERT INTO notifications (created_at, level, category, title, body, dedup_key) "
+        "VALUES (UTC_TIMESTAMP(), %s, %s, %s, %s, %s)",
+        (level, category, (title or '')[:160], (body or '')[:512], dedup_key))
+
+
+async def get_notifications(limit=100):
+    return await _fetch_all(
+        "SELECT id, created_at, level, category, title, body, read_at "
+        "FROM notifications ORDER BY created_at DESC LIMIT %s", (int(limit),))
+
+
+async def notif_unread_count() -> int:
+    row = await _fetch_one("SELECT COUNT(*) AS c FROM notifications WHERE read_at IS NULL")
+    return (row['c'] if row else 0) or 0
+
+
+async def mark_notifications_read() -> None:
+    await _write("UPDATE notifications SET read_at = UTC_TIMESTAMP() WHERE read_at IS NULL")
+
+
+async def clear_notifications() -> None:
+    await _write("DELETE FROM notifications")

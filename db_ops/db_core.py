@@ -262,6 +262,23 @@ class DB_CON():
                     end_min INT NOT NULL
                 )
             """)
+            # Panel-içi bildirimler (çan/liste). Güvenlik/sağlık/istemci/alan olayları
+            # burada birikir; DIŞ servise hiçbir şey gitmez. Yeni tablo → migration yok.
+            await cursor.execute("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    created_at DATETIME NOT NULL,
+                    level VARCHAR(8) NOT NULL DEFAULT 'info',
+                    category VARCHAR(16) NOT NULL,
+                    title VARCHAR(160) NOT NULL,
+                    body VARCHAR(512) NOT NULL DEFAULT '',
+                    dedup_key VARCHAR(160),
+                    read_at DATETIME,
+                    INDEX ix_notif_read (read_at),
+                    INDEX ix_notif_created (created_at),
+                    INDEX ix_notif_dedup (dedup_key)
+                )
+            """)
             # Panelden ayarlanabilir anahtar-değer ayarları (ör. sertifika yolları).
             await cursor.execute(
                 "CREATE TABLE IF NOT EXISTS app_settings (k VARCHAR(64) PRIMARY KEY, v VARCHAR(512))"

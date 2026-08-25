@@ -1,0 +1,36 @@
+{% extends "dashboard/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Bildirimler" %} · DNS Panel{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/notifications.css' %}?v={{ static_v }}">{% endblock %}
+{% block content %}
+    <div class="qtop">
+        <div>
+            <h1>{% trans "Bildirimler" %}</h1>
+            <p class="sub" style="margin:4px 0 0;">{% trans "Güvenlik, sağlık ve istemci olayları — yalnız bu panelde tutulur, dışarı hiçbir şey gitmez." %}</p>
+        </div>
+        <div class="qactions">
+            <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="read_all"><button type="submit" class="btn ghost">✓ {% trans "Tümünü okundu" %}</button></form>
+            <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="clear"><button type="submit" class="btn ghost">{% trans "Temizle" %}</button></form>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="error">{% blocktrans %}Veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>
+    {% else %}
+        <div class="nlist">
+            {% for n in items %}
+            <div class="nrow lv-{{ n.level }}{% if not n.read_at %} unread{% endif %}">
+                <span class="ndot"></span>
+                <div class="nmain">
+                    <div class="ntitle">{{ n.title }}</div>
+                    {% if n.body %}<div class="nbody">{{ n.body }}</div>{% endif %}
+                </div>
+                <div class="nmeta">
+                    <span class="ncat cat-{{ n.category }}">{{ n.category }}</span>
+                    <span class="ntime"><span class="lt" data-utc="{{ n.created_at|date:'Y-m-d H:i:s' }}">{{ n.created_at|date:'Y-m-d H:i:s' }}</span></span>
+                </div>
+            </div>
+            {% empty %}<div class="nempty">{% trans "Henüz bildirim yok." %}</div>{% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}
