@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dns-panel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-25 22:46+0000\n"
+"POT-Creation-Date: 2026-08-25 23:09+0000\n"
 "PO-Revision-Date: 2026-08-18 00:00+0000\n"
 "Last-Translator: NmnRn\n"
 "Language-Team: English\n"
@@ -116,15 +116,15 @@ msgid "Toplam sorgu"
 msgstr "Total queries"
 
 #: dashboard/templates/dashboard/analytics.html:30
-#: dashboard/templates/dashboard/analytics.html:204
+#: dashboard/templates/dashboard/analytics.html:207
 msgid "Engellenen"
 msgstr "Blocked"
 
 #: dashboard/templates/dashboard/analytics.html:32
-#: dashboard/templates/dashboard/analytics.html:116
-#: dashboard/templates/dashboard/analytics.html:129
-#: dashboard/templates/dashboard/analytics.html:141
-#: dashboard/templates/dashboard/analytics.html:153
+#: dashboard/templates/dashboard/analytics.html:119
+#: dashboard/templates/dashboard/analytics.html:132
+#: dashboard/templates/dashboard/analytics.html:144
+#: dashboard/templates/dashboard/analytics.html:156
 #: dashboard/templates/dashboard/logs.html:62
 #: dashboard/templates/dashboard/logs.html:70
 #: dashboard/templates/dashboard/logs.html:85
@@ -154,7 +154,6 @@ msgid "Henüz DNSSEC verisi yok — Sorgu Ayarları'ndan DNSSEC doğrulamayı a�
 msgstr ""
 
 #: dashboard/templates/dashboard/analytics.html:59
-#| msgid "En Aktif İstemciler"
 msgid "Şüpheli İstemciler"
 msgstr "Suspicious Clients"
 
@@ -171,62 +170,72 @@ msgstr "Derived from plaintext metadata (domains are NOT read). <b>nxdomain</b> 
 msgid "%(t)s sorgu · NXDOMAIN %%%(nx)s · TXT %%%(tx)s"
 msgstr "%(t)s queries · NXDOMAIN %%%(nx)s · TXT %%%(tx)s"
 
-#: dashboard/templates/dashboard/analytics.html:68
+#: dashboard/templates/dashboard/analytics.html:69
+msgid "Şüpheli değil — yoksay"
+msgstr "Not suspicious — ignore"
+
+#: dashboard/templates/dashboard/analytics.html:69
+#: dashboard/templates/dashboard/dns_devices.html:41
+msgid "Yoksay"
+msgstr "Ignore"
+
+#: dashboard/templates/dashboard/analytics.html:70
+#: dashboard/templates/dashboard/dns_devices.html:42
 msgid "Yasakla"
 msgstr "Ban"
 
-#: dashboard/templates/dashboard/analytics.html:78
+#: dashboard/templates/dashboard/analytics.html:81
 msgid "Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / upstream)"
 msgstr "Average processing times — by source (core / cache / upstream)"
 
-#: dashboard/templates/dashboard/analytics.html:84
+#: dashboard/templates/dashboard/analytics.html:87
 #: dashboard/templates/dashboard/query_settings.html:71
 #, python-format
 msgid "%(avg)s ms · %(count)s sorgu"
 msgstr "%(avg)s ms · %(count)s queries"
 
-#: dashboard/templates/dashboard/analytics.html:86
+#: dashboard/templates/dashboard/analytics.html:89
 msgid "Henüz ölçüm yok"
 msgstr "No measurements yet"
 
-#: dashboard/templates/dashboard/analytics.html:93
+#: dashboard/templates/dashboard/analytics.html:96
 #, python-format
 msgid "Engelleme Listelerine Göre — toplam %(total)s engellenen sorgu"
 msgstr "By block list — %(total)s blocked queries total"
 
-#: dashboard/templates/dashboard/analytics.html:101
-#: dashboard/templates/dashboard/analytics.html:167
+#: dashboard/templates/dashboard/analytics.html:104
+#: dashboard/templates/dashboard/analytics.html:170
 msgid "Henüz engelleme yok"
 msgstr "No blocks yet"
 
-#: dashboard/templates/dashboard/analytics.html:108
+#: dashboard/templates/dashboard/analytics.html:111
 #: dashboard/templates/dashboard/logs.html:75
 msgid "Yönteme Göre"
 msgstr "By Method"
 
-#: dashboard/templates/dashboard/analytics.html:121
+#: dashboard/templates/dashboard/analytics.html:124
 msgid "Kayıt Tipine Göre"
 msgstr "By Record Type"
 
-#: dashboard/templates/dashboard/analytics.html:134
+#: dashboard/templates/dashboard/analytics.html:137
 msgid "En Çok Sorgulanan Alan Adları"
 msgstr "Most Queried Domains"
 
-#: dashboard/templates/dashboard/analytics.html:146
+#: dashboard/templates/dashboard/analytics.html:149
 #: dashboard/templates/dashboard/logs.html:67
 msgid "En Aktif İstemciler"
 msgstr "Most Active Clients"
 
-#: dashboard/templates/dashboard/analytics.html:160
+#: dashboard/templates/dashboard/analytics.html:163
 msgid "En Çok Engellenen Alan Adları"
 msgstr "Most Blocked Domains"
 
-#: dashboard/templates/dashboard/analytics.html:203
+#: dashboard/templates/dashboard/analytics.html:206
 #: dashboard/templates/dashboard/dns_devices.html:20
 msgid "Sorgu"
 msgstr "Queries"
 
-#: dashboard/templates/dashboard/analytics.html:205
+#: dashboard/templates/dashboard/analytics.html:208
 msgid "En aktif"
 msgstr "Most active"
 
@@ -372,7 +381,7 @@ msgstr "Relative paths resolve against the <span class='mono'>/app</span> root. 
 #: dashboard/templates/dashboard/filters.html:113
 #: dashboard/templates/dashboard/filters.html:125
 #: dashboard/templates/dashboard/query_settings.html:107
-#: dashboard/templates/dashboard/settings.html:72
+#: dashboard/templates/dashboard/settings.html:82
 msgid "Kaydet"
 msgstr "Save"
 
@@ -418,7 +427,7 @@ msgid "Kalan"
 msgstr "Remaining"
 
 #: dashboard/templates/dashboard/certificate.html:49
-#: dashboard/templates/dashboard/settings.html:64
+#: dashboard/templates/dashboard/settings.html:74
 #, python-format
 msgid "%(days)s gün"
 msgid_plural "%(days)s gün"
@@ -630,11 +639,34 @@ msgstr "local"
 msgid "Son görülme"
 msgstr "Last seen"
 
+#: dashboard/templates/dashboard/dns_devices.html:23
+#: dashboard/templates/dashboard/servers.html:27
+msgid "Durum"
+msgstr "Status"
+
 #: dashboard/templates/dashboard/dns_devices.html:35
+msgid "Bilinen bot/datacenter/abuse aralığı"
+msgstr "Known bot/datacenter/abuse range"
+
+#: dashboard/templates/dashboard/dns_devices.html:35
+#: dashboard/templates/dashboard/dns_devices.html:36
+msgid "şüpheli"
+msgstr "suspicious"
+
+#: dashboard/templates/dashboard/dns_devices.html:37
+msgid "güvenli"
+msgstr "safe"
+
+#: dashboard/templates/dashboard/dns_devices.html:41
+#| msgid "Şüpheli İstemciler"
+msgid "Şüpheli değil"
+msgstr "Not suspicious"
+
+#: dashboard/templates/dashboard/dns_devices.html:48
 msgid "Henüz DNS sorgusu kaydı yok."
 msgstr "No DNS query records yet."
 
-#: dashboard/templates/dashboard/dns_devices.html:43
+#: dashboard/templates/dashboard/dns_devices.html:56
 msgid "DNS istemcisi HTTP göndermez → User-Agent / JS fingerprint yoktur. Daha fazla tanı için: DoH isteklerinde <b>User-Agent</b> loglama, DoT/DoQ için TLS <b>JA3/JA4</b> parmak izi, LAN'da <b>DHCP/ARP</b> eşleme (IP→MAC→cihaz adı)."
 msgstr "A DNS client sends no HTTP → there is no User-Agent / JS fingerprint. For more: log the <b>User-Agent</b> on DoH requests, TLS <b>JA3/JA4</b> fingerprint for DoT/DoQ, or <b>DHCP/ARP</b> mapping on the LAN (IP→MAC→device name)."
 
@@ -1287,7 +1319,7 @@ msgstr "Mark all read"
 
 #: dashboard/templates/dashboard/notifications.html:13
 #: dashboard/templates/dashboard/queries.html:38
-#: dashboard/templates/dashboard/settings.html:82
+#: dashboard/templates/dashboard/settings.html:92
 msgid "Temizle"
 msgstr "Clear"
 
@@ -1513,10 +1545,6 @@ msgid "UDP kapatılamaz (temel çözümleme)"
 msgstr "UDP can't be turned off (base resolution)"
 
 #: dashboard/templates/dashboard/servers.html:27
-msgid "Durum"
-msgstr "Status"
-
-#: dashboard/templates/dashboard/servers.html:27
 msgid "açık"
 msgstr "on"
 
@@ -1623,79 +1651,95 @@ msgstr "Denied clients — IP / CIDR"
 msgid "İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman engellenir (izinliden önce)."
 msgstr "If the allow list is non-empty, ONLY those may query. Denied clients are always blocked (before the allow list)."
 
+#: dashboard/templates/dashboard/settings.html:54
+msgid "Şüpheli sayma (yoksay) — IP / CIDR"
+msgstr "Do not flag (ignore) — IP / CIDR"
+
+#: dashboard/templates/dashboard/settings.html:56
+msgid "Analiz'de 'Yoksay' dediğin istemciler burada birikir → artık şüpheli listesinde/bildirimlerde çıkmaz. Geri almak için satırı sil."
+msgstr "Clients you 'Ignore' in Analytics accumulate here → they no longer appear in the suspicious list/notifications. Delete the line to undo."
+
 #: dashboard/templates/dashboard/settings.html:59
+msgid "Tehdit / datacenter IP feed'i"
+msgstr "Threat / datacenter IP feed"
+
+#: dashboard/templates/dashboard/settings.html:60
+msgid "Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abuse IP aralıklarını indirir; bu aralıklardan sorgu yapan istemciler DNS Cihazları'nda ŞÜPHELİ işaretlenir + bildirim düşer. <b>Default KAPALI</b>. Açıksa internete GİDEN istek gerektirir (~6 saatte bir günceller)."
+msgstr "Downloads known bot/datacenter/abuse IP ranges from open sources (Spamhaus DROP + FireHOL); clients querying from these ranges are marked SUSPICIOUS on DNS Devices + a notification is raised. <b>OFF by default</b>. When on, requires OUTBOUND internet requests (updates every ~6 hours)."
+
+#: dashboard/templates/dashboard/settings.html:69
 msgid "Geçmiş saklama süresi"
 msgstr "History retention"
 
-#: dashboard/templates/dashboard/settings.html:60
+#: dashboard/templates/dashboard/settings.html:70
 msgid "Bu süreden eski sorgu geçmişi otomatik silinir (saatlik kontrol). 'Kapalı' = sonsuz."
 msgstr "Query history older than this is deleted automatically (checked hourly). 'Off' = forever."
 
-#: dashboard/templates/dashboard/settings.html:63
+#: dashboard/templates/dashboard/settings.html:73
 msgid "Kapalı"
 msgstr "Off"
 
-#: dashboard/templates/dashboard/settings.html:65
+#: dashboard/templates/dashboard/settings.html:75
 msgid "Özel…"
 msgstr "Custom…"
 
-#: dashboard/templates/dashboard/settings.html:68
+#: dashboard/templates/dashboard/settings.html:78
 msgid "Özel gün (yalnız 'Özel…' seçiliyken)"
 msgstr "Custom days (only when 'Custom…' is selected)"
 
-#: dashboard/templates/dashboard/settings.html:69
+#: dashboard/templates/dashboard/settings.html:79
 msgid "ör. 45"
 msgstr "e.g. 45"
 
-#: dashboard/templates/dashboard/settings.html:79
+#: dashboard/templates/dashboard/settings.html:89
 msgid "Önbelleği temizle"
 msgstr "Clear cache"
 
-#: dashboard/templates/dashboard/settings.html:80
+#: dashboard/templates/dashboard/settings.html:90
 msgid "Bellekteki tüm çözümleme önbelleğini boşaltır (sonraki sorgular baştan çözülür)."
 msgstr "Empties the entire in-memory resolution cache (subsequent queries resolve from scratch)."
 
-#: dashboard/templates/dashboard/settings.html:86
+#: dashboard/templates/dashboard/settings.html:96
 msgid "Geçmişi temizle"
 msgstr "Clear history"
 
-#: dashboard/templates/dashboard/settings.html:87
+#: dashboard/templates/dashboard/settings.html:97
 msgid "Veritabanındaki tüm sorgu geçmişini siler — <b>geri alınamaz</b>."
 msgstr "Deletes all query history in the database — <b>irreversible</b>."
 
-#: dashboard/templates/dashboard/settings.html:89
+#: dashboard/templates/dashboard/settings.html:99
 msgid "Tüm sorgu geçmişi silinsin mi? Bu işlem geri alınamaz."
 msgstr "Delete all query history? This cannot be undone."
 
-#: dashboard/templates/dashboard/settings.html:89
+#: dashboard/templates/dashboard/settings.html:99
 msgid "Geçmişi sil"
 msgstr "Delete history"
 
-#: dashboard/templates/dashboard/settings.html:96
+#: dashboard/templates/dashboard/settings.html:106
 msgid "Ayarları yedekle"
 msgstr "Back up settings"
 
-#: dashboard/templates/dashboard/settings.html:97
+#: dashboard/templates/dashboard/settings.html:107
 msgid "Tüm ayarlar + engel/izin listeleri + hazır listeler + rewrite + zamanlama'yı tek JSON olarak indir. <b>Şifreleme anahtarı (DNS_LOG_KEY) yedeğe DAHİL DEĞİL.</b>"
 msgstr "Download all settings + block/allow lists + ready lists + rewrites + schedules as one JSON. <b>The encryption key (DNS_LOG_KEY) is NOT included in the backup.</b>"
 
-#: dashboard/templates/dashboard/settings.html:99
+#: dashboard/templates/dashboard/settings.html:109
 msgid "JSON indir"
 msgstr "Download JSON"
 
-#: dashboard/templates/dashboard/settings.html:105
+#: dashboard/templates/dashboard/settings.html:115
 msgid "Yedekten geri yükle"
 msgstr "Restore from backup"
 
-#: dashboard/templates/dashboard/settings.html:106
+#: dashboard/templates/dashboard/settings.html:116
 msgid "Bir yedek JSON'u seç; içindekiler mevcut ayarlarla <b>birleştirilir</b> (mevcutları silmez)."
 msgstr "Pick a backup JSON; its contents are <b>merged</b> with current settings (doesn't delete existing)."
 
-#: dashboard/templates/dashboard/settings.html:110
+#: dashboard/templates/dashboard/settings.html:120
 msgid "Yedekteki ayarlar mevcutlarla birleştirilecek. Devam edilsin mi?"
 msgstr "The backup settings will be merged with current ones. Continue?"
 
-#: dashboard/templates/dashboard/settings.html:110
+#: dashboard/templates/dashboard/settings.html:120
 msgid "Geri yükle"
 msgstr "Restore"
 
@@ -1790,12 +1834,12 @@ msgstr "Log in"
 msgid "Panele erişmek için giriş yap."
 msgstr "Log in to access the panel."
 
-#: dashboard/views.py:872
+#: dashboard/views.py:894
 #, python-format
 msgid "%(n)s cihaz kaydı silindi."
 msgstr "%(n)s device records deleted."
 
-#: dashboard/views.py:875
+#: dashboard/views.py:897
 msgid "Cihaz silindi."
 msgstr "Device deleted."
 
