@@ -454,10 +454,11 @@ async def get_suspicious_clients(hours=6, min_total=3, nx_ratio=0.40, txt_ratio=
       - Aşırı hacim → flood
     GROUP BY şifreli client_ip üzerinde çalışır (deterministik); yalnız gösterim için çözülür.
     'susp_ignore' listesindeki IP'ler ('şüpheli değil' işaretlenenler) atlanır."""
-    ignore = set()
+    ignore = set()                                    # yoksananlar + zaten yasaklılar → listeden düş
     try:
         s = await get_settings()
-        ignore = {x.strip() for x in (s.get('susp_ignore', '') or '').replace(',', '\n').splitlines() if x.strip()}
+        for _k in ('susp_ignore', 'client_deny', 'auto_banned'):
+            ignore |= {x.strip() for x in (s.get(_k, '') or '').replace(',', '\n').splitlines() if x.strip()}
     except Exception:  # noqa: BLE001
         pass
     rows = await _fetch_all(

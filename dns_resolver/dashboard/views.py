@@ -1241,14 +1241,20 @@ async def dns_devices(request):
     hosts = await _reverse_lookups([d['client_ip'] for d in devices[:60]])
     flagged = db.read_flagged_clients()                  # tehdit feed'i (datacenter/bot)
     try:
+        s = await db.get_settings()
         susp = {c['ip']: c['reasons'] for c in await db.get_suspicious_clients()}
-        ignored = {x.strip() for x in ((await db.get_settings()).get('susp_ignore', '') or '').replace(',', '\n').splitlines() if x.strip()}
+        def _ss(k):
+            return {x.strip() for x in (s.get(k, '') or '').replace(',', '\n').splitlines() if x.strip()}
+        ignored = _ss('susp_ignore')
+        banned = _ss('client_deny') | _ss('auto_banned')
     except Exception:  # noqa: BLE001
-        susp, ignored = {}, set()
+        susp, ignored, banned = {}, set(), set()
     for d in devices:
         ip = d['client_ip']
         d['host'] = hosts.get(ip, '')
-        if ip in ignored:
+        if ip in banned:
+            d['susp'], d['susp_reasons'] = 'banned', []
+        elif ip in ignored:
             d['susp'], d['susp_reasons'] = 'ignored', []
         elif ip in flagged:
             d['susp'], d['susp_reasons'] = 'threat', ['datacenter/bot']

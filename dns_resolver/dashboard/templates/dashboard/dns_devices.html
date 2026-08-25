@@ -14,41 +14,43 @@
 
     <div class="box">
         <div class="tablescroll">
-            <table>
-                <thead><tr>
-                    <th>{% trans "IP" %}</th><th>{% trans "Ad (PTR)" %}</th><th>{% trans "Yöntem" %}</th>
-                    <th>{% trans "Sorgu" %}</th>
-                    <th>{% trans "İlk görülme" %} <span class="muted" style="font-weight:400;">({% trans "yerel" %})</span></th>
-                    <th>{% trans "Son görülme" %}</th>
-                    <th>{% trans "Durum" %}</th>
-                </tr></thead>
-                <tbody>
-                    {% for d in devices %}
-                    <tr>
-                        <td class="mono"><b>{{ d.client_ip }}</b></td>
-                        <td class="mono muted">{{ d.host|default:"—" }}</td>
-                        <td>{% for m in d.methods %}<span class="dchip">{{ m }}</span> {% endfor %}</td>
-                        <td class="num">{{ d.cnt }}</td>
-                        <td class="muted num"><span class="lt" data-utc="{{ d.first_seen|date:'Y-m-d H:i:s' }}">{{ d.first_seen|date:'Y-m-d H:i:s' }}</span></td>
-                        <td class="muted num"><span class="lt" data-utc="{{ d.last_seen|date:'Y-m-d H:i:s' }}">{{ d.last_seen|date:'Y-m-d H:i:s' }}</span></td>
-                        <td>
-                            {% if d.susp == 'threat' %}<span class="dsusp s-threat" title="{% trans 'Bilinen bot/datacenter/abuse aralığı' %}">⚠ {% trans "şüpheli" %}</span>
-                            {% elif d.susp == 'behavior' %}<span class="dsusp s-behav" title="{{ d.susp_reasons|join:', ' }}">⚠ {% trans "şüpheli" %}</span>
-                            {% elif d.susp == 'ignored' %}<span class="dsusp s-safe">✓ {% trans "güvenli" %}</span>
-                            {% else %}<span class="muted">—</span>{% endif %}
-                            {% if d.susp == 'threat' or d.susp == 'behavior' %}
-                            <span class="dsusp-acts">
-                                <form method="post" action="{% url 'dashboard:ignore_client' %}" data-no-ajax style="margin:0;display:inline;">{% csrf_token %}<input type="hidden" name="ip" value="{{ d.client_ip }}"><input type="hidden" name="next" value="dns_devices"><button type="submit" class="xbtn" title="{% trans 'Şüpheli değil' %}">{% trans "Yoksay" %}</button></form>
-                                <form method="post" action="{% url 'dashboard:ban_client' %}" data-no-ajax style="margin:0;display:inline;">{% csrf_token %}<input type="hidden" name="ip" value="{{ d.client_ip }}"><input type="hidden" name="next" value="dns_devices"><button type="submit" class="xbtn danger">{% trans "Yasakla" %}</button></form>
-                            </span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="7" class="empty">{% trans "Henüz DNS sorgusu kaydı yok." %}</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <table class="dnsdev">
+            <thead><tr>
+                <th>{% trans "IP" %}</th><th>{% trans "Ad (PTR)" %}</th><th>{% trans "Yöntem" %}</th>
+                <th class="num">{% trans "Sorgu" %}</th>
+                <th>{% trans "Görülme" %} <span class="muted" style="font-weight:400;">({% trans "yerel" %})</span></th>
+                <th>{% trans "Durum" %}</th>
+            </tr></thead>
+            <tbody>
+                {% for d in devices %}
+                <tr>
+                    <td class="mono"><b>{{ d.client_ip }}</b></td>
+                    <td class="mono muted ptr" title="{{ d.host }}">{{ d.host|default:"—" }}</td>
+                    <td>{% for m in d.methods %}<span class="dchip">{{ m }}</span> {% endfor %}</td>
+                    <td class="num">{{ d.cnt }}</td>
+                    <td class="seen">
+                        <span class="lt" data-utc="{{ d.last_seen|date:'Y-m-d H:i:s' }}">{{ d.last_seen|date:'Y-m-d H:i:s' }}</span>
+                        <span class="seen-first muted">{% trans "ilk" %}: <span class="lt" data-utc="{{ d.first_seen|date:'Y-m-d H:i:s' }}">{{ d.first_seen|date:'Y-m-d H:i:s' }}</span></span>
+                    </td>
+                    <td>
+                        {% if d.susp == 'banned' %}<span class="dsusp s-banned">⛔ {% trans "yasaklı" %}</span>
+                        {% elif d.susp == 'threat' %}<span class="dsusp s-threat" title="{% trans 'Bilinen bot/datacenter/abuse aralığı' %}">⚠ {% trans "şüpheli" %}</span>
+                        {% elif d.susp == 'behavior' %}<span class="dsusp s-behav" title="{{ d.susp_reasons|join:', ' }}">⚠ {% trans "şüpheli" %}</span>
+                        {% elif d.susp == 'ignored' %}<span class="dsusp s-safe">✓ {% trans "güvenli" %}</span>
+                        {% else %}<span class="muted">—</span>{% endif %}
+                        {% if d.susp == 'threat' or d.susp == 'behavior' %}
+                        <span class="dsusp-acts">
+                            <form method="post" action="{% url 'dashboard:ignore_client' %}" data-no-ajax style="margin:0;">{% csrf_token %}<input type="hidden" name="ip" value="{{ d.client_ip }}"><input type="hidden" name="next" value="dns_devices"><button type="submit" class="xbtn" title="{% trans 'Şüpheli değil' %}">{% trans "Yoksay" %}</button></form>
+                            <form method="post" action="{% url 'dashboard:ban_client' %}" data-no-ajax style="margin:0;">{% csrf_token %}<input type="hidden" name="ip" value="{{ d.client_ip }}"><input type="hidden" name="next" value="dns_devices"><button type="submit" class="xbtn danger">{% trans "Yasakla" %}</button></form>
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty">{% trans "Henüz DNS sorgusu kaydı yok." %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
         </div>
     </div>
 

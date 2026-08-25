@@ -78,3 +78,16 @@
 .dsusp.s-safe{ color:var(--ok); background:color-mix(in srgb,var(--ok) 12%,transparent); border:1px solid color-mix(in srgb,var(--ok) 30%,transparent); }
 .dsusp-acts{ display:flex; gap:5px; margin-top:6px; }   /* rozetin ALTINDA → sütun genişlemesin */
 .dsusp-acts .xbtn{ padding:3px 9px; font-size:11px; }
+.dsusp.s-banned{ color:var(--err); background:color-mix(in srgb,var(--err) 16%,transparent); border:1px solid color-mix(in srgb,var(--err) 40%,transparent); }
+/* DNS Cihazları tablosu — sabit düzen, PTR kırpılır → masaüstünde yatay kaydırma yok */
+table.dnsdev{ table-layout:fixed; width:100%; }
+table.dnsdev th, table.dnsdev td{ padding:9px 10px; overflow:hidden; vertical-align:top; }
+table.dnsdev th:nth-child(1), table.dnsdev td:nth-child(1){ width:132px; }
+table.dnsdev th:nth-child(3), table.dnsdev td:nth-child(3){ width:132px; }
+table.dnsdev th:nth-child(4), table.dnsdev td:nth-child(4){ width:64px; }
+table.dnsdev th:nth-child(5), table.dnsdev td:nth-child(5){ width:172px; }
+table.dnsdev th:nth-child(6), table.dnsdev td:nth-child(6){ width:150px; }
+table.dnsdev .ptr{ white-space:nowrap; text-overflow:ellipsis; }
+table.dnsdev .dchip{ white-space:nowrap; }
+table.dnsdev .seen{ white-space:nowrap; font:600 12px var(--mono); color:var(--muted); }
+.seen-first{ display:block; font-size:10.5px; margin-top:2px; }
