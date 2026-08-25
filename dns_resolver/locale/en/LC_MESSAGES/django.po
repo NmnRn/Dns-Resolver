@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dns-panel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-25 23:28+0000\n"
+"POT-Creation-Date: 2026-08-25 23:39+0000\n"
 "PO-Revision-Date: 2026-08-18 00:00+0000\n"
 "Last-Translator: NmnRn\n"
 "Language-Team: English\n"
@@ -176,12 +176,12 @@ msgid "Şüpheli değil — yoksay"
 msgstr "Not suspicious — ignore"
 
 #: dashboard/templates/dashboard/analytics.html:69
-#: dashboard/templates/dashboard/dns_devices.html:41
+#: dashboard/templates/dashboard/dns_devices.html:43
 msgid "Yoksay"
 msgstr "Ignore"
 
 #: dashboard/templates/dashboard/analytics.html:70
-#: dashboard/templates/dashboard/dns_devices.html:42
+#: dashboard/templates/dashboard/dns_devices.html:44
 msgid "Yasakla"
 msgstr "Ban"
 
@@ -284,7 +284,6 @@ msgstr "Query Settings"
 #: dashboard/templates/dashboard/base.html:40
 #: dashboard/templates/dashboard/security.html:3
 #: dashboard/templates/dashboard/security.html:6
-#| msgid "güvenli"
 msgid "Güvenlik"
 msgstr "Security"
 
@@ -586,7 +585,6 @@ msgid "Kullanıcı"
 msgstr "User"
 
 #: dashboard/templates/dashboard/devices.html:50
-#: dashboard/templates/dashboard/dns_devices.html:21
 msgid "İlk görülme"
 msgstr "First seen"
 
@@ -639,42 +637,53 @@ msgid "Yöntem"
 msgstr "Method"
 
 #: dashboard/templates/dashboard/dns_devices.html:21
+#| msgid "Son görülme"
+msgid "Görülme"
+msgstr "Seen"
+
+#: dashboard/templates/dashboard/dns_devices.html:21
 #: dashboard/templates/dashboard/filters.html:76
 #: dashboard/templates/dashboard/users.html:16
 msgid "yerel"
 msgstr "local"
 
 #: dashboard/templates/dashboard/dns_devices.html:22
-msgid "Son görülme"
-msgstr "Last seen"
-
-#: dashboard/templates/dashboard/dns_devices.html:23
 #: dashboard/templates/dashboard/servers.html:27
 msgid "Durum"
 msgstr "Status"
 
-#: dashboard/templates/dashboard/dns_devices.html:35
+#: dashboard/templates/dashboard/dns_devices.html:33
+#| msgid "Dil"
+msgid "ilk"
+msgstr "first"
+
+#: dashboard/templates/dashboard/dns_devices.html:36
+#| msgid "Yasakla"
+msgid "yasaklı"
+msgstr "banned"
+
+#: dashboard/templates/dashboard/dns_devices.html:37
 msgid "Bilinen bot/datacenter/abuse aralığı"
 msgstr "Known bot/datacenter/abuse range"
 
-#: dashboard/templates/dashboard/dns_devices.html:35
-#: dashboard/templates/dashboard/dns_devices.html:36
+#: dashboard/templates/dashboard/dns_devices.html:37
+#: dashboard/templates/dashboard/dns_devices.html:38
 msgid "şüpheli"
 msgstr "suspicious"
 
-#: dashboard/templates/dashboard/dns_devices.html:37
+#: dashboard/templates/dashboard/dns_devices.html:39
 msgid "güvenli"
 msgstr "safe"
 
-#: dashboard/templates/dashboard/dns_devices.html:41
+#: dashboard/templates/dashboard/dns_devices.html:43
 msgid "Şüpheli değil"
 msgstr "Not suspicious"
 
-#: dashboard/templates/dashboard/dns_devices.html:48
+#: dashboard/templates/dashboard/dns_devices.html:50
 msgid "Henüz DNS sorgusu kaydı yok."
 msgstr "No DNS query records yet."
 
-#: dashboard/templates/dashboard/dns_devices.html:56
+#: dashboard/templates/dashboard/dns_devices.html:58
 msgid "DNS istemcisi HTTP göndermez → User-Agent / JS fingerprint yoktur. Daha fazla tanı için: DoH isteklerinde <b>User-Agent</b> loglama, DoT/DoQ için TLS <b>JA3/JA4</b> parmak izi, LAN'da <b>DHCP/ARP</b> eşleme (IP→MAC→cihaz adı)."
 msgstr "A DNS client sends no HTTP → there is no User-Agent / JS fingerprint. For more: log the <b>User-Agent</b> on DoH requests, TLS <b>JA3/JA4</b> fingerprint for DoT/DoQ, or <b>DHCP/ARP</b> mapping on the LAN (IP→MAC→device name)."
 
@@ -1601,7 +1610,6 @@ msgid "Bu listeler açıkken OTOMATİK dolar; bir istemciyi elle çıkarmak içi
 msgstr "These lists fill AUTOMATICALLY when enabled; delete a line to remove a client manually. Clients in susp_ignore are EXEMPT from enforcement."
 
 #: dashboard/templates/dashboard/security.html:51
-#| msgid "İstemci IP (tam)"
 msgid "İstemci Erişimi (ACL)"
 msgstr "Client Access (ACL)"
 
@@ -1626,7 +1634,6 @@ msgid "İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zama
 msgstr "If the allow list is non-empty, ONLY those may query. Denied clients are always blocked (before the allow list)."
 
 #: dashboard/templates/dashboard/security.html:67
-#| msgid "Şüpheli değil"
 msgid "Şüpheli / Tehdit Tespiti"
 msgstr "Suspicious / Threat Detection"
 
@@ -1645,7 +1652,6 @@ msgid "Şüpheli sayma (yoksay) — IP / CIDR"
 msgstr "Do not flag (ignore) — IP / CIDR"
 
 #: dashboard/templates/dashboard/security.html:75
-#| msgid "Analiz'de 'Yoksay' dediğin istemciler burada birikir → artık şüpheli listesinde/bildirimlerde çıkmaz. Geri almak için satırı sil."
 msgid "Analiz / DNS Cihazları'nda 'Yoksay' dediğin istemciler burada birikir → artık şüpheli sayılmaz + yaptırımdan muaf. Geri almak için satırı sil."
 msgstr "Clients you 'Ignore' in Analytics / DNS Devices accumulate here → no longer considered suspicious + exempt from enforcement. Delete the line to undo."
 
