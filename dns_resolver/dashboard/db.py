@@ -449,7 +449,7 @@ async def get_allowlist() -> list[dict]:
     return await _fetch_all("SELECT domain FROM allowlist ORDER BY domain")
 
 
-async def _write(sql: str, params: tuple) -> None:
+async def _write(sql: str, params: tuple = ()) -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
