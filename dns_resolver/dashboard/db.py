@@ -85,7 +85,8 @@ async def get_stats() -> dict:
             COUNT(DISTINCT domain)                     AS distinct_domains,
             COUNT(DISTINCT client_ip)                  AS distinct_clients,
             SUM(queried_at >= UTC_TIMESTAMP() - INTERVAL 24 HOUR) AS last_24h,
-            SUM(blocked)                               AS blocked
+            SUM(blocked)                               AS blocked,
+            SUM(blocked AND queried_at >= UTC_TIMESTAMP() - INTERVAL 24 HOUR) AS blocked_24h
         FROM dns_cache
         """
     )
@@ -96,6 +97,7 @@ async def get_stats() -> dict:
         'distinct_clients': row['distinct_clients'] or 0,
         'last_24h': int(row['last_24h'] or 0),
         'blocked': int(row['blocked'] or 0),
+        'blocked_24h': int(row['blocked_24h'] or 0),
     }
 
 

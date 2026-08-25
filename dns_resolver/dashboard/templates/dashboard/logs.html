@@ -22,8 +22,8 @@
                 </div>
                 <div class="hero-mini">
                     <div class="lbl">{% trans "Engellenen (24s)" %}</div>
-                    <div class="m2 num">{{ stats.blocked }}</div>
-                    <div class="hsub">{% blocktrans with p=blocked_pct %}%{{ p }} oranında{% endblocktrans %}</div>
+                    <div class="m2 num">{{ stats.blocked_24h }}</div>
+                    <div class="hsub">{% blocktrans with p=blocked_pct_24h %}%{{ p }} oranında{% endblocktrans %}</div>
                 </div>
             </div>
             {% if spark %}

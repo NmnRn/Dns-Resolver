@@ -306,6 +306,7 @@ async def logs(request):
         top_clients=_with_pct(top_clients),
         methods=[{**m, 'share': round(m['cnt'] / m_total * 100, 1)} for m in method_breakdown],
         blocked_pct=round(stats.get('blocked', 0) / total * 100),
+        blocked_pct_24h=round(stats.get('blocked_24h', 0) / (stats.get('last_24h', 0) or 1) * 100),
         spark=_sparkline(hourly),
         peak=max(hourly) if hourly else 0,
     )

@@ -60,6 +60,9 @@ h2 { margin: 0; }
 .num { font-variant-numeric: tabular-nums; } .mono { font-family: var(--mono); }
 a { color: var(--accent-deep); text-decoration: none; }
 :root[data-theme="dark"] a { color: var(--accent); }
+/* Dolu .btn linkleri: koyu temada yukarıdaki 'a' kuralı accent-ink'i eziyordu →
+   yeşil-metin yeşil-zeminde yutuluyordu. Ghost (şeffaf) hariç accent-ink'e sabitle. */
+:root[data-theme="dark"] a.btn:not(.ghost) { color: var(--accent-ink); }
 ::selection { background: var(--accent-soft); color: var(--text); }
 
 /* Üst bar + navigasyon (büyüyen alt-çizgi) */
