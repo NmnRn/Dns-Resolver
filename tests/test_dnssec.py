@@ -255,20 +255,20 @@ def test_resolve_dnssec_hook_bogus_and_secure():
     core = DNSCore(db_manager=None)
     core.dnssec = True
     core._resolve = lambda *a, **k: (RCODE.NOERROR, ["rr"])
-    core.validate = lambda q, t: dnssec.BOGUS
+    core.validate = lambda q, t: dnssec.BOGUS            # farklı domain (verdict cache domain-başına)
     ds = ["off"]
-    rc, recs = core.resolve("x.com.", "A", 0, ["—"], ds)
+    rc, recs = core.resolve("bad.com.", "A", 0, ["—"], ds)
     assert rc == RCODE.SERVFAIL and recs == [] and ds[0] == "bogus"   # bogus → SERVFAIL
     core.validate = lambda q, t: dnssec.SECURE
     ds = ["off"]
-    rc, recs = core.resolve("x.com.", "A", 0, ["—"], ds)
+    rc, recs = core.resolve("good.com.", "A", 0, ["—"], ds)
     assert rc == RCODE.NOERROR and recs == ["rr"] and ds[0] == "secure"
 
     core.dnssec = False                                  # kapalıyken validate çağrılmaz
     called = []
     core.validate = lambda q, t: called.append(1) or dnssec.SECURE
     ds = ["off"]
-    core.resolve("x.com.", "A", 0, ["—"], ds)
+    core.resolve("off.com.", "A", 0, ["—"], ds)
     assert called == [] and ds[0] == "off"
 
 
@@ -445,7 +445,37 @@ def test_resolve_denial_hook_nxdomain(monkeypatch):
     ds = ["off"]
     rc, recs = core.resolve("nope.example.tld.", "A", 0, ["—"], ds)
     assert calls and ds[0] == "secure" and rc == RCODE.NXDOMAIN
-    core.validate_denial = lambda q, t: dnssec.BOGUS      # sahte NXDOMAIN → SERVFAIL
+    core.validate_denial = lambda q, t: dnssec.BOGUS      # farklı domain (verdict cache)
     ds = ["off"]
-    rc, recs = core.resolve("nope.example.tld.", "A", 0, ["—"], ds)
+    rc, recs = core.resolve("nope2.example.tld.", "A", 0, ["—"], ds)
     assert rc == RCODE.SERVFAIL and ds[0] == "bogus"
+
+
+def test_dnssec_verdict_cache_reuses_result():
+    from servers.normal_udp import DNSCore
+    from dnslib import RCODE
+    core = DNSCore(db_manager=None)
+    core.dnssec = True
+    core.is_blocked = lambda d: None
+    core._resolve = lambda *a, **k: (RCODE.NOERROR, ["rr"])
+    calls = []
+    core.validate = lambda q, t: calls.append(1) or dnssec.SECURE
+    ds = ["off"]; core.resolve("x.com.", "A", 0, ["—"], ds)
+    ds2 = ["off"]; core.resolve("x.com.", "A", 0, ["—"], ds2)
+    assert calls == [1]                                   # 2. sorgu önbellekten → validate 1 kez
+    assert ds[0] == "secure" and ds2[0] == "secure"
+
+
+def test_dnssec_verdict_cache_bogus_negative():
+    from servers.normal_udp import DNSCore
+    from dnslib import RCODE
+    core = DNSCore(db_manager=None)
+    core.dnssec = True
+    core.is_blocked = lambda d: None
+    core._resolve = lambda *a, **k: (RCODE.NOERROR, ["rr"])
+    calls = []
+    core.validate = lambda q, t: calls.append(1) or dnssec.BOGUS
+    ds = ["off"]; rc1, _ = core.resolve("bad.com.", "A", 0, ["—"], ds)
+    ds2 = ["off"]; rc2, r2 = core.resolve("bad.com.", "A", 0, ["—"], ds2)
+    assert calls == [1]                                   # bogus da önbelleklenir (tekrar timeout/kripto yok)
+    assert rc1 == RCODE.SERVFAIL and rc2 == RCODE.SERVFAIL and ds2[0] == "bogus" and r2 == []

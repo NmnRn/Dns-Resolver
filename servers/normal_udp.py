@@ -222,6 +222,10 @@ class DNSCore:
         # kök+TLD+bölge anahtarını yeniden çekmeyelim. {(name,rtype): (expiry, answers, sigs)}
         self._dnssec_fetch_cache = {}
         self._dnssec_cache_lock = threading.Lock()
+        # DNSSEC verdict önbelleği: (domain,qtype) -> (expiry, 'secure'/'insecure'/'bogus').
+        # validate()'i HER sorguda baştan koşturmamak için; bogus'a KISA TTL (negatif
+        # cache) → dnssec-failed.org gibi alanlar her pakette timeout+kripto yapmaz (DoS).
+        self._dnssec_verdict_cache = {}
         self.upstream_strategy = "sequential"   # sequential | parallel | fastest
         # Koşullu forwarding: [(son-ek, upstream)] — eşleşen domaini belirli bir
         # upstream'e çözdürür (use_recursion'dan bağımsız). Panelden ayarlanır.
@@ -780,6 +784,19 @@ class DNSCore:
             logger.exception("dnssec yokluk dogrulama hatasi")
             return dnssec.INSECURE
 
+    def _dnssec_verdict_get(self, key):
+        """Önbellekteki DNSSEC verdict'i (süresi geçmemişse) döner, yoksa None."""
+        with self._dnssec_cache_lock:
+            hit = self._dnssec_verdict_cache.get(key)
+        return hit[1] if hit and hit[0] > now() else None
+
+    def _dnssec_verdict_put(self, key, verdict):
+        """Verdict'i TTL ile önbelleğe al. bogus KISA (negatif cache → DoS/tekrar timeout
+        önle); secure/insecure orta (durum dakikalar içinde nadiren değişir)."""
+        ttl = 120 if verdict == dnssec.BOGUS else 300
+        with self._dnssec_cache_lock:
+            self._dnssec_verdict_cache[key] = (now() + ttl, verdict)
+
     # --- Asıl çözümleme ------------------------------------------------------
     def resolve(self, domain, qtype, depth=0, source=None, dnssec_out=None):
         """En dış (depth 0) çağrıda işlem süresini kaynağa göre ölçen sarmalayıcı.
@@ -792,23 +809,21 @@ class DNSCore:
         result = self._resolve(domain, qtype, 0, src)
         if self.dnssec and dnssec_out is not None:
             rc, recs = result
-            if rc == RCODE.NOERROR and recs:
-                st = self.validate(domain, qtype)
-                dnssec_out[0] = st
-                if st == dnssec.BOGUS:
-                    result = (RCODE.SERVFAIL, [])    # bogus cevabı istemciye VERME
-            elif rc == RCODE.NXDOMAIN and not self.is_blocked(domain):
-                st = self.validate_denial(domain, qtype)   # NSEC/NSEC3 yokluk kanıtı
-                dnssec_out[0] = st
-                if st == dnssec.BOGUS:
-                    result = (RCODE.SERVFAIL, [])    # sahte NXDOMAIN → istemciye VERME
-            elif rc == RCODE.NOERROR and not recs:  # NODATA (domain var, tip yok)
-                st = self.validate_denial(domain, qtype)
-                dnssec_out[0] = st
-                if st == dnssec.BOGUS:
-                    result = (RCODE.SERVFAIL, [])
-            else:
-                dnssec_out[0] = dnssec.INSECURE      # SERVFAIL / engellenmiş → doğrulama yok
+            key = (domain, qtype)
+            st = self._dnssec_verdict_get(key)       # önbellek → validate'i baştan koşturma
+            if st is None:                           # yoksa hesapla + önbelleğe al
+                if rc == RCODE.NOERROR and recs:
+                    st = self.validate(domain, qtype)
+                elif rc == RCODE.NXDOMAIN and not self.is_blocked(domain):
+                    st = self.validate_denial(domain, qtype)   # NSEC/NSEC3 yokluk kanıtı
+                elif rc == RCODE.NOERROR and not recs:         # NODATA (domain var, tip yok)
+                    st = self.validate_denial(domain, qtype)
+                else:
+                    st = dnssec.INSECURE             # SERVFAIL / engellenmiş → doğrulama yok
+                self._dnssec_verdict_put(key, st)
+            dnssec_out[0] = st
+            if st == dnssec.BOGUS:
+                result = (RCODE.SERVFAIL, [])         # bogus/sahte cevabı istemciye VERME
         self.record_source_time(src[0], (now() - t0) * 1000.0)
         return result
 
