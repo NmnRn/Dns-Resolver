@@ -377,6 +377,40 @@ class DB_CON():
             row = await cursor.fetchone()
         return row["v"] if row else default
 
+    async def add_notification(self, level, category, title, body="", dedup_key=None, dedup_window=3600):
+        """Panel-içi bildirim ekle (resolver/app tarafından). dedup_key + son dedup_window
+        sn içinde aynısı varsa ATLA. get_db_cursor çıkışta rollback yapar → açık commit."""
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            if dedup_key:
+                await cursor.execute(
+                    "SELECT 1 FROM notifications WHERE dedup_key=%s "
+                    "AND created_at >= UTC_TIMESTAMP() - INTERVAL %s SECOND LIMIT 1",
+                    (dedup_key, int(dedup_window)))
+                if await cursor.fetchone():
+                    return
+            await cursor.execute(
+                "INSERT INTO notifications (created_at, level, category, title, body, dedup_key) "
+                "VALUES (UTC_TIMESTAMP(), %s, %s, %s, %s, %s)",
+                (level, category, (title or "")[:160], (body or "")[:512], dedup_key))
+            await conn.commit()
+
+    async def scan_new_client_ips(self, minutes=10):
+        """Son N dakikada sorgu yapan DISTINCT istemci IP'leri (ciphertext). 'Yeni istemci'
+        bildirimi için — dedup notifications tablosunda yapılır (ilk görülende bir kez)."""
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute(
+                "SELECT DISTINCT client_ip FROM dns_cache WHERE client_ip IS NOT NULL "
+                "AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s MINUTE", (int(minutes),))
+            return [r["client_ip"] for r in await cursor.fetchall()]
+
+    async def scan_bogus_domains(self, minutes=20):
+        """Son N dakikada dnssec='bogus' olan DISTINCT domain'ler (ciphertext) — şüpheli alan."""
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute(
+                "SELECT DISTINCT domain FROM dns_cache WHERE dnssec='bogus' "
+                "AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s MINUTE", (int(minutes),))
+            return [r["domain"] for r in await cursor.fetchall()]
+
     async def delete_old_logs(self, days):
         """N günden eski dns_cache satırlarını sil (log retention). Silinen sayı."""
         if days <= 0:

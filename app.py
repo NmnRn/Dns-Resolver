@@ -19,6 +19,7 @@ from project_control.check_ssl_certificate import SSLCertificateChecker
 
 import db_ops
 import config_store
+import logcrypto
 
 def _ups_list(text):
     """Upstream metnini listeye çevir: virgül/satır ile ayır, boşları at, '#' ile
@@ -293,6 +294,10 @@ def main():
                             logger.error("Engelleme listesi indirilemedi %s: %r", url, e)
                             await db_manager.set_source_stats(sid, 0)
                             _source_cache.setdefault(sid, (url, frozenset()))
+                            await db_manager.add_notification(
+                                "warn", "health", "Liste indirilemedi",
+                                f"{url} — {type(e).__name__}",
+                                dedup_key=f"dlfail:{sid}", dedup_window=3600)
 
                 # Yalnız yeni / URL-değişmiş / bayat (force) kaynakları indir.
                 pending = [s for s in sources
@@ -323,6 +328,46 @@ def main():
                 core.update_filter_lists(manual_block, allow, list_sets)
             except Exception as e:
                 logger.error("Filtre listesi yenileme hatası: %r", e)
+    # Resolver-türevli panel bildirimleri: yeni istemci, şüpheli(bogus) alan, sertifika
+    # süresi. Hot-path'e DOKUNMADAN DB'den türetir; dedup notifications tablosunda.
+    async def _scan_notifications(interval=120):
+        checker = SSLCertificateChecker(warning_days=30)
+        while True:
+            await asyncio.sleep(interval)
+            try:
+                span = interval // 60 + 2
+                for cip in await db_manager.scan_new_client_ips(minutes=span):
+                    ip = (logcrypto.dec(cip) or "?").strip()
+                    if ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                        continue                       # sağlık probe'u vb. → atla
+                    await db_manager.add_notification(
+                        "info", "client", "Yeni istemci", f"{ip} ilk kez sorgu yaptı.",
+                        dedup_key=f"newclient:{cip}", dedup_window=315360000)  # ~10y = bir kez
+                for dcip in await db_manager.scan_bogus_domains(minutes=span + 5):
+                    dom = (logcrypto.dec(dcip) or "?").rstrip(".")
+                    await db_manager.add_notification(
+                        "warn", "domain", "Şüpheli alan (DNSSEC bozuk)",
+                        f"{dom} — imzalı ama doğrulanamadı (bogus).",
+                        dedup_key=f"bogus:{dcip}", dedup_window=86400)
+                cf = config_store.get_config().get("cert_file")
+                if cf and os.path.exists(cf):
+                    info = await loop.run_in_executor(None, checker.check_file, cf)
+                    st = info.get("status", "") if isinstance(info, dict) else ""
+                    if "EXPIRING_SOON" in st:
+                        await db_manager.add_notification(
+                            "warn", "health", "Sertifika yakında sona erecek",
+                            f"Geçerlilik: {info.get('valid_until', '?')}",
+                            dedup_key="certexp", dedup_window=43200)
+                    elif st == "EXPIRED":
+                        await db_manager.add_notification(
+                            "crit", "health", "Sertifika süresi DOLDU",
+                            "TLS (DoT/DoQ/DoH) başlatılamayabilir — sertifikayı yenile.",
+                            dedup_key="certexpired", dedup_window=43200)
+            except Exception as e:  # noqa: BLE001 — bildirim ikincil, döngü ölmesin
+                logger.debug("bildirim taramasi hatasi: %r", e)
+    scan_task = loop.create_task(_scan_notifications())
+    scan_task.add_done_callback(_log_task_error)
+
     filter_task = loop.create_task(_refresh_filters())
     filter_task.add_done_callback(_log_task_error)
 
