@@ -1389,8 +1389,7 @@ async def notifications(request):
             await db.mark_notifications_read()
         elif act == 'clear':
             await db.clear_notifications()
-        # redirect DEĞİL → alta düşüp yeniden render (ajax.js form-swap'iyle uyumlu;
-        # aksi halde 302 swap'i bozar → "clear çalışmıyor" görünür).
+        return redirect('dashboard:notifications')   # PRG; formlar data-no-ajax → tam gönderim
     context = _base_ctx(request, 'notifications')
     try:
         context['items'] = await db.get_notifications(200)
