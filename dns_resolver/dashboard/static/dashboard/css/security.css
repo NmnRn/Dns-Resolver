@@ -1,0 +1,27 @@
+/* Kademeli otomatik yaptırım — dikkat çekici kart */
+.enforce-card{ border-color:color-mix(in srgb,var(--warn) 45%,var(--border)); box-shadow:0 0 0 1px color-mix(in srgb,var(--warn) 22%,transparent), var(--shadow); }
+.enforce-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:15px 18px; border-bottom:1px solid var(--border); background:color-mix(in srgb,var(--warn) 8%,transparent); }
+.enforce-title{ font:800 16px var(--sans); color:var(--warn); letter-spacing:-.01em; }
+.enforce-sub{ font-size:12.5px; color:var(--muted); margin-top:3px; max-width:64ch; line-height:1.5; }
+
+.tiers{ display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px 18px; }
+@media(max-width:640px){ .tiers{ grid-template-columns:1fr; } }
+.tier{ border:1px solid var(--border-strong); border-radius:var(--r-sm); padding:12px 14px; }
+.tier.t-soft{ border-left:3px solid var(--warn); }
+.tier.t-ban{ border-left:3px solid var(--err); }
+.tier-h{ font:800 13px var(--sans); color:var(--text); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.tier-act{ font:700 10px var(--mono); text-transform:uppercase; letter-spacing:.03em; padding:2px 7px; border-radius:5px; }
+.t-soft .tier-act{ color:var(--warn); background:color-mix(in srgb,var(--warn) 14%,transparent); }
+.t-ban .tier-act{ color:var(--err); background:color-mix(in srgb,var(--err) 14%,transparent); }
+.tier-d{ font-size:12px; color:var(--muted); margin:6px 0 10px; line-height:1.5; }
+.tier-th{ display:flex; align-items:center; gap:8px; font:600 12px var(--sans); color:var(--muted); }
+.tier-th input{ width:74px; background:var(--bg); border:1px solid var(--border-strong); color:var(--text); border-radius:var(--r-sm); padding:6px 8px; font:600 13px var(--mono); }
+
+/* enforce-card içindeki (setbody'siz) doğrudan elemanlara yatay boşluk */
+.enforce-card .setrow{ margin:0 18px; }
+.enforce-card > .modelbl{ display:block; margin:14px 18px 0; }
+.enforce-card > .upst{ width:auto; display:block; margin:6px 18px 0; }
+.enforce-card > .setnote{ margin:10px 18px 16px; }
+
+.sw.big{ transform:scale(1.2); transform-origin:right center; }
+.saverow{ margin-top:18px; text-align:right; }

@@ -1,0 +1,82 @@
+{% extends "dashboard/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Güvenlik" %} · DNS Panel{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'dashboard/css/settings.css' %}?v={{ static_v }}"><link rel="stylesheet" href="{% static 'dashboard/css/security.css' %}?v={{ static_v }}">{% endblock %}
+{% block content %}
+    <h1>{% trans "Güvenlik" %}</h1>
+    <p class="sub">{% trans "İstemci erişimi, şüpheli/tehdit tespiti ve kademeli otomatik yaptırım. Değişiklikler resolver'a ~10 sn içinde yansır." %}</p>
+
+    {% if msg %}<div class="banner {{ msg.0 }}">{{ msg.1 }}</div>{% endif %}
+    {% if error %}<div class="error">{% blocktrans %}Veritabanına erişilemedi: {{ error }}{% endblocktrans %}</div>{% else %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- ⚠ KADEMELİ OTOMATİK YAPTIRIM — dikkat çekici -->
+        <div class="box enforce-card">
+            <div class="enforce-head">
+                <div>
+                    <div class="enforce-title">⚠ {% trans "Kademeli Otomatik Yaptırım" %}</div>
+                    <div class="enforce-sub">{% trans "Davranışa göre istemciye OTOMATİK aksiyon. Yanlış pozitif riski var — dikkatli aç. Default KAPALI." %}</div>
+                </div>
+                <label class="sw big"><input type="checkbox" name="auto_enforce" {% if auto_enforce %}checked{% endif %}><span></span></label>
+            </div>
+
+            <div class="tiers">
+                <div class="tier t-soft">
+                    <div class="tier-h">① {% trans "SINKHOLE" %} <span class="tier-act">NXDOMAIN {% trans "dön" %}</span></div>
+                    <div class="tier-d">{% trans "Engellenen / TXT / SERVFAIL oranı eşiği aşarsa istemciye NXDOMAIN döndürülür (yumuşak)." %}</div>
+                    <label class="tier-th">{% trans "Eşik" %} % <input type="number" name="auto_soft_pct" value="{{ auto_soft_pct }}" min="1" max="100"></label>
+                </div>
+                <div class="tier t-ban">
+                    <div class="tier-h">② {% trans "YASAKLA" %} <span class="tier-act">client_deny · REFUSED</span></div>
+                    <div class="tier-d">{% trans "NXDOMAIN oranı eşiği aşarsa (DGA/malware beaconing) istemci tamamen reddedilir." %}</div>
+                    <label class="tier-th">NXDOMAIN % <input type="number" name="auto_ban_pct" value="{{ auto_ban_pct }}" min="1" max="100"></label>
+                </div>
+            </div>
+            <div class="setrow" style="margin-top:12px;">
+                <div class="si"><div class="t">{% trans "En az sorgu (eşik altında dokunma)" %}</div><div class="d">{% trans "Bir istemci bu sayıdan az sorgu yaptıysa yaptırım uygulanmaz (düşük hacimde yanlış pozitif önler)." %}</div></div>
+                <input type="number" name="auto_enforce_min" value="{{ auto_enforce_min }}" min="1" class="numin">
+            </div>
+
+            <label class="modelbl">{% trans "Otomatik yasaklananlar (client_deny'a eklenenler) — düzenlenebilir" %}</label>
+            <textarea class="upst" name="auto_banned" rows="3" spellcheck="false" placeholder="{% trans '(otomatik dolar)' %}">{{ auto_banned }}</textarea>
+            <label class="modelbl">{% trans "Otomatik sinkhole (NXDOMAIN dönenler) — düzenlenebilir" %}</label>
+            <textarea class="upst" name="auto_softblock" rows="3" spellcheck="false" placeholder="{% trans '(otomatik dolar)' %}">{{ auto_softblock }}</textarea>
+            <p class="setnote">{% trans "Bu listeler açıkken OTOMATİK dolar; bir istemciyi elle çıkarmak için satırı sil. susp_ignore'daki istemciler yaptırımdan MUAF." %}</p>
+        </div>
+
+        <!-- İstemci erişimi -->
+        <div class="box setcard" style="margin-top:16px;">
+            <h2>{% trans "İstemci Erişimi (ACL)" %}</h2>
+            <div class="setbody">
+                <div class="setrow">
+                    <div class="si"><div class="t">{% trans "Rate limit — istemci başına / sn" %}</div><div class="d">{% trans "Bir istemci saniyede bu sayıdan fazla sorarsa fazlası reddedilir (REFUSED). 0 = kapalı." %}</div></div>
+                    <input type="number" name="rate_limit" value="{{ rate_limit }}" min="0" class="numin">
+                </div>
+                <label class="modelbl">{% trans "İzinli istemciler (boş = herkes) — IP / CIDR, satır başına bir tane" %}</label>
+                <textarea class="upst" name="client_allow" rows="3" spellcheck="false" placeholder="192.168.1.0/24&#10;10.0.0.5">{{ client_allow }}</textarea>
+                <label class="modelbl">{% trans "Reddedilen istemciler — IP / CIDR" %}</label>
+                <textarea class="upst" name="client_deny" rows="3" spellcheck="false" placeholder="203.0.113.7">{{ client_deny }}</textarea>
+                <p class="setnote">{% trans "İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman engellenir (izinliden önce)." %}</p>
+            </div>
+        </div>
+
+        <!-- Şüpheli / tehdit -->
+        <div class="box setcard" style="margin-top:16px;">
+            <h2>{% trans "Şüpheli / Tehdit Tespiti" %}</h2>
+            <div class="setbody">
+                <div class="setrow">
+                    <div class="si"><div class="t">{% trans "Tehdit / datacenter IP feed'i" %}</div><div class="d">{% trans "Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abuse IP aralıklarını indirir; bu aralıklardan sorgu yapan istemciler DNS Cihazları'nda ŞÜPHELİ işaretlenir + bildirim düşer. <b>Default KAPALI</b>. Açıksa internete GİDEN istek gerektirir." %}</div></div>
+                    <label class="sw"><input type="checkbox" name="threat_feed_enabled" {% if threat_feed_enabled %}checked{% endif %}><span></span></label>
+                </div>
+                <label class="modelbl">{% trans "Şüpheli sayma (yoksay) — IP / CIDR" %}</label>
+                <textarea class="upst" name="susp_ignore" rows="3" spellcheck="false" placeholder="192.168.1.50">{{ susp_ignore }}</textarea>
+                <p class="setnote">{% trans "Analiz / DNS Cihazları'nda 'Yoksay' dediğin istemciler burada birikir → artık şüpheli sayılmaz + yaptırımdan muaf. Geri almak için satırı sil." %}</p>
+            </div>
+        </div>
+
+        <div class="saverow"><button type="submit" class="btn">{% trans "Kaydet" %}</button></div>
+    </form>
+    {% endif %}
+{% endblock %}

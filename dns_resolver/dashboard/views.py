@@ -778,6 +778,49 @@ async def analytics(request):
     return render(request, 'dashboard/analytics.html', context)
 
 
+async def security(request):
+    """İstemci güvenliği: ACL (allow/deny/rate) + şüpheli/tehdit + kademeli otomatik
+    yaptırım. (Erişim bölümü Ayarlar'dan buraya taşındı.)"""
+    gate = _gate(request)
+    if gate:
+        return gate
+    msg = None
+    if request.method == 'POST':
+        try:
+            await db.set_setting('client_allow', request.POST.get('client_allow', '').strip())
+            await db.set_setting('client_deny', request.POST.get('client_deny', '').strip())
+            _rl = request.POST.get('rate_limit', '0').strip()
+            await db.set_setting('rate_limit', _rl if _rl.isdigit() else '0')
+            await db.set_setting('susp_ignore', request.POST.get('susp_ignore', '').strip())
+            await db.set_setting('threat_feed_enabled', '1' if request.POST.get('threat_feed_enabled') else '0')
+            await db.set_setting('auto_enforce', '1' if request.POST.get('auto_enforce') else '0')
+            for k, d in (('auto_ban_pct', '20'), ('auto_soft_pct', '51'), ('auto_enforce_min', '30')):
+                v = request.POST.get(k, d).strip()
+                await db.set_setting(k, v if v.isdigit() else d)
+            await db.set_setting('auto_banned', request.POST.get('auto_banned', '').strip())
+            await db.set_setting('auto_softblock', request.POST.get('auto_softblock', '').strip())
+            msg = ('ok', 'Güvenlik ayarları kaydedildi — resolver ~10 sn içinde uygular.')
+        except Exception as exc:  # noqa: BLE001
+            msg = ('error', _fail(exc))
+    context = _base_ctx(request, 'security')
+    try:
+        s = await db.get_settings()
+    except Exception as exc:  # noqa: BLE001
+        context.update(error=_fail(exc, 'Veritabanına erişilemedi.'), msg=msg)
+        return render(request, 'dashboard/security.html', context)
+    context.update(
+        msg=msg,
+        client_allow=s.get('client_allow', ''), client_deny=s.get('client_deny', ''),
+        rate_limit=s.get('rate_limit', '0'), susp_ignore=s.get('susp_ignore', ''),
+        threat_feed_enabled=s.get('threat_feed_enabled', '0') == '1',
+        auto_enforce=s.get('auto_enforce', '0') == '1',
+        auto_ban_pct=s.get('auto_ban_pct', '20'), auto_soft_pct=s.get('auto_soft_pct', '51'),
+        auto_enforce_min=s.get('auto_enforce_min', '30'),
+        auto_banned=s.get('auto_banned', ''), auto_softblock=s.get('auto_softblock', ''),
+    )
+    return render(request, 'dashboard/security.html', context)
+
+
 async def ban_client(request):
     """Şüpheli istemciyi engelle: IP'yi client_deny ACL'ine ekle (resolver ~10 sn'de uygular)."""
     gate = _gate(request)
@@ -1646,15 +1689,7 @@ async def settings_page(request):
                     await db.set_setting('cache_enabled', '1' if request.POST.get('cache_enabled') else '0')
                     await db.set_setting('cache_min_ttl', str(int(mn)))
                     await db.set_setting('cache_max_ttl', str(int(mx)))
-                    # Çözümleme ayarları (recursion/upstream/strateji/koşullu/bootstrap)
-                    # artık ayrı "Sorgu Ayarları" sayfasında (views.query_settings).
-                    # Erişim kontrolü
-                    _rl = request.POST.get('rate_limit', '0').strip()
-                    await db.set_setting('rate_limit', _rl if _rl.isdigit() else '0')
-                    await db.set_setting('client_allow', request.POST.get('client_allow', '').strip())
-                    await db.set_setting('client_deny', request.POST.get('client_deny', '').strip())
-                    await db.set_setting('susp_ignore', request.POST.get('susp_ignore', '').strip())
-                    await db.set_setting('threat_feed_enabled', '1' if request.POST.get('threat_feed_enabled') else '0')
+                    # Çözümleme ayarları → "Sorgu Ayarları"; erişim/güvenlik → "Güvenlik" sayfası.
                     # Log retention (preset ya da özel)
                     _rd = request.POST.get('log_retention_days', '0')
                     if _rd == 'custom':

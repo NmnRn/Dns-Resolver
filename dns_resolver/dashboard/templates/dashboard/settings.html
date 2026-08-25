@@ -38,30 +38,6 @@
                 <p class="setnote">{% trans "Min TTL kısa süreli kayıtları en az bu kadar bellekte tutar (0 = dokunma); Max TTL üst sınırdır." %}</p>
             </div>
 
-            <div class="box setcard" style="margin-top:16px;">
-                <div class="setrow">
-                    <div class="si">
-                        <div class="t">{% trans "Rate limit — istemci başına / sn" %}</div>
-                        <div class="d">{% trans "Bir istemci saniyede bu sayıdan fazla sorarsa fazlası reddedilir (REFUSED). 0 = kapalı." %}</div>
-                    </div>
-                    <input type="number" name="rate_limit" value="{{ rate_limit }}" min="0" class="numin">
-                </div>
-                <label class="modelbl">{% trans "İzinli istemciler (boş = herkes) — IP / CIDR, satır başına bir tane" %}</label>
-                <textarea class="upst" name="client_allow" rows="3" spellcheck="false" placeholder="192.168.1.0/24&#10;10.0.0.5">{{ client_allow }}</textarea>
-                <label class="modelbl">{% trans "Reddedilen istemciler — IP / CIDR" %}</label>
-                <textarea class="upst" name="client_deny" rows="3" spellcheck="false" placeholder="203.0.113.7">{{ client_deny }}</textarea>
-                <p class="setnote">{% trans "İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman engellenir (izinliden önce)." %}</p>
-                <label class="modelbl">{% trans "Şüpheli sayma (yoksay) — IP / CIDR" %}</label>
-                <textarea class="upst" name="susp_ignore" rows="3" spellcheck="false" placeholder="192.168.1.50">{{ susp_ignore }}</textarea>
-                <p class="setnote">{% trans "Analiz'de 'Yoksay' dediğin istemciler burada birikir → artık şüpheli listesinde/bildirimlerde çıkmaz. Geri almak için satırı sil." %}</p>
-                <div class="setrow" style="margin-top:14px;">
-                    <div class="si">
-                        <div class="t">{% trans "Tehdit / datacenter IP feed'i" %}</div>
-                        <div class="d">{% trans "Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abuse IP aralıklarını indirir; bu aralıklardan sorgu yapan istemciler DNS Cihazları'nda ŞÜPHELİ işaretlenir + bildirim düşer. <b>Default KAPALI</b>. Açıksa internete GİDEN istek gerektirir (~6 saatte bir günceller)." %}</div>
-                    </div>
-                    <label class="sw"><input type="checkbox" name="threat_feed_enabled" {% if threat_feed_enabled %}checked{% endif %}><span></span></label>
-                </div>
-            </div>
 
             <div class="box setcard" style="margin-top:16px;">
                 <div class="setrow">

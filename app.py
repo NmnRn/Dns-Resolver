@@ -397,6 +397,43 @@ def main():
                         "warn", "client", "Şüpheli istemci",
                         f"{cip} — {', '.join(reasons)} (olası malware/tunneling)",
                         dedup_key=f"suspclient:{r['client_ip']}", dedup_window=21600)
+                # Kademeli OTOMATİK YAPTIRIM (açıksa): eşiği aşan istemciye NXDOMAIN sinkhole
+                # ya da otomatik yasak (client_deny). susp_ignore muaf. Default KAPALI.
+                if (await db_manager.get_setting("auto_enforce", "0")) == "1":
+                    ban_nx = int(await db_manager.get_setting("auto_ban_pct", "20") or 20)
+                    soft_pct = int(await db_manager.get_setting("auto_soft_pct", "51") or 51)
+                    emin = int(await db_manager.get_setting("auto_enforce_min", "30") or 30)
+                    ign = {x.strip() for x in (await db_manager.get_setting("susp_ignore", "") or "").replace(",", "\n").splitlines() if x.strip()}
+                    banned = {x.strip() for x in (await db_manager.get_setting("auto_banned", "") or "").replace(",", "\n").splitlines() if x.strip()}
+                    softs = {x.strip() for x in (await db_manager.get_setting("auto_softblock", "") or "").replace(",", "\n").splitlines() if x.strip()}
+                    chg_b = chg_s = False
+                    for r in await db_manager.scan_suspicious_clients(hours=6, min_total=emin):
+                        total = int(r["total"] or 0)
+                        if not total:
+                            continue
+                        ip = (logcrypto.dec(r["client_ip"]) or "").strip()
+                        if not ip or ip in ign or ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                            continue
+                        nxp = 100 * int(r["nx"] or 0) / total
+                        soft_sig = max(100 * int(r["blk"] or 0) / total,
+                                       100 * int(r["txt"] or 0) / total,
+                                       100 * int(r["sf"] or 0) / total)
+                        if nxp >= ban_nx and ip not in banned:
+                            banned.add(ip); chg_b = True
+                            await db_manager.add_notification(
+                                "crit", "client", "Otomatik YASAKLANDI",
+                                f"{ip} — NXDOMAIN %{round(nxp)} ≥ %{ban_nx} → client_deny (REFUSED).",
+                                dedup_key=f"autoban:{ip}", dedup_window=86400)
+                        elif soft_sig >= soft_pct and ip not in softs and ip not in banned:
+                            softs.add(ip); chg_s = True
+                            await db_manager.add_notification(
+                                "warn", "client", "Otomatik SINKHOLE (NXDOMAIN)",
+                                f"{ip} — engel/TXT/SERVFAIL %{round(soft_sig)} ≥ %{soft_pct} → NXDOMAIN döndürülüyor.",
+                                dedup_key=f"autosoft:{ip}", dedup_window=86400)
+                    if chg_b:
+                        await db_manager.set_setting("auto_banned", "\n".join(sorted(banned)))
+                    if chg_s:
+                        await db_manager.set_setting("auto_softblock", "\n".join(sorted(softs)))
                 cf = config_store.get_config().get("cert_file")
                 if cf and os.path.exists(cf):
                     info = await loop.run_in_executor(None, checker.check_file, cf)
@@ -489,7 +526,10 @@ def main():
                 _ca = await db_manager.get_setting('client_allow', '') or ''
                 core.client_allow = frozenset(x.strip() for x in _ca.replace(',', '\n').splitlines() if x.strip())
                 _cd = await db_manager.get_setting('client_deny', '') or ''
-                core.client_deny = frozenset(x.strip() for x in _cd.replace(',', '\n').splitlines() if x.strip())
+                _ab = await db_manager.get_setting('auto_banned', '') or ''   # otomatik yaptırım yasakları
+                core.client_deny = frozenset(x.strip() for x in (_cd + '\n' + _ab).replace(',', '\n').splitlines() if x.strip())
+                _sb = await db_manager.get_setting('auto_softblock', '') or ''
+                core.soft_block = frozenset(x.strip() for x in _sb.replace(',', '\n').splitlines() if x.strip())
                 # Kaynak (çekirdek/önbellek/upstream) işlem süresi ortalamalarını panele aç.
                 try:
                     _stats = {k: {'avg_ms': round(t / c, 1), 'count': c}

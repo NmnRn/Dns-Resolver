@@ -206,6 +206,7 @@ class DNSCore:
         # Erişim kontrolü + rate limit (panelden; app.py periyodik uygular).
         self.client_allow = frozenset()   # boş = herkes; doluysa YALNIZ bunlar sorabilir
         self.client_deny = frozenset()    # her zaman reddedilen istemciler
+        self.soft_block = frozenset()     # kademeli yaptırım: bu istemcilere NXDOMAIN (sinkhole)
         self.rate_limit = 0               # istemci başına saniyede sorgu (0 = kapalı)
         self._rate = {}                   # ip -> (pencere_başı, sayı)
         self._rate_lock = threading.Lock()
@@ -1049,6 +1050,11 @@ class DNSResolver(BaseResolver):
         if not self.core.access_ok(client_ip):   # ACL / rate limit → reddet
             reply = _clean_reply(request)
             reply.header.rcode = RCODE.REFUSED
+            return reply
+        if client_ip in self.core.soft_block:    # kademeli yaptırım → sinkhole (NXDOMAIN dön)
+            reply = _clean_reply(request)
+            reply.header.rcode = RCODE.NXDOMAIN
+            self.core.db_manager.add_to_cache(key=qname, value={"record_type": qtype, "client_ip": client_ip, "queried_at": istek_ani, "method": self.method, "blocked": True, "blocked_by": "otomatik-yaptırım", "resolved_by": "sinkhole", "status": "blocked", "dnssec": "off"})
             return reply
 
         src = ["—"]

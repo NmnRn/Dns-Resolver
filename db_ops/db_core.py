@@ -429,6 +429,7 @@ class DB_CON():
         async with self.get_db_cursor(dictionary=True) as (cursor, conn):
             await cursor.execute(
                 "SELECT client_ip, COUNT(*) AS total, SUM(status='nxdomain') AS nx, "
+                "SUM(blocked) AS blk, SUM(status='servfail') AS sf, "
                 "SUM(record_type IN ('TXT','NULL')) AS txt FROM dns_cache "
                 "WHERE client_ip IS NOT NULL AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s HOUR "
                 "GROUP BY client_ip HAVING total >= %s", (int(hours), int(min_total)))

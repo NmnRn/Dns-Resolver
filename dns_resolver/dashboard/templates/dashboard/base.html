@@ -33,10 +33,11 @@
                 <a href="{% url 'dashboard:queries' %}" class="{% if active == 'queries' %}active{% endif %}">{% trans "Sorgu Geçmişi" %}</a>
                 <a href="{% url 'dashboard:analytics' %}" class="{% if active == 'analytics' %}active{% endif %}">{% trans "Analiz" %}</a>
                 <div class="navdd">
-                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' or active == 'devices' or active == 'dns_devices' %}active{% endif %}">{% trans "DNS Ayarları" %} ▾</button>
+                    <button type="button" class="ddbtn {% if active == 'settings' or active == 'query_settings' or active == 'servers' or active == 'filters' or active == 'certificate' or active == 'devices' or active == 'dns_devices' or active == 'security' %}active{% endif %}">{% trans "DNS Ayarları" %} ▾</button>
                     <div class="ddmenu">
                         <a href="{% url 'dashboard:settings' %}">{% trans "Genel" %}</a>
                         <a href="{% url 'dashboard:query_settings' %}">{% trans "Sorgu Ayarları" %}</a>
+                        <a href="{% url 'dashboard:security' %}">{% trans "Güvenlik" %}</a>
                         <a href="{% url 'dashboard:servers' %}">{% trans "Sunucular" %}</a>
                         <a href="{% url 'dashboard:filters' %}">{% trans "Filtreler" %}</a>
                         <a href="{% url 'dashboard:certificate' %}">{% trans "Sertifika" %}</a>

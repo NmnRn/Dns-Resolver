@@ -17,6 +17,7 @@ urlpatterns = [
     path('sertifika/', views.certificate, name='certificate'),
     path('domain/', views.guide, name='guide'),
     path('ayarlar/', views.settings_page, name='settings'),
+    path('guvenlik/', views.security, name='security'),
     path('sorgu-ayarlari/', views.query_settings, name='query_settings'),
     path('ayarlar/sunucu-test/', views.test_upstreams_ajax, name='test_upstreams'),
     path('ayarlar/yedek/', views.backup_export, name='backup_export'),

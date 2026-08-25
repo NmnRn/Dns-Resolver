@@ -76,4 +76,5 @@
 .dsusp.s-threat{ color:var(--err); background:color-mix(in srgb,var(--err) 14%,transparent); border:1px solid color-mix(in srgb,var(--err) 34%,transparent); }
 .dsusp.s-behav{ color:var(--warn); background:color-mix(in srgb,var(--warn) 14%,transparent); border:1px solid color-mix(in srgb,var(--warn) 34%,transparent); }
 .dsusp.s-safe{ color:var(--ok); background:color-mix(in srgb,var(--ok) 12%,transparent); border:1px solid color-mix(in srgb,var(--ok) 30%,transparent); }
-.dsusp-acts{ display:inline-flex; gap:5px; margin-left:8px; }
+.dsusp-acts{ display:flex; gap:5px; margin-top:6px; }   /* rozetin ALTINDA → sütun genişlemesin */
+.dsusp-acts .xbtn{ padding:3px 9px; font-size:11px; }

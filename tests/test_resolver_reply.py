@@ -35,6 +35,7 @@ class StubCore:
         self._cache = {}
         self._lock = threading.Lock()
         self.db_manager = StubDBManager()
+        self.soft_block = frozenset()   # kademeli yaptırım sinkhole seti (handler kontrol eder)
 
     def resolve(self, domain, qtype, depth=0, source=None, dnssec_out=None):
         if source is not None:
