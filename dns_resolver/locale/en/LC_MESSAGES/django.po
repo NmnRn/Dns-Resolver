@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dns-panel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-25 13:10+0000\n"
+"POT-Creation-Date: 2026-08-25 22:46+0000\n"
 "PO-Revision-Date: 2026-08-18 00:00+0000\n"
 "Last-Translator: NmnRn\n"
 "Language-Team: English\n"
@@ -69,7 +69,6 @@ msgstr "DNSSEC BROKEN (bogus)"
 
 #: dashboard/templates/dashboard/_query_rows.html:6
 #, python-format
-#| msgid "Kullanıcı adı"
 msgid "kullanıcı #%(uid)s"
 msgstr "user #%(uid)s"
 
@@ -117,15 +116,15 @@ msgid "Toplam sorgu"
 msgstr "Total queries"
 
 #: dashboard/templates/dashboard/analytics.html:30
-#: dashboard/templates/dashboard/analytics.html:185
+#: dashboard/templates/dashboard/analytics.html:204
 msgid "Engellenen"
 msgstr "Blocked"
 
 #: dashboard/templates/dashboard/analytics.html:32
-#: dashboard/templates/dashboard/analytics.html:97
-#: dashboard/templates/dashboard/analytics.html:110
-#: dashboard/templates/dashboard/analytics.html:122
-#: dashboard/templates/dashboard/analytics.html:134
+#: dashboard/templates/dashboard/analytics.html:116
+#: dashboard/templates/dashboard/analytics.html:129
+#: dashboard/templates/dashboard/analytics.html:141
+#: dashboard/templates/dashboard/analytics.html:153
 #: dashboard/templates/dashboard/logs.html:62
 #: dashboard/templates/dashboard/logs.html:70
 #: dashboard/templates/dashboard/logs.html:85
@@ -133,7 +132,6 @@ msgid "Veri yok"
 msgstr "No data"
 
 #: dashboard/templates/dashboard/analytics.html:37
-#| msgid "Doğrulama"
 msgid "DNSSEC Doğrulama"
 msgstr "DNSSEC Validation"
 
@@ -156,57 +154,79 @@ msgid "Henüz DNSSEC verisi yok — Sorgu Ayarları'ndan DNSSEC doğrulamayı a�
 msgstr ""
 
 #: dashboard/templates/dashboard/analytics.html:59
+#| msgid "En Aktif İstemciler"
+msgid "Şüpheli İstemciler"
+msgstr "Suspicious Clients"
+
+#: dashboard/templates/dashboard/analytics.html:59
+msgid "davranış-tabanlı · son 6 saat"
+msgstr "behavior-based · last 6 hours"
+
+#: dashboard/templates/dashboard/analytics.html:61
+msgid "Düz-metin meta veriden türetilir (domain OKUNMAZ). <b>nxdomain</b> = DGA/malware C2 beaconing · <b>tunnel</b> = TXT/NULL oranı yüksek (veri sızdırma) · <b>flood</b> = aşırı hacim. Yanlış pozitif olabilir — yasaklamadan önce IP'yi tanı."
+msgstr "Derived from plaintext metadata (domains are NOT read). <b>nxdomain</b> = DGA/malware C2 beaconing · <b>tunnel</b> = high TXT/NULL ratio (data exfiltration) · <b>flood</b> = excessive volume. False positives possible — identify the IP before banning."
+
+#: dashboard/templates/dashboard/analytics.html:67
+#, python-format
+msgid "%(t)s sorgu · NXDOMAIN %%%(nx)s · TXT %%%(tx)s"
+msgstr "%(t)s queries · NXDOMAIN %%%(nx)s · TXT %%%(tx)s"
+
+#: dashboard/templates/dashboard/analytics.html:68
+msgid "Yasakla"
+msgstr "Ban"
+
+#: dashboard/templates/dashboard/analytics.html:78
 msgid "Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / upstream)"
 msgstr "Average processing times — by source (core / cache / upstream)"
 
-#: dashboard/templates/dashboard/analytics.html:65
+#: dashboard/templates/dashboard/analytics.html:84
 #: dashboard/templates/dashboard/query_settings.html:71
 #, python-format
 msgid "%(avg)s ms · %(count)s sorgu"
 msgstr "%(avg)s ms · %(count)s queries"
 
-#: dashboard/templates/dashboard/analytics.html:67
+#: dashboard/templates/dashboard/analytics.html:86
 msgid "Henüz ölçüm yok"
 msgstr "No measurements yet"
 
-#: dashboard/templates/dashboard/analytics.html:74
+#: dashboard/templates/dashboard/analytics.html:93
 #, python-format
 msgid "Engelleme Listelerine Göre — toplam %(total)s engellenen sorgu"
 msgstr "By block list — %(total)s blocked queries total"
 
-#: dashboard/templates/dashboard/analytics.html:82
-#: dashboard/templates/dashboard/analytics.html:148
+#: dashboard/templates/dashboard/analytics.html:101
+#: dashboard/templates/dashboard/analytics.html:167
 msgid "Henüz engelleme yok"
 msgstr "No blocks yet"
 
-#: dashboard/templates/dashboard/analytics.html:89
+#: dashboard/templates/dashboard/analytics.html:108
 #: dashboard/templates/dashboard/logs.html:75
 msgid "Yönteme Göre"
 msgstr "By Method"
 
-#: dashboard/templates/dashboard/analytics.html:102
+#: dashboard/templates/dashboard/analytics.html:121
 msgid "Kayıt Tipine Göre"
 msgstr "By Record Type"
 
-#: dashboard/templates/dashboard/analytics.html:115
+#: dashboard/templates/dashboard/analytics.html:134
 msgid "En Çok Sorgulanan Alan Adları"
 msgstr "Most Queried Domains"
 
-#: dashboard/templates/dashboard/analytics.html:127
+#: dashboard/templates/dashboard/analytics.html:146
 #: dashboard/templates/dashboard/logs.html:67
 msgid "En Aktif İstemciler"
 msgstr "Most Active Clients"
 
-#: dashboard/templates/dashboard/analytics.html:141
+#: dashboard/templates/dashboard/analytics.html:160
 msgid "En Çok Engellenen Alan Adları"
 msgstr "Most Blocked Domains"
 
-#: dashboard/templates/dashboard/analytics.html:184
+#: dashboard/templates/dashboard/analytics.html:203
 #: dashboard/templates/dashboard/dns_devices.html:20
 msgid "Sorgu"
 msgstr "Queries"
 
-#: dashboard/templates/dashboard/analytics.html:186
+#: dashboard/templates/dashboard/analytics.html:205
 msgid "En aktif"
 msgstr "Most active"
 
@@ -301,7 +321,6 @@ msgstr "Language"
 #: dashboard/templates/dashboard/base.html:61
 #: dashboard/templates/dashboard/notifications.html:3
 #: dashboard/templates/dashboard/notifications.html:8
-#| msgid "indirilemedi"
 msgid "Bildirimler"
 msgstr "Notifications"
 
@@ -1263,7 +1282,6 @@ msgid "Güvenlik, sağlık ve istemci olayları — yalnız bu panelde tutulur, 
 msgstr "Security, health and client events — kept only in this panel, nothing leaves."
 
 #: dashboard/templates/dashboard/notifications.html:12
-#| msgid "Tümü yüklendi"
 msgid "Tümünü okundu"
 msgstr "Mark all read"
 
@@ -1273,8 +1291,11 @@ msgstr "Mark all read"
 msgid "Temizle"
 msgstr "Clear"
 
-#: dashboard/templates/dashboard/notifications.html:33
-#| msgid "Henüz indirilmedi"
+#: dashboard/templates/dashboard/notifications.html:31
+msgid "Okundu işaretle"
+msgstr "Mark read"
+
+#: dashboard/templates/dashboard/notifications.html:34
 msgid "Henüz bildirim yok."
 msgstr "No notifications yet."
 
@@ -1350,7 +1371,6 @@ msgid "Açık: recursive çözümleyici (root→TLD→yetkili sunucuları kendi 
 msgstr "On: recursive resolver (walks root→TLD→authoritative itself). Off: forwards queries to the upstream servers below (forwarding)."
 
 #: dashboard/templates/dashboard/query_settings.html:29
-#| msgid "Doğrulama"
 msgid "DNSSEC doğrulama"
 msgstr "DNSSEC validation"
 
@@ -1392,12 +1412,10 @@ msgid "QUIC şifreli"
 msgstr "QUIC encrypted"
 
 #: dashboard/templates/dashboard/query_settings.html:43
-#| msgid "(DoQ) şu an <b>deneysel — henüz desteklenmiyor</b> (girilirse atlanır)."
 msgid "deneysel — henüz desteklenmiyor, girilirse atlanır"
 msgstr "experimental — not yet supported, skipped if entered"
 
 #: dashboard/templates/dashboard/query_settings.html:45
-#| msgid "Ön ek yoksa <b>düz UDP/53</b>. Port için <span class='mono'>host:port</span> (varsayılan port: UDP/TCP <b>53</b>, DoT/DoQ <b>853</b>). Yalnız 'Kendi çekirdeğimizi kullan' KAPALIYKEN devreye girer."
 msgid "Farklı port için <span class='mono'>host:port</span> yaz (varsayılan: UDP/TCP <b>53</b>, DoT/DoQ <b>853</b>, DoH <b>443</b>). Bu liste <b>yalnızca</b> yukarıdaki <b>'Kendi çekirdeğimizi kullan' KAPALIYKEN</b> devreye girer — açıkken sorgular kendi özyineli çözümleyicimizle çözülür."
 msgstr "Write <span class='mono'>host:port</span> for a different port (default: UDP/TCP <b>53</b>, DoT/DoQ <b>853</b>, DoH <b>443</b>). This list applies <b>only</b> when <b>'Use our own core' is OFF</b> above — when ON, queries are resolved by our own recursive resolver."
 
@@ -1482,7 +1500,6 @@ msgid "Test başarısız."
 msgstr "Test failed."
 
 #: dashboard/templates/dashboard/servers.html:7
-#| msgid "DNS yöntemlerini canlı aç/kapat — değişiklik ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık."
 msgid "DNS yöntemlerini canlı aç/kapat ve portlarını ayarla — aç/kapa ve iç port ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık."
 msgstr "Toggle DNS methods live and set their ports — on/off and internal port apply within ~5 s (resolver does not restart). Safe default: only UDP on."
 
@@ -1526,7 +1543,6 @@ msgid "Host'a yayınla"
 msgstr "Publish to host"
 
 #: dashboard/templates/dashboard/servers.html:41
-#| msgid "Ayarları yedekle"
 msgid "Portları kaydet"
 msgstr "Save ports"
 
@@ -1774,12 +1790,12 @@ msgstr "Log in"
 msgid "Panele erişmek için giriş yap."
 msgstr "Log in to access the panel."
 
-#: dashboard/views.py:851
+#: dashboard/views.py:872
 #, python-format
 msgid "%(n)s cihaz kaydı silindi."
 msgstr "%(n)s device records deleted."
 
-#: dashboard/views.py:854
+#: dashboard/views.py:875
 msgid "Cihaz silindi."
 msgstr "Device deleted."
 
