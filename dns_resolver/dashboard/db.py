@@ -609,16 +609,22 @@ async def add_notification(level, category, title, body='', dedup_key=None, dedu
             (dedup_key, int(dedup_window)))
         if hit:
             return
+    # body IP/domain içerebilir → at-rest ŞİFRELE (DNS log şifrelemesiyle tutarlı;
+    # anahtar yoksa logcrypto düz bırakır). Kısa tut ki enc çıktısı VARCHAR(512)'ye sığsın.
+    b = logcrypto.enc((body or '')[:300]) if body else ''
     await _write(
         "INSERT INTO notifications (created_at, level, category, title, body, dedup_key) "
         "VALUES (UTC_TIMESTAMP(), %s, %s, %s, %s, %s)",
-        (level, category, (title or '')[:160], (body or '')[:512], dedup_key))
+        (level, category, (title or '')[:160], b, dedup_key))
 
 
 async def get_notifications(limit=100):
-    return await _fetch_all(
+    rows = await _fetch_all(
         "SELECT id, created_at, level, category, title, body, read_at "
         "FROM notifications ORDER BY created_at DESC LIMIT %s", (int(limit),))
+    for r in rows:                                    # body at-rest şifreli → çöz
+        r['body'] = logcrypto.dec(r.get('body')) or ''
+    return rows
 
 
 async def notif_unread_count() -> int:

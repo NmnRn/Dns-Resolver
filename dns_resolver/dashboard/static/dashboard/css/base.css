@@ -100,6 +100,26 @@ a { color: var(--accent-deep); text-decoration: none; }
 .notifbell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--r-sm); font-size: 16px; text-decoration: none; line-height: 1; transition: background .15s ease; }
 .notifbell:hover, .notifbell.active { background: var(--panel-2); }
 .notifbadge { position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--err); color: #fff; font: 700 10px/16px var(--sans); text-align: center; box-shadow: 0 0 0 2px var(--panel); }
+/* Çan açılır paneli */
+.notifwrap { position: relative; display: inline-flex; }
+.notifmenu { position: absolute; top: calc(100% + 8px); right: 0; width: 320px; max-width: 86vw; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--r-sm); box-shadow: var(--shadow-lg); z-index: 40; overflow: hidden; }
+.notifhead { font: 700 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.notiffeed { max-height: 380px; overflow-y: auto; }
+.nf-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px; align-items: start; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+.nf-row:last-child { border-bottom: 0; }
+.nf-row.unread { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.nf-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex: none; background: var(--muted-2); }
+.nf-row.unread .nf-dot { background: var(--accent); }
+.nf-row.lv-warn .nf-dot { background: var(--warn); }
+.nf-row.lv-crit .nf-dot { background: var(--err); }
+.nf-main { min-width: 0; }
+.nf-title { font: 700 12.5px var(--sans); color: var(--text); }
+.nf-body { font: 500 11.5px var(--mono); color: var(--muted); margin-top: 2px; word-break: break-word; }
+.nf-time { font: 600 10.5px var(--mono); color: var(--muted-2); white-space: nowrap; }
+.nf-empty { padding: 28px 14px; text-align: center; color: var(--muted-2); font-size: 12.5px; }
+.notifall { display: block; text-align: center; padding: 11px; font: 700 12.5px var(--sans); color: var(--accent-deep); border-top: 1px solid var(--border); background: var(--panel-2); text-decoration: none; }
+.notifall:hover { background: var(--accent-soft); }
+:root[data-theme="dark"] .notifall { color: var(--accent); }
 .updatebar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 9px 16px;
     background: var(--accent-soft); border-bottom: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
     color: var(--text); font: 600 13px var(--sans); text-align: center; }

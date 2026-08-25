@@ -55,7 +55,14 @@
                         {% for code, name in LANGS %}<option value="{{ code }}"{% if code == CUR_LANG %} selected{% endif %}>{{ name }}</option>{% endfor %}
                     </select>
                 </form>
-                <a href="{% url 'dashboard:notifications' %}" class="notifbell {% if active == 'notifications' %}active{% endif %}" id="notif-bell" aria-label="{% trans 'Bildirimler' %}" title="{% trans 'Bildirimler' %}">🔔<span class="notifbadge" id="notif-badge" hidden></span></a>
+                <div class="notifwrap" id="notif-wrap">
+                    <button type="button" class="notifbell {% if active == 'notifications' %}active{% endif %}" id="notif-bell" data-no-ajax aria-label="{% trans 'Bildirimler' %}" aria-haspopup="true" aria-expanded="false">🔔<span class="notifbadge" id="notif-badge" hidden></span></button>
+                    <div class="notifmenu" id="notif-menu" hidden>
+                        <div class="notifhead">{% trans "Bildirimler" %}</div>
+                        <div class="notiffeed" id="notif-feed"></div>
+                        <a class="notifall" href="{% url 'dashboard:notifications' %}">{% trans "Tümünü gör" %} →</a>
+                    </div>
+                </div>
                 <button type="button" class="themebtn" id="theme-toggle" data-no-ajax aria-label="{% trans 'Tema değiştir' %}" title="{% trans 'Açık / koyu tema' %}">🌙</button>
                 <span>{{ panel_username }} · <a href="{% url 'dashboard:logout' %}" data-no-ajax>{% trans "Çıkış" %}</a></span>
             </div>
@@ -94,19 +101,41 @@
             }
         });
     })();
-    /* Bildirim çanı — okunmamış sayısını periyodik çek (topbar ajax gezinmede korunur) */
+    /* Bildirim çanı — açılır panel (sayfa değiştirmeden) + rozet; topbar ajax'ta korunur */
     (function(){
-        var badge=document.getElementById('notif-badge'); if(!badge) return;
-        var url='{% url "dashboard:notif_count" %}';
+        var wrap=document.getElementById('notif-wrap'); if(!wrap) return;
+        var bell=document.getElementById('notif-bell'), menu=document.getElementById('notif-menu');
+        var badge=document.getElementById('notif-badge'), feed=document.getElementById('notif-feed');
+        var url='{% url "dashboard:notif_count" %}', EMPTY='{% trans "Bildirim yok." %}';
+        function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+        function render(items){
+            if(!items||!items.length){ feed.innerHTML='<div class="nf-empty">'+EMPTY+'</div>'; return; }
+            feed.innerHTML=items.map(function(i){
+                return '<div class="nf-row lv-'+esc(i.level)+(i.unread?' unread':'')+'">'
+                    +'<span class="nf-dot"></span><div class="nf-main"><div class="nf-title">'+esc(i.title)+'</div>'
+                    +(i.body?'<div class="nf-body">'+esc(i.body)+'</div>':'')+'</div>'
+                    +'<span class="nf-time lt" data-utc="'+esc(i.time)+'">'+esc(i.time)+'</span></div>';
+            }).join('');
+            if(window.localizeTimes) window.localizeTimes(feed);
+        }
         function upd(){
             fetch(url,{credentials:'same-origin',headers:{'X-Requested-With':'fetch'}})
                 .then(function(r){return r.json();})
                 .then(function(d){
                     var n=d.count||0;
-                    if(n>0){ badge.textContent=n>99?'99+':n; badge.hidden=false; }
-                    else { badge.hidden=true; }
+                    if(n>0){ badge.textContent=n>99?'99+':n; badge.hidden=false; } else { badge.hidden=true; }
+                    render(d.items||[]);
                 }).catch(function(){});
         }
+        bell.addEventListener('click', function(e){
+            e.stopPropagation();
+            var opening=menu.hidden;
+            menu.hidden=!opening; bell.setAttribute('aria-expanded', opening?'true':'false');
+            if(opening) upd();
+        });
+        document.addEventListener('click', function(e){
+            if(!menu.hidden && !wrap.contains(e.target)){ menu.hidden=true; bell.setAttribute('aria-expanded','false'); }
+        });
         upd(); setInterval(upd, 60000);
     })();
     </script>

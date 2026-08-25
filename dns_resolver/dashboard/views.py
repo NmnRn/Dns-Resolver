@@ -1389,24 +1389,31 @@ async def notifications(request):
             await db.mark_notifications_read()
         elif act == 'clear':
             await db.clear_notifications()
-        return redirect('dashboard:notifications')
+        # redirect DEĞİL → alta düşüp yeniden render (ajax.js form-swap'iyle uyumlu;
+        # aksi halde 302 swap'i bozar → "clear çalışmıyor" görünür).
     context = _base_ctx(request, 'notifications')
     try:
         context['items'] = await db.get_notifications(200)
+        context['unread'] = await db.notif_unread_count()
     except Exception as exc:  # noqa: BLE001
         context['error'] = _fail(exc, 'Veritabanına erişilemedi.')
     return render(request, 'dashboard/notifications.html', context)
 
 
 async def notif_count(request):
-    """Çan rozeti için okunmamış bildirim sayısı (JSON; JS periyodik çeker)."""
+    """Çan: okunmamış sayısı + son bildirimler (açılır panel için). body çözülmüş gelir."""
     if not request.session.get('_auth_user_id'):
-        return JsonResponse({'count': 0})
+        return JsonResponse({'count': 0, 'items': []})
     try:
-        n = await db.notif_unread_count()
+        items = await db.get_notifications(10)
+        count = await db.notif_unread_count()
     except Exception:  # noqa: BLE001
-        n = 0
-    return JsonResponse({'count': n})
+        return JsonResponse({'count': 0, 'items': []})
+    out = [{'level': i['level'], 'category': i['category'], 'title': i['title'],
+            'body': i['body'], 'unread': i['read_at'] is None,
+            'time': i['created_at'].strftime('%Y-%m-%d %H:%M:%S') if i.get('created_at') else ''}
+           for i in items]
+    return JsonResponse({'count': count, 'items': out})
 
 
 async def backup_export(request):

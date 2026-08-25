@@ -9,8 +9,8 @@
             <p class="sub" style="margin:4px 0 0;">{% trans "Güvenlik, sağlık ve istemci olayları — yalnız bu panelde tutulur, dışarı hiçbir şey gitmez." %}</p>
         </div>
         <div class="qactions">
-            <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="read_all"><button type="submit" class="btn ghost">✓ {% trans "Tümünü okundu" %}</button></form>
-            <form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="clear"><button type="submit" class="btn ghost">{% trans "Temizle" %}</button></form>
+            {% if unread %}<form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="read_all"><button type="submit" class="btn ghost">✓ {% trans "Tümünü okundu" %}</button></form>{% endif %}
+            {% if items %}<form method="post" style="margin:0;">{% csrf_token %}<input type="hidden" name="action" value="clear"><button type="submit" class="btn ghost">{% trans "Temizle" %}</button></form>{% endif %}
         </div>
     </div>
 

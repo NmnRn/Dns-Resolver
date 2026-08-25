@@ -8,6 +8,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))  # .env dosyası
 
 from logs.dns_logs import logger
 import db_ops.db_control_users as dbusers
+import logcrypto
 # Şema sürümü: uyumsuz her şema değişikliğinde 1 artır ve MIGRATIONS'a
 # eski sürümü yeni sürüme taşıyan adımı ekle. Açılışta migrate_scheme()
 # kayıtlı sürümden güncel sürüme sırayla yürür.
@@ -388,10 +389,12 @@ class DB_CON():
                     (dedup_key, int(dedup_window)))
                 if await cursor.fetchone():
                     return
+            # body IP/domain içerir → at-rest ŞİFRELE (kısa tut: enc çıktısı 512'ye sığsın).
+            b = logcrypto.enc((body or "")[:300]) if body else ""
             await cursor.execute(
                 "INSERT INTO notifications (created_at, level, category, title, body, dedup_key) "
                 "VALUES (UTC_TIMESTAMP(), %s, %s, %s, %s, %s)",
-                (level, category, (title or "")[:160], (body or "")[:512], dedup_key))
+                (level, category, (title or "")[:160], b, dedup_key))
             await conn.commit()
 
     async def scan_new_client_ips(self, minutes=10):
