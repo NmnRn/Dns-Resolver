@@ -437,12 +437,19 @@ async def get_top_clients(limit: int = 10) -> list[dict]:
     return rows
 
 
-async def get_suspicious_clients(hours=6, min_total=30, nx_ratio=0.40, txt_ratio=0.25, flood=1500):
+async def get_suspicious_clients(hours=6, min_total=3, nx_ratio=0.40, txt_ratio=0.25, flood=1500):
     """Davranış-tabanlı şüpheli istemci tespiti (düz-metin meta verilerden; domain çözülmez):
       - Yüksek NXDOMAIN oranı → DGA/malware C2 beaconing
       - Yüksek TXT/NULL oranı → DNS tunneling (veri sızdırma)
       - Aşırı hacim → flood
-    GROUP BY şifreli client_ip üzerinde çalışır (deterministik); yalnız gösterim için çözülür."""
+    GROUP BY şifreli client_ip üzerinde çalışır (deterministik); yalnız gösterim için çözülür.
+    'susp_ignore' listesindeki IP'ler ('şüpheli değil' işaretlenenler) atlanır."""
+    ignore = set()
+    try:
+        s = await get_settings()
+        ignore = {x.strip() for x in (s.get('susp_ignore', '') or '').replace(',', '\n').splitlines() if x.strip()}
+    except Exception:  # noqa: BLE001
+        pass
     rows = await _fetch_all(
         """
         SELECT client_ip, COUNT(*) AS total,
@@ -457,6 +464,9 @@ async def get_suspicious_clients(hours=6, min_total=30, nx_ratio=0.40, txt_ratio
     )
     out = []
     for r in rows:
+        ip = (logcrypto.dec(r['client_ip']) or '?').strip()
+        if ip in ignore:                     # 'şüpheli değil' işaretlendi → atla
+            continue
         total = int(r['total'] or 0)
         nx = int(r['nx'] or 0)
         txt = int(r['txt'] or 0)
@@ -470,7 +480,7 @@ async def get_suspicious_clients(hours=6, min_total=30, nx_ratio=0.40, txt_ratio
         if not reasons:
             continue
         out.append({
-            'ip': (logcrypto.dec(r['client_ip']) or '?').strip(),
+            'ip': ip,
             'total': total, 'nx': nx, 'txt': txt,
             'nx_pct': round(100 * nx / total) if total else 0,
             'txt_pct': round(100 * txt / total) if total else 0,

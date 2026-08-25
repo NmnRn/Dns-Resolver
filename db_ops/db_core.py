@@ -414,7 +414,7 @@ class DB_CON():
                 "AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s MINUTE", (int(minutes),))
             return [r["domain"] for r in await cursor.fetchall()]
 
-    async def scan_suspicious_clients(self, hours=6, min_total=30):
+    async def scan_suspicious_clients(self, hours=6, min_total=3):
         """Şüpheli istemci adayları: (client_ip ciphertext, total, nx, txt). Eşik/karar
         çağırana ait (app._scan_notifications). Düz-metin status/record_type'tan türetir."""
         async with self.get_db_cursor(dictionary=True) as (cursor, conn):

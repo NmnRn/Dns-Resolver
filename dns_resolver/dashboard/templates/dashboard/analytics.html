@@ -65,7 +65,10 @@
                         <span class="susp-ip mono">{{ c.ip }}</span>
                         <span class="susp-flags">{% for r in c.reasons %}<span class="susp-flag f-{{ r }}">{{ r }}</span>{% endfor %}</span>
                         <span class="susp-stat mono">{% blocktrans with t=c.total nx=c.nx_pct tx=c.txt_pct %}{{ t }} sorgu · NXDOMAIN %{{ nx }} · TXT %{{ tx }}{% endblocktrans %}</span>
-                        <form method="post" action="{% url 'dashboard:ban_client' %}" data-no-ajax style="margin:0;">{% csrf_token %}<input type="hidden" name="ip" value="{{ c.ip }}"><button type="submit" class="xbtn danger" onclick="return confirm('{{ c.ip }} — client_deny listesine eklensin mi?')">{% trans "Yasakla" %}</button></form>
+                        <div class="susp-acts">
+                            <form method="post" action="{% url 'dashboard:ignore_client' %}" data-no-ajax style="margin:0;">{% csrf_token %}<input type="hidden" name="ip" value="{{ c.ip }}"><button type="submit" class="xbtn" title="{% trans 'Şüpheli değil — yoksay' %}">{% trans "Yoksay" %}</button></form>
+                            <form method="post" action="{% url 'dashboard:ban_client' %}" data-no-ajax style="margin:0;">{% csrf_token %}<input type="hidden" name="ip" value="{{ c.ip }}"><button type="submit" class="xbtn danger" onclick="return confirm('{{ c.ip }} — client_deny listesine eklensin mi?')">{% trans "Yasakla" %}</button></form>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>

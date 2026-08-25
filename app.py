@@ -350,6 +350,7 @@ def main():
                         f"{dom} — imzalı ama doğrulanamadı (bogus).",
                         dedup_key=f"bogus:{dcip}", dedup_window=86400)
                 # Şüpheli istemci: NXDOMAIN oranı (DGA/malware) / TXT oranı (tunneling) / hacim
+                susp_ignore = {x.strip() for x in (await db_manager.get_setting("susp_ignore", "") or "").replace(",", "\n").splitlines() if x.strip()}
                 for r in await db_manager.scan_suspicious_clients(hours=6):
                     total = int(r["total"] or 0)
                     if not total:
@@ -365,7 +366,7 @@ def main():
                     if not reasons:
                         continue
                     cip = (logcrypto.dec(r["client_ip"]) or "?").strip()
-                    if cip in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                    if cip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") or cip in susp_ignore:
                         continue
                     await db_manager.add_notification(
                         "warn", "client", "Şüpheli istemci",

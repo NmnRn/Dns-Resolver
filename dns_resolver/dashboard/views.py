@@ -797,6 +797,26 @@ async def ban_client(request):
     return redirect('dashboard:analytics')
 
 
+async def ignore_client(request):
+    """İstemciyi 'şüpheli değil' işaretle: IP'yi susp_ignore listesine ekle → artık
+    şüpheli listesinde/bildirimlerde görünmez (yanlış pozitif). Ayarlar'dan geri alınır."""
+    gate = _gate(request)
+    if gate:
+        return gate
+    if request.method == 'POST':
+        ip = (request.POST.get('ip', '') or '').strip()
+        if ip:
+            try:
+                s = await db.get_settings()
+                items = [x.strip() for x in (s.get('susp_ignore', '') or '').replace(',', '\n').splitlines() if x.strip()]
+                if ip not in items:
+                    items.append(ip)
+                    await db.set_setting('susp_ignore', '\n'.join(items))
+            except Exception:  # noqa: BLE001
+                pass
+    return redirect('dashboard:analytics')
+
+
 def _source_times():
     """Kaynak bazında ortalama işlem süreleri (çekirdek + önbellek + upstream'ler)."""
     rows = [{'name': k, 'avg': v.get('avg_ms'), 'count': v.get('count', 0)}
@@ -1616,6 +1636,7 @@ async def settings_page(request):
                     await db.set_setting('rate_limit', _rl if _rl.isdigit() else '0')
                     await db.set_setting('client_allow', request.POST.get('client_allow', '').strip())
                     await db.set_setting('client_deny', request.POST.get('client_deny', '').strip())
+                    await db.set_setting('susp_ignore', request.POST.get('susp_ignore', '').strip())
                     # Log retention (preset ya da özel)
                     _rd = request.POST.get('log_retention_days', '0')
                     if _rd == 'custom':
@@ -1647,6 +1668,7 @@ async def settings_page(request):
         rate_limit=s.get('rate_limit', '0'),
         client_allow=s.get('client_allow', ''),
         client_deny=s.get('client_deny', ''),
+        susp_ignore=s.get('susp_ignore', ''),
         retention_presets=['0', '7', '14', '30', '90', '365'],
         retention_days=s.get('log_retention_days', '0'),
         retention_is_custom=s.get('log_retention_days', '0') not in {'0', '7', '14', '30', '90', '365'},

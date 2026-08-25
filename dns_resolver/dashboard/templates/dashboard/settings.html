@@ -51,6 +51,9 @@
                 <label class="modelbl">{% trans "Reddedilen istemciler — IP / CIDR" %}</label>
                 <textarea class="upst" name="client_deny" rows="3" spellcheck="false" placeholder="203.0.113.7">{{ client_deny }}</textarea>
                 <p class="setnote">{% trans "İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman engellenir (izinliden önce)." %}</p>
+                <label class="modelbl">{% trans "Şüpheli sayma (yoksay) — IP / CIDR" %}</label>
+                <textarea class="upst" name="susp_ignore" rows="3" spellcheck="false" placeholder="192.168.1.50">{{ susp_ignore }}</textarea>
+                <p class="setnote">{% trans "Analiz'de 'Yoksay' dediğin istemciler burada birikir → artık şüpheli listesinde/bildirimlerde çıkmaz. Geri almak için satırı sil." %}</p>
             </div>
 
             <div class="box setcard" style="margin-top:16px;">
