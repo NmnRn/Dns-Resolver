@@ -349,6 +349,28 @@ def main():
                         "warn", "domain", "Şüpheli alan (DNSSEC bozuk)",
                         f"{dom} — imzalı ama doğrulanamadı (bogus).",
                         dedup_key=f"bogus:{dcip}", dedup_window=86400)
+                # Şüpheli istemci: NXDOMAIN oranı (DGA/malware) / TXT oranı (tunneling) / hacim
+                for r in await db_manager.scan_suspicious_clients(hours=6):
+                    total = int(r["total"] or 0)
+                    if not total:
+                        continue
+                    nx, txt = int(r["nx"] or 0), int(r["txt"] or 0)
+                    reasons = []
+                    if nx / total >= 0.40:
+                        reasons.append(f"NXDOMAIN %{round(100 * nx / total)}")
+                    if txt / total >= 0.25:
+                        reasons.append(f"TXT %{round(100 * txt / total)}")
+                    if total >= 1500:
+                        reasons.append(f"hacim {total}")
+                    if not reasons:
+                        continue
+                    cip = (logcrypto.dec(r["client_ip"]) or "?").strip()
+                    if cip in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
+                        continue
+                    await db_manager.add_notification(
+                        "warn", "client", "Şüpheli istemci",
+                        f"{cip} — {', '.join(reasons)} (olası malware/tunneling)",
+                        dedup_key=f"suspclient:{r['client_ip']}", dedup_window=21600)
                 cf = config_store.get_config().get("cert_file")
                 if cf and os.path.exists(cf):
                     info = await loop.run_in_executor(None, checker.check_file, cf)

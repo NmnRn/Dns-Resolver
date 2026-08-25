@@ -414,6 +414,17 @@ class DB_CON():
                 "AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s MINUTE", (int(minutes),))
             return [r["domain"] for r in await cursor.fetchall()]
 
+    async def scan_suspicious_clients(self, hours=6, min_total=30):
+        """Şüpheli istemci adayları: (client_ip ciphertext, total, nx, txt). Eşik/karar
+        çağırana ait (app._scan_notifications). Düz-metin status/record_type'tan türetir."""
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute(
+                "SELECT client_ip, COUNT(*) AS total, SUM(status='nxdomain') AS nx, "
+                "SUM(record_type IN ('TXT','NULL')) AS txt FROM dns_cache "
+                "WHERE client_ip IS NOT NULL AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s HOUR "
+                "GROUP BY client_ip HAVING total >= %s", (int(hours), int(min_total)))
+            return await cursor.fetchall()
+
     async def delete_old_logs(self, days):
         """N günden eski dns_cache satırlarını sil (log retention). Silinen sayı."""
         if days <= 0:

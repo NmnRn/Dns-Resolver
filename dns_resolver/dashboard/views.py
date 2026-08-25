@@ -746,7 +746,7 @@ async def analytics(request):
 
     context = _base_ctx(request, 'analytics')
     try:
-        stats, hourly, methods, rtypes, tdomains, tclients, blocks, bdomains, dnssec = await asyncio.gather(
+        stats, hourly, methods, rtypes, tdomains, tclients, blocks, bdomains, dnssec, suspicious = await asyncio.gather(
             db.get_stats(),
             db.get_hourly_detail(),
             db.get_method_breakdown(),
@@ -756,6 +756,7 @@ async def analytics(request):
             db.get_block_breakdown(),
             db.get_top_blocked_domains(20),
             db.get_dnssec_breakdown(),
+            db.get_suspicious_clients(),
         )
     except Exception as exc:
         context['error'] = _fail(exc, 'Veritabanına erişilemedi.')
@@ -771,9 +772,28 @@ async def analytics(request):
         blocks=_with_pct(blocks), block_total=stats.get('blocked', 0),
         blocked_domains=_with_pct(bdomains),
         source_times=_source_times(),
-        dnssec=dnssec,
+        dnssec=dnssec, suspicious=suspicious,
     )
     return render(request, 'dashboard/analytics.html', context)
+
+
+async def ban_client(request):
+    """Şüpheli istemciyi engelle: IP'yi client_deny ACL'ine ekle (resolver ~10 sn'de uygular)."""
+    gate = _gate(request)
+    if gate:
+        return gate
+    if request.method == 'POST':
+        ip = (request.POST.get('ip', '') or '').strip()
+        if ip:
+            try:
+                s = await db.get_settings()
+                items = [x.strip() for x in (s.get('client_deny', '') or '').replace(',', '\n').splitlines() if x.strip()]
+                if ip not in items:
+                    items.append(ip)
+                    await db.set_setting('client_deny', '\n'.join(items))
+            except Exception:  # noqa: BLE001
+                pass
+    return redirect('dashboard:analytics')
 
 
 def _source_times():

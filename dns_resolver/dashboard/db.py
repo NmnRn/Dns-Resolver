@@ -435,6 +435,49 @@ async def get_top_clients(limit: int = 10) -> list[dict]:
     return rows
 
 
+async def get_suspicious_clients(hours=6, min_total=30, nx_ratio=0.40, txt_ratio=0.25, flood=1500):
+    """Davranış-tabanlı şüpheli istemci tespiti (düz-metin meta verilerden; domain çözülmez):
+      - Yüksek NXDOMAIN oranı → DGA/malware C2 beaconing
+      - Yüksek TXT/NULL oranı → DNS tunneling (veri sızdırma)
+      - Aşırı hacim → flood
+    GROUP BY şifreli client_ip üzerinde çalışır (deterministik); yalnız gösterim için çözülür."""
+    rows = await _fetch_all(
+        """
+        SELECT client_ip, COUNT(*) AS total,
+               SUM(status='nxdomain') AS nx,
+               SUM(record_type IN ('TXT','NULL')) AS txt
+        FROM dns_cache
+        WHERE client_ip IS NOT NULL AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s HOUR
+        GROUP BY client_ip
+        HAVING total >= %s
+        """,
+        (int(hours), int(min_total)),
+    )
+    out = []
+    for r in rows:
+        total = int(r['total'] or 0)
+        nx = int(r['nx'] or 0)
+        txt = int(r['txt'] or 0)
+        reasons = []
+        if total and nx / total >= nx_ratio:
+            reasons.append('nxdomain')
+        if total and txt / total >= txt_ratio:
+            reasons.append('tunnel')
+        if total >= flood:
+            reasons.append('flood')
+        if not reasons:
+            continue
+        out.append({
+            'ip': (logcrypto.dec(r['client_ip']) or '?').strip(),
+            'total': total, 'nx': nx, 'txt': txt,
+            'nx_pct': round(100 * nx / total) if total else 0,
+            'txt_pct': round(100 * txt / total) if total else 0,
+            'reasons': reasons,
+        })
+    out.sort(key=lambda c: c['total'], reverse=True)
+    return out
+
+
 # NOT: Sunucu aç/kapa + portlar artık DB'de DEĞİL — TEK kaynak config_store
 # (config/servers.json). Panel views doğrudan config_store.get/write_config kullanır.
 

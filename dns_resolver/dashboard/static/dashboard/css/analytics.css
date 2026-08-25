@@ -31,3 +31,14 @@
 .chartleg i{width:16px;height:3px;border-radius:2px;display:inline-block}
 .chartleg .lg-b{background:var(--accent)}
 .chartleg .lg-r{background:var(--err)}
+/* Şüpheli istemciler */
+.susp{display:flex;flex-direction:column;gap:8px}
+.susp-row{display:grid;grid-template-columns:minmax(120px,auto) auto 1fr auto;gap:12px;align-items:center;padding:10px 12px;background:color-mix(in srgb,var(--err) 5%,transparent);border:1px solid color-mix(in srgb,var(--err) 22%,transparent);border-radius:var(--r-sm)}
+.susp-ip{font:700 13px var(--mono);color:var(--err)}
+.susp-flags{display:flex;gap:5px;flex-wrap:wrap}
+.susp-flag{font:700 9.5px var(--mono);letter-spacing:.03em;text-transform:uppercase;padding:2px 7px;border-radius:5px}
+.susp-flag.f-nxdomain{color:var(--err);background:color-mix(in srgb,var(--err) 14%,transparent);border:1px solid color-mix(in srgb,var(--err) 34%,transparent)}
+.susp-flag.f-tunnel{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid color-mix(in srgb,var(--warn) 34%,transparent)}
+.susp-flag.f-flood{color:var(--doq);background:color-mix(in srgb,var(--doq) 14%,transparent);border:1px solid color-mix(in srgb,var(--doq) 34%,transparent)}
+.susp-stat{font-size:11.5px;color:var(--muted)}
+@media(max-width:640px){.susp-row{grid-template-columns:1fr auto}.susp-flags,.susp-stat{grid-column:1/-1}}

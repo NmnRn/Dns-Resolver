@@ -54,6 +54,25 @@
             </div>
         </div>
 
+        {% if suspicious %}
+        <div class="box" style="margin-bottom:16px;">
+            <h2>{% trans "Şüpheli İstemciler" %} <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;">— {% trans "davranış-tabanlı · son 6 saat" %}</span></h2>
+            <div class="body">
+                <p class="muted" style="font-size:12px;margin:0 0 12px;">{% trans "Düz-metin meta veriden türetilir (domain OKUNMAZ). <b>nxdomain</b> = DGA/malware C2 beaconing · <b>tunnel</b> = TXT/NULL oranı yüksek (veri sızdırma) · <b>flood</b> = aşırı hacim. Yanlış pozitif olabilir — yasaklamadan önce IP'yi tanı." %}</p>
+                <div class="susp">
+                    {% for c in suspicious %}
+                    <div class="susp-row">
+                        <span class="susp-ip mono">{{ c.ip }}</span>
+                        <span class="susp-flags">{% for r in c.reasons %}<span class="susp-flag f-{{ r }}">{{ r }}</span>{% endfor %}</span>
+                        <span class="susp-stat mono">{% blocktrans with t=c.total nx=c.nx_pct tx=c.txt_pct %}{{ t }} sorgu · NXDOMAIN %{{ nx }} · TXT %{{ tx }}{% endblocktrans %}</span>
+                        <form method="post" action="{% url 'dashboard:ban_client' %}" data-no-ajax style="margin:0;">{% csrf_token %}<input type="hidden" name="ip" value="{{ c.ip }}"><button type="submit" class="xbtn danger" onclick="return confirm('{{ c.ip }} — client_deny listesine eklensin mi?')">{% trans "Yasakla" %}</button></form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         {% if source_times %}
         <div class="box" style="margin-bottom:16px;">
             <h2>{% trans "Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / upstream)" %}</h2>

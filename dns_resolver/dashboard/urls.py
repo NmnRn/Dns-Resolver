@@ -12,6 +12,7 @@ urlpatterns = [
     path('filtreler/', views.filters, name='filters'),
     path('filtreler/link-kontrol/', views.check_sources_ajax, name='check_sources'),
     path('analiz/', views.analytics, name='analytics'),
+    path('analiz/yasakla/', views.ban_client, name='ban_client'),
     path('sertifika/', views.certificate, name='certificate'),
     path('domain/', views.guide, name='guide'),
     path('ayarlar/', views.settings_page, name='settings'),
