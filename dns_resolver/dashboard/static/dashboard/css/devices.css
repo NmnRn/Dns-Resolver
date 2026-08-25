@@ -71,3 +71,9 @@
 .whois-body{ margin:0; padding:14px 16px; overflow:auto; font:12px/1.5 var(--mono); color:var(--text);
     white-space:pre-wrap; word-break:break-word; }
 .whois-foot{ padding:9px 16px; border-top:1px solid var(--border); font-size:11px; color:var(--muted-2); }
+/* DNS Cihazları şüpheli rozeti */
+.dsusp{ display:inline-flex; align-items:center; gap:4px; font:700 10px var(--mono); letter-spacing:.02em; text-transform:uppercase; padding:2px 8px; border-radius:5px; white-space:nowrap; }
+.dsusp.s-threat{ color:var(--err); background:color-mix(in srgb,var(--err) 14%,transparent); border:1px solid color-mix(in srgb,var(--err) 34%,transparent); }
+.dsusp.s-behav{ color:var(--warn); background:color-mix(in srgb,var(--warn) 14%,transparent); border:1px solid color-mix(in srgb,var(--warn) 34%,transparent); }
+.dsusp.s-safe{ color:var(--ok); background:color-mix(in srgb,var(--ok) 12%,transparent); border:1px solid color-mix(in srgb,var(--ok) 30%,transparent); }
+.dsusp-acts{ display:inline-flex; gap:5px; margin-left:8px; }

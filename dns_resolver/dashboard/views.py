@@ -794,7 +794,8 @@ async def ban_client(request):
                     await db.set_setting('client_deny', '\n'.join(items))
             except Exception:  # noqa: BLE001
                 pass
-    return redirect('dashboard:analytics')
+    nxt = request.POST.get('next', '')
+    return redirect('dashboard:dns_devices' if nxt == 'dns_devices' else 'dashboard:analytics')
 
 
 async def ignore_client(request):
@@ -814,7 +815,8 @@ async def ignore_client(request):
                     await db.set_setting('susp_ignore', '\n'.join(items))
             except Exception:  # noqa: BLE001
                 pass
-    return redirect('dashboard:analytics')
+    nxt = request.POST.get('next', '')
+    return redirect('dashboard:dns_devices' if nxt == 'dns_devices' else 'dashboard:analytics')
 
 
 def _source_times():
@@ -1194,8 +1196,23 @@ async def dns_devices(request):
         ctx.update(devices=[], total=0, error=str(e))
         return render(request, 'dashboard/dns_devices.html', ctx)
     hosts = await _reverse_lookups([d['client_ip'] for d in devices[:60]])
+    flagged = db.read_flagged_clients()                  # tehdit feed'i (datacenter/bot)
+    try:
+        susp = {c['ip']: c['reasons'] for c in await db.get_suspicious_clients()}
+        ignored = {x.strip() for x in ((await db.get_settings()).get('susp_ignore', '') or '').replace(',', '\n').splitlines() if x.strip()}
+    except Exception:  # noqa: BLE001
+        susp, ignored = {}, set()
     for d in devices:
-        d['host'] = hosts.get(d['client_ip'], '')
+        ip = d['client_ip']
+        d['host'] = hosts.get(ip, '')
+        if ip in ignored:
+            d['susp'], d['susp_reasons'] = 'ignored', []
+        elif ip in flagged:
+            d['susp'], d['susp_reasons'] = 'threat', ['datacenter/bot']
+        elif ip in susp:
+            d['susp'], d['susp_reasons'] = 'behavior', susp[ip]
+        else:
+            d['susp'], d['susp_reasons'] = None, []
     ctx.update(devices=devices, total=len(devices), error=None)
     return render(request, 'dashboard/dns_devices.html', ctx)
 
@@ -1637,6 +1654,7 @@ async def settings_page(request):
                     await db.set_setting('client_allow', request.POST.get('client_allow', '').strip())
                     await db.set_setting('client_deny', request.POST.get('client_deny', '').strip())
                     await db.set_setting('susp_ignore', request.POST.get('susp_ignore', '').strip())
+                    await db.set_setting('threat_feed_enabled', '1' if request.POST.get('threat_feed_enabled') else '0')
                     # Log retention (preset ya da özel)
                     _rd = request.POST.get('log_retention_days', '0')
                     if _rd == 'custom':
@@ -1669,6 +1687,7 @@ async def settings_page(request):
         client_allow=s.get('client_allow', ''),
         client_deny=s.get('client_deny', ''),
         susp_ignore=s.get('susp_ignore', ''),
+        threat_feed_enabled=s.get('threat_feed_enabled', '0') == '1',
         retention_presets=['0', '7', '14', '30', '90', '365'],
         retention_days=s.get('log_retention_days', '0'),
         retention_is_custom=s.get('log_retention_days', '0') not in {'0', '7', '14', '30', '90', '365'},

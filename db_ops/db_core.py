@@ -414,6 +414,15 @@ class DB_CON():
                 "AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s MINUTE", (int(minutes),))
             return [r["domain"] for r in await cursor.fetchall()]
 
+    async def scan_all_client_ips(self, hours=48):
+        """Son N saatte sorgu yapan TÜM benzersiz istemci IP'leri (ciphertext) — tehdit-feed
+        eşleşmesi için (DNS Cihazları penceresine yakın)."""
+        async with self.get_db_cursor(dictionary=True) as (cursor, conn):
+            await cursor.execute(
+                "SELECT DISTINCT client_ip FROM dns_cache WHERE client_ip IS NOT NULL "
+                "AND queried_at >= UTC_TIMESTAMP() - INTERVAL %s HOUR", (int(hours),))
+            return [r["client_ip"] for r in await cursor.fetchall()]
+
     async def scan_suspicious_clients(self, hours=6, min_total=3):
         """Şüpheli istemci adayları: (client_ip ciphertext, total, nx, txt). Eşik/karar
         çağırana ait (app._scan_notifications). Düz-metin status/record_type'tan türetir."""

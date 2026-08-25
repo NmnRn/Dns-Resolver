@@ -54,6 +54,13 @@
                 <label class="modelbl">{% trans "Şüpheli sayma (yoksay) — IP / CIDR" %}</label>
                 <textarea class="upst" name="susp_ignore" rows="3" spellcheck="false" placeholder="192.168.1.50">{{ susp_ignore }}</textarea>
                 <p class="setnote">{% trans "Analiz'de 'Yoksay' dediğin istemciler burada birikir → artık şüpheli listesinde/bildirimlerde çıkmaz. Geri almak için satırı sil." %}</p>
+                <div class="setrow" style="margin-top:14px;">
+                    <div class="si">
+                        <div class="t">{% trans "Tehdit / datacenter IP feed'i" %}</div>
+                        <div class="d">{% trans "Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abuse IP aralıklarını indirir; bu aralıklardan sorgu yapan istemciler DNS Cihazları'nda ŞÜPHELİ işaretlenir + bildirim düşer. <b>Default KAPALI</b>. Açıksa internete GİDEN istek gerektirir (~6 saatte bir günceller)." %}</div>
+                    </div>
+                    <label class="sw"><input type="checkbox" name="threat_feed_enabled" {% if threat_feed_enabled %}checked{% endif %}><span></span></label>
+                </div>
             </div>
 
             <div class="box setcard" style="margin-top:16px;">

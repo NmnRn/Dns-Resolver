@@ -25,6 +25,16 @@ import logcrypto  # client_ip at-rest şifreliyse gösterim için çöz (DNS_LOG
 # ile AYNI yol. Sorgu geçmişi = bu (cache) + DB olarak birleştirilir.
 _PENDING_FILE = os.getenv('PENDING_FILE', '/app/data/pending.json')
 _SOURCE_STATS_FILE = os.getenv('SOURCE_STATS_FILE', '/app/data/source_stats.json')
+_FLAGGED_FILE = os.getenv('FLAGGED_CLIENTS_FILE', '/app/data/flagged_clients.json')
+
+
+def read_flagged_clients() -> set:
+    """Resolver'ın yazdığı tehdit-feed flag'li istemci IP'leri (DNS Cihazları rozeti için)."""
+    try:
+        with open(_FLAGGED_FILE, encoding='utf-8') as f:
+            return set(json.load(f))
+    except (OSError, ValueError, TypeError):
+        return set()
 
 _pools: dict[asyncio.AbstractEventLoop, aiomysql.Pool] = {}
 _locks: dict[asyncio.AbstractEventLoop, asyncio.Lock] = {}

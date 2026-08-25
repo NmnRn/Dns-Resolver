@@ -20,6 +20,7 @@ from project_control.check_ssl_certificate import SSLCertificateChecker
 import db_ops
 import config_store
 import logcrypto
+import threatfeed
 
 def _ups_list(text):
     """Upstream metnini listeye çevir: virgül/satır ile ayır, boşları at, '#' ile
@@ -328,6 +329,30 @@ def main():
                 core.update_filter_lists(manual_block, allow, list_sets)
             except Exception as e:
                 logger.error("Filtre listesi yenileme hatası: %r", e)
+    # Tehdit/datacenter IP feed'i (default KAPALI; panel 'threat_feed_enabled' ile açar).
+    _threat = {"nets": []}   # RAM CIDR set; _refresh_threat_feed doldurur, _scan_notifications okur
+    _FLAGGED_FILE = os.getenv("FLAGGED_CLIENTS_FILE", "/app/data/flagged_clients.json")
+
+    async def _refresh_threat_feed(interval=120):
+        """Ayar açıksa tehdit feed'ini (Spamhaus DROP + FireHOL) indirip RAM'e alır;
+        kapalıysa boşaltır. Ayar ~2 dk'da kontrol edilir (toggle hızlı etki eder),
+        yeniden indirme 6 saatte bir (feed'ler günlük güncel)."""
+        last_dl = -1e9
+        while True:
+            try:
+                on = (await db_manager.get_setting("threat_feed_enabled", "0")) == "1"
+                if not on:
+                    _threat["nets"] = []
+                elif loop.time() - last_dl > 21600 or not _threat["nets"]:
+                    _threat["nets"] = await loop.run_in_executor(None, threatfeed.load_all)
+                    last_dl = loop.time()
+                    logger.info("Tehdit feed'i yüklendi: %d CIDR aralığı", len(_threat["nets"]))
+            except Exception as e:  # noqa: BLE001
+                logger.debug("tehdit feed hatası: %r", e)
+            await asyncio.sleep(interval)
+    threat_task = loop.create_task(_refresh_threat_feed())
+    threat_task.add_done_callback(_log_task_error)
+
     # Resolver-türevli panel bildirimleri: yeni istemci, şüpheli(bogus) alan, sertifika
     # süresi. Hot-path'e DOKUNMADAN DB'den türetir; dedup notifications tablosunda.
     async def _scan_notifications(interval=120):
@@ -386,6 +411,29 @@ def main():
                             "crit", "health", "Sertifika süresi DOLDU",
                             "TLS (DoT/DoQ/DoH) başlatılamayabilir — sertifikayı yenile.",
                             dedup_key="certexpired", dedup_window=43200)
+                # Tehdit/datacenter feed'i (AÇIKSA): aktif istemci IP'leri feed'de mi → şüpheli.
+                # Eşleşme executor'da (CIDR taraması bloklamasın); flag'lenenler paylaşılan
+                # dosyaya yazılır → panel DNS Cihazları rozeti oradan okur.
+                flagged = []
+                if _threat["nets"]:
+                    plains = [(c, (logcrypto.dec(c) or "").strip())
+                              for c in await db_manager.scan_all_client_ips(hours=48)]
+                    nets = _threat["nets"]
+                    matches = await loop.run_in_executor(
+                        None, lambda: [(c, ip) for c, ip in plains if ip and threatfeed.in_feed(ip, nets)])
+                    for cph, ip in matches:
+                        flagged.append(ip)
+                        await db_manager.add_notification(
+                            "warn", "client", "Şüpheli istemci (tehdit feed'i)",
+                            f"{ip} — bilinen bot/datacenter/abuse aralığında.",
+                            dedup_key=f"threatip:{cph}", dedup_window=86400)
+                try:                                        # flag dosyası (panel okur)
+                    _tmp = _FLAGGED_FILE + ".tmp"
+                    with open(_tmp, "w", encoding="utf-8") as _f:
+                        json.dump(sorted(set(flagged)), _f)
+                    os.replace(_tmp, _FLAGGED_FILE)
+                except Exception:  # noqa: BLE001
+                    pass
             except Exception as e:  # noqa: BLE001 — bildirim ikincil, döngü ölmesin
                 logger.debug("bildirim taramasi hatasi: %r", e)
     scan_task = loop.create_task(_scan_notifications())
