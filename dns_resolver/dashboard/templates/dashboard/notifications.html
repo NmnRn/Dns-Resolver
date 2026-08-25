@@ -28,6 +28,7 @@
                 <div class="nmeta">
                     <span class="ncat cat-{{ n.category }}">{{ n.category }}</span>
                     <span class="ntime"><span class="lt" data-utc="{{ n.created_at|date:'Y-m-d H:i:s' }}">{{ n.created_at|date:'Y-m-d H:i:s' }}</span></span>
+                    {% if not n.read_at %}<form method="post" style="margin:0;" data-no-ajax>{% csrf_token %}<input type="hidden" name="action" value="read_one"><input type="hidden" name="id" value="{{ n.id }}"><button type="submit" class="nread" title="{% trans 'Okundu işaretle' %}" aria-label="{% trans 'Okundu işaretle' %}">✓</button></form>{% endif %}
                 </div>
             </div>
             {% empty %}<div class="nempty">{% trans "Henüz bildirim yok." %}</div>{% endfor %}

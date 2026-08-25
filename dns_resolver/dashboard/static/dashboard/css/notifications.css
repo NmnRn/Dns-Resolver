@@ -24,6 +24,9 @@
     background:var(--accent-soft); }
 :root[data-theme="dark"] .cat-client, :root[data-theme="dark"] .cat-domain{ color:var(--accent); }
 .ntime{ font:600 12px var(--mono); color:var(--muted-2); white-space:nowrap; }
+.nread{ display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; padding:0; border:1px solid var(--border-strong); background:var(--panel-2); color:var(--muted); font-size:12px; cursor:pointer; border-radius:6px; }
+.nread:hover{ border-color:var(--accent); color:var(--accent-deep); background:var(--accent-soft); }
+:root[data-theme="dark"] .nread:hover{ color:var(--accent); }
 
 .nempty{ padding:44px 20px; text-align:center; color:var(--muted-2); }
 

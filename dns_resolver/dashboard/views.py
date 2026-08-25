@@ -1387,6 +1387,8 @@ async def notifications(request):
         act = request.POST.get('action', '')
         if act == 'read_all':
             await db.mark_notifications_read()
+        elif act == 'read_one':
+            await db.mark_notification_read(request.POST.get('id'))
         elif act == 'clear':
             await db.clear_notifications()
         return redirect('dashboard:notifications')   # PRG; formlar data-no-ajax → tam gönderim
@@ -1408,11 +1410,23 @@ async def notif_count(request):
         count = await db.notif_unread_count()
     except Exception:  # noqa: BLE001
         return JsonResponse({'count': 0, 'items': []})
-    out = [{'level': i['level'], 'category': i['category'], 'title': i['title'],
+    out = [{'id': i['id'], 'level': i['level'], 'category': i['category'], 'title': i['title'],
             'body': i['body'], 'unread': i['read_at'] is None,
             'time': i['created_at'].strftime('%Y-%m-%d %H:%M:%S') if i.get('created_at') else ''}
            for i in items]
     return JsonResponse({'count': count, 'items': out})
+
+
+async def notif_read(request):
+    """Açılır panelden tek bildirimi okundu işaretle (JS fetch; JSON)."""
+    if request.method != 'POST' or not request.session.get('_auth_user_id'):
+        return JsonResponse({'ok': False}, status=403)
+    try:
+        await db.mark_notification_read(request.POST.get('id'))
+        count = await db.notif_unread_count()
+    except Exception:  # noqa: BLE001
+        return JsonResponse({'ok': False})
+    return JsonResponse({'ok': True, 'count': count})
 
 
 async def backup_export(request):

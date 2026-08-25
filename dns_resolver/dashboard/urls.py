@@ -25,6 +25,7 @@ urlpatterns = [
     path('dns-cihazlari/', views.dns_devices, name='dns_devices'),
     path('bildirimler/', views.notifications, name='notifications'),
     path('bildirimler/sayi/', views.notif_count, name='notif_count'),
+    path('bildirimler/oku/', views.notif_read, name='notif_read'),
     path('giris/', views.login_view, name='login'),
     path('kurulum/', views.setup, name='setup'),
     path('cikis/', views.logout_view, name='logout'),

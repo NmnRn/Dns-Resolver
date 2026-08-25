@@ -105,7 +105,10 @@ a { color: var(--accent-deep); text-decoration: none; }
 .notifmenu { position: absolute; top: calc(100% + 8px); right: 0; width: 320px; max-width: 86vw; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--r-sm); box-shadow: var(--shadow-lg); z-index: 40; overflow: hidden; }
 .notifhead { font: 700 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); padding: 12px 14px; border-bottom: 1px solid var(--border); }
 .notiffeed { max-height: 380px; overflow-y: auto; }
-.nf-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px; align-items: start; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+.nf-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; gap: 10px; align-items: start; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+.nf-read, .nf-read-sp { width: 20px; height: 20px; flex: none; margin-top: 1px; }
+.nf-read { display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; background: none; color: var(--muted-2); font-size: 12px; cursor: pointer; border-radius: 5px; }
+.nf-read:hover { background: var(--accent-soft); color: var(--accent-deep); }
 .nf-row:last-child { border-bottom: 0; }
 .nf-row.unread { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .nf-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex: none; background: var(--muted-2); }

@@ -108,16 +108,28 @@
         var badge=document.getElementById('notif-badge'), feed=document.getElementById('notif-feed');
         var url='{% url "dashboard:notif_count" %}', EMPTY='{% trans "Bildirim yok." %}';
         function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+        var CSRF=(document.querySelector('meta[name=csrf-token]')||{}).content||'';
+        var readUrl='{% url "dashboard:notif_read" %}';
         function render(items){
             if(!items||!items.length){ feed.innerHTML='<div class="nf-empty">'+EMPTY+'</div>'; return; }
             feed.innerHTML=items.map(function(i){
                 return '<div class="nf-row lv-'+esc(i.level)+(i.unread?' unread':'')+'">'
                     +'<span class="nf-dot"></span><div class="nf-main"><div class="nf-title">'+esc(i.title)+'</div>'
                     +(i.body?'<div class="nf-body">'+esc(i.body)+'</div>':'')+'</div>'
-                    +'<span class="nf-time lt" data-utc="'+esc(i.time)+'">'+esc(i.time)+'</span></div>';
+                    +'<span class="nf-time lt" data-utc="'+esc(i.time)+'">'+esc(i.time)+'</span>'
+                    +(i.unread?'<button type="button" class="nf-read" data-id="'+esc(i.id)+'" title="Okundu" aria-label="Okundu">✓</button>':'<span class="nf-read-sp"></span>')
+                    +'</div>';
             }).join('');
             if(window.localizeTimes) window.localizeTimes(feed);
         }
+        feed.addEventListener('click', function(e){
+            var b=e.target.closest('.nf-read'); if(!b) return;
+            e.stopPropagation();
+            var fd=new FormData(); fd.append('id', b.dataset.id);
+            fetch(readUrl,{method:'POST',credentials:'same-origin',body:fd,
+                headers:{'X-CSRFToken':CSRF,'X-Requested-With':'fetch'}})
+                .then(function(r){return r.json();}).then(function(){ upd(); }).catch(function(){});
+        });
         function upd(){
             fetch(url,{credentials:'same-origin',headers:{'X-Requested-With':'fetch'}})
                 .then(function(r){return r.json();})

@@ -636,5 +636,9 @@ async def mark_notifications_read() -> None:
     await _write("UPDATE notifications SET read_at = UTC_TIMESTAMP() WHERE read_at IS NULL")
 
 
+async def mark_notification_read(nid) -> None:
+    await _write("UPDATE notifications SET read_at = UTC_TIMESTAMP() WHERE id = %s AND read_at IS NULL", (nid,))
+
+
 async def clear_notifications() -> None:
     await _write("DELETE FROM notifications")
