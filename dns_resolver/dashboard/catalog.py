@@ -21,6 +21,7 @@ CATALOG = [
     ("AdGuard DNS filter",         "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt", "Genel"),
     ("1Hosts (Lite)",              "https://cdn.jsdelivr.net/gh/badmojr/1Hosts@latest/Lite/adblock.txt", "Genel"),
     ("1Hosts (Pro)",               "https://cdn.jsdelivr.net/gh/badmojr/1Hosts@latest/Pro/adblock.txt", "Genel"),
+    ("1Hosts (Xtra)",              "https://cdn.jsdelivr.net/gh/badmojr/1Hosts@latest/Xtra/adblock.txt", "Genel"),
     ("AdAway",                     "https://raw.githubusercontent.com/AdAway/adaway.github.io/master/hosts.txt", "Genel"),
     ("Dan Pollock (someonewhocares)", "https://someonewhocares.org/hosts/zero/hosts", "Genel"),
 
@@ -30,6 +31,10 @@ CATALOG = [
     ("WindowsSpyBlocker",          "https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/spy.txt", "Reklam/İzleyici"),
     ("Lightswitch05 Ads+İzleyici", "https://raw.githubusercontent.com/lightswitch05/hosts/master/docs/lists/ads-and-tracking-extended.txt", "Reklam/İzleyici"),
     ("Frogeye Multiparty",         "https://hostfiles.frogeye.fr/multiparty-trackers-hosts.txt", "Reklam/İzleyici"),
+    ("EasyPrivacy (Firebog)",      "https://v.firebog.net/hosts/Easyprivacy.txt", "Reklam/İzleyici"),
+    ("Prigent Ads (Firebog)",      "https://v.firebog.net/hosts/Prigent-Ads.txt", "Reklam/İzleyici"),
+    ("Admiral Anti-Adblock",       "https://v.firebog.net/hosts/Admiral.txt", "Reklam/İzleyici"),
+    ("Hagezi Popup Ads",           "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/popupads.txt", "Reklam/İzleyici"),
 
     # --- Kötücül / Phishing (güvenlik) ---
     ("URLhaus (malware)",          "https://urlhaus.abuse.ch/downloads/hostfile/", "Güvenlik"),
@@ -38,21 +43,37 @@ CATALOG = [
     ("abuse.ch ThreatFox",         "https://threatfox.abuse.ch/downloads/hostfile/", "Güvenlik"),
     ("URLhaus Filter (curben)",    "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-hosts.txt", "Güvenlik"),
     ("NoCoin (kripto madenci)",    "https://raw.githubusercontent.com/hoshsadiq/adblock-nocoin-list/master/hosts.txt", "Güvenlik"),
+    ("Phishing Database (Aktif)",  "https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt", "Güvenlik"),
+    ("DigitalSide Threat-Intel",   "https://osint.digitalside.it/Threat-Intel/lists/latestdomains.txt", "Güvenlik"),
+    ("Prigent Malware (Firebog)",  "https://v.firebog.net/hosts/Prigent-Malware.txt", "Güvenlik"),
+    ("Prigent Crypto (Firebog)",   "https://v.firebog.net/hosts/Prigent-Crypto.txt", "Güvenlik"),
+    ("Hagezi Fake (dolandırıcı)",  "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/fake.txt", "Güvenlik"),
 
     # --- Yetişkin / NSFW ---
     ("OISD NSFW",                  "https://nsfw.oisd.nl/", "Yetişkin"),
     ("StevenBlack + Porn",         "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn/hosts", "Yetişkin"),
+    ("Chad Mayfield Porn (Top1M)", "https://raw.githubusercontent.com/chadmayfield/my-pihole-blocklists/master/lists/pi_blocklist_porn_top1m.list", "Yetişkin"),
+    ("Sinfonietta Porn",           "https://raw.githubusercontent.com/Sinfonietta/hostfiles/master/pornography-hosts", "Yetişkin"),
 
     # --- Cihaz (Smart TV / mobil / yerel izleyiciler) ---
     ("Perflyst Smart TV",          "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartTV.txt", "Cihaz"),
     ("Perflyst Android İzleyici",  "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/android-tracking.txt", "Cihaz"),
+    ("Perflyst Amazon FireTV",     "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/AmazonFireTV.txt", "Cihaz"),
     ("Hagezi Native (Apple)",      "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.apple.txt", "Cihaz"),
+    ("Hagezi Native (Xiaomi)",     "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.xiaomi.txt", "Cihaz"),
+    ("Hagezi Native (Samsung)",    "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.samsung.txt", "Cihaz"),
+    ("Hagezi Native (Amazon)",     "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.amazon.txt", "Cihaz"),
+    ("Hagezi Native (Huawei)",     "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.huawei.txt", "Cihaz"),
+    ("Hagezi Native (TikTok)",     "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.tiktok.txt", "Cihaz"),
+    ("Hagezi Native (Win/Office)", "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.winoffice.txt", "Cihaz"),
 
     # --- Kategorik (kumar / sosyal / sahte haber / bypass) ---
     ("StevenBlack Kumar",          "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling/hosts", "Kategorik"),
     ("StevenBlack Sosyal Medya",   "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/social/hosts", "Kategorik"),
     ("StevenBlack Sahte Haber",    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews/hosts", "Kategorik"),
     ("Hagezi DoH/VPN Bypass",      "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/doh.txt", "Kategorik"),
+    ("Hagezi Anti-Piracy",         "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/anti.piracy.txt", "Kategorik"),
+    ("StevenBlack Kumar+Porno",    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-porn/hosts", "Kategorik"),
 ]
 
 # name -> url (panelden 'katalogdan ekle' seçimi için hızlı arama)
