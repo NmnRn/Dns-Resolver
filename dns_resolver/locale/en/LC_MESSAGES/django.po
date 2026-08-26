@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dns-panel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-25 23:39+0000\n"
+"POT-Creation-Date: 2026-08-26 10:51+0000\n"
 "PO-Revision-Date: 2026-08-18 00:00+0000\n"
 "Last-Translator: NmnRn\n"
 "Language-Team: English\n"
@@ -117,15 +117,15 @@ msgid "Toplam sorgu"
 msgstr "Total queries"
 
 #: dashboard/templates/dashboard/analytics.html:30
-#: dashboard/templates/dashboard/analytics.html:207
+#: dashboard/templates/dashboard/analytics.html:208
 msgid "Engellenen"
 msgstr "Blocked"
 
 #: dashboard/templates/dashboard/analytics.html:32
-#: dashboard/templates/dashboard/analytics.html:119
-#: dashboard/templates/dashboard/analytics.html:132
-#: dashboard/templates/dashboard/analytics.html:144
-#: dashboard/templates/dashboard/analytics.html:156
+#: dashboard/templates/dashboard/analytics.html:120
+#: dashboard/templates/dashboard/analytics.html:133
+#: dashboard/templates/dashboard/analytics.html:145
+#: dashboard/templates/dashboard/analytics.html:157
 #: dashboard/templates/dashboard/logs.html:62
 #: dashboard/templates/dashboard/logs.html:70
 #: dashboard/templates/dashboard/logs.html:85
@@ -172,71 +172,81 @@ msgid "%(t)s sorgu · NXDOMAIN %%%(nx)s · TXT %%%(tx)s"
 msgstr "%(t)s queries · NXDOMAIN %%%(nx)s · TXT %%%(tx)s"
 
 #: dashboard/templates/dashboard/analytics.html:69
-msgid "Şüpheli değil — yoksay"
-msgstr "Not suspicious — ignore"
+msgid "Güvenli işaretle (yeşil)"
+msgstr "Mark safe (green)"
 
 #: dashboard/templates/dashboard/analytics.html:69
-#: dashboard/templates/dashboard/dns_devices.html:43
+#: dashboard/templates/dashboard/dns_devices.html:44
+#| msgid "Güvenlik"
+msgid "Güvenli"
+msgstr "Safe"
+
+#: dashboard/templates/dashboard/analytics.html:70
+msgid "Hatırlatma ama güvenli sayma (nötr)"
+msgstr "Stop reminding but don't mark safe (neutral)"
+
+#: dashboard/templates/dashboard/analytics.html:70
+#: dashboard/templates/dashboard/dns_devices.html:45
 msgid "Yoksay"
 msgstr "Ignore"
 
-#: dashboard/templates/dashboard/analytics.html:70
-#: dashboard/templates/dashboard/dns_devices.html:44
+#: dashboard/templates/dashboard/analytics.html:71
+#: dashboard/templates/dashboard/dns_devices.html:46
 msgid "Yasakla"
 msgstr "Ban"
 
-#: dashboard/templates/dashboard/analytics.html:81
+#: dashboard/templates/dashboard/analytics.html:82
 msgid "Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / upstream)"
 msgstr "Average processing times — by source (core / cache / upstream)"
 
-#: dashboard/templates/dashboard/analytics.html:87
+#: dashboard/templates/dashboard/analytics.html:88
 #: dashboard/templates/dashboard/query_settings.html:71
 #, python-format
 msgid "%(avg)s ms · %(count)s sorgu"
 msgstr "%(avg)s ms · %(count)s queries"
 
-#: dashboard/templates/dashboard/analytics.html:89
+#: dashboard/templates/dashboard/analytics.html:90
 msgid "Henüz ölçüm yok"
 msgstr "No measurements yet"
 
-#: dashboard/templates/dashboard/analytics.html:96
+#: dashboard/templates/dashboard/analytics.html:97
 #, python-format
 msgid "Engelleme Listelerine Göre — toplam %(total)s engellenen sorgu"
 msgstr "By block list — %(total)s blocked queries total"
 
-#: dashboard/templates/dashboard/analytics.html:104
-#: dashboard/templates/dashboard/analytics.html:170
+#: dashboard/templates/dashboard/analytics.html:105
+#: dashboard/templates/dashboard/analytics.html:171
 msgid "Henüz engelleme yok"
 msgstr "No blocks yet"
 
-#: dashboard/templates/dashboard/analytics.html:111
+#: dashboard/templates/dashboard/analytics.html:112
 #: dashboard/templates/dashboard/logs.html:75
 msgid "Yönteme Göre"
 msgstr "By Method"
 
-#: dashboard/templates/dashboard/analytics.html:124
+#: dashboard/templates/dashboard/analytics.html:125
 msgid "Kayıt Tipine Göre"
 msgstr "By Record Type"
 
-#: dashboard/templates/dashboard/analytics.html:137
+#: dashboard/templates/dashboard/analytics.html:138
 msgid "En Çok Sorgulanan Alan Adları"
 msgstr "Most Queried Domains"
 
-#: dashboard/templates/dashboard/analytics.html:149
+#: dashboard/templates/dashboard/analytics.html:150
 #: dashboard/templates/dashboard/logs.html:67
 msgid "En Aktif İstemciler"
 msgstr "Most Active Clients"
 
-#: dashboard/templates/dashboard/analytics.html:163
+#: dashboard/templates/dashboard/analytics.html:164
 msgid "En Çok Engellenen Alan Adları"
 msgstr "Most Blocked Domains"
 
-#: dashboard/templates/dashboard/analytics.html:206
+#: dashboard/templates/dashboard/analytics.html:207
 #: dashboard/templates/dashboard/dns_devices.html:20
 msgid "Sorgu"
 msgstr "Queries"
 
-#: dashboard/templates/dashboard/analytics.html:208
+#: dashboard/templates/dashboard/analytics.html:209
 msgid "En aktif"
 msgstr "Most active"
 
@@ -388,7 +398,7 @@ msgstr "Relative paths resolve against the <span class='mono'>/app</span> root. 
 #: dashboard/templates/dashboard/filters.html:113
 #: dashboard/templates/dashboard/filters.html:125
 #: dashboard/templates/dashboard/query_settings.html:107
-#: dashboard/templates/dashboard/security.html:79
+#: dashboard/templates/dashboard/security.html:81
 #: dashboard/templates/dashboard/settings.html:58
 msgid "Kaydet"
 msgstr "Save"
@@ -637,7 +647,6 @@ msgid "Yöntem"
 msgstr "Method"
 
 #: dashboard/templates/dashboard/dns_devices.html:21
-#| msgid "Son görülme"
 msgid "Görülme"
 msgstr "Seen"
 
@@ -653,37 +662,44 @@ msgid "Durum"
 msgstr "Status"
 
 #: dashboard/templates/dashboard/dns_devices.html:33
-#| msgid "Dil"
 msgid "ilk"
 msgstr "first"
 
 #: dashboard/templates/dashboard/dns_devices.html:36
-#| msgid "Yasakla"
 msgid "yasaklı"
 msgstr "banned"
 
 #: dashboard/templates/dashboard/dns_devices.html:37
-msgid "Bilinen bot/datacenter/abuse aralığı"
-msgstr "Known bot/datacenter/abuse range"
-
-#: dashboard/templates/dashboard/dns_devices.html:37
-#: dashboard/templates/dashboard/dns_devices.html:38
-msgid "şüpheli"
-msgstr "suspicious"
-
-#: dashboard/templates/dashboard/dns_devices.html:39
 msgid "güvenli"
 msgstr "safe"
 
-#: dashboard/templates/dashboard/dns_devices.html:43
-msgid "Şüpheli değil"
-msgstr "Not suspicious"
+#: dashboard/templates/dashboard/dns_devices.html:38
+msgid "yoksayıldı"
+msgstr "dismissed"
 
-#: dashboard/templates/dashboard/dns_devices.html:50
+#: dashboard/templates/dashboard/dns_devices.html:39
+msgid "Bilinen bot/datacenter/abuse aralığı"
+msgstr "Known bot/datacenter/abuse range"
+
+#: dashboard/templates/dashboard/dns_devices.html:39
+#: dashboard/templates/dashboard/dns_devices.html:40
+msgid "şüpheli"
+msgstr "suspicious"
+
+#: dashboard/templates/dashboard/dns_devices.html:44
+#| msgid "Okundu işaretle"
+msgid "Güvenli işaretle"
+msgstr "Mark safe"
+
+#: dashboard/templates/dashboard/dns_devices.html:45
+msgid "Hatırlatma ama güvenli sayma"
+msgstr "Stop reminding but don't mark safe"
+
+#: dashboard/templates/dashboard/dns_devices.html:52
 msgid "Henüz DNS sorgusu kaydı yok."
 msgstr "No DNS query records yet."
 
-#: dashboard/templates/dashboard/dns_devices.html:58
+#: dashboard/templates/dashboard/dns_devices.html:60
 msgid "DNS istemcisi HTTP göndermez → User-Agent / JS fingerprint yoktur. Daha fazla tanı için: DoH isteklerinde <b>User-Agent</b> loglama, DoT/DoQ için TLS <b>JA3/JA4</b> parmak izi, LAN'da <b>DHCP/ARP</b> eşleme (IP→MAC→cihaz adı)."
 msgstr "A DNS client sends no HTTP → there is no User-Agent / JS fingerprint. For more: log the <b>User-Agent</b> on DoH requests, TLS <b>JA3/JA4</b> fingerprint for DoT/DoQ, or <b>DHCP/ARP</b> mapping on the LAN (IP→MAC→device name)."
 
@@ -1648,12 +1664,16 @@ msgid "Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abus
 msgstr "Downloads known bot/datacenter/abuse IP ranges from open sources (Spamhaus DROP + FireHOL); clients querying from these ranges are marked SUSPICIOUS on DNS Devices + a notification is raised. <b>OFF by default</b>. When on, requires OUTBOUND internet requests (updates every ~6 hours)."
 
 #: dashboard/templates/dashboard/security.html:73
-msgid "Şüpheli sayma (yoksay) — IP / CIDR"
-msgstr "Do not flag (ignore) — IP / CIDR"
+msgid "Güvenli işaretlenenler (yeşil) — IP / CIDR"
+msgstr "Marked safe (green) — IP / CIDR"
 
 #: dashboard/templates/dashboard/security.html:75
-msgid "Analiz / DNS Cihazları'nda 'Yoksay' dediğin istemciler burada birikir → artık şüpheli sayılmaz + yaptırımdan muaf. Geri almak için satırı sil."
-msgstr "Clients you 'Ignore' in Analytics / DNS Devices accumulate here → no longer considered suspicious + exempt from enforcement. Delete the line to undo."
+msgid "Yoksayılanlar (güvenli SAYILMAZ, nötr) — IP / CIDR"
+msgstr "Dismissed (NOT marked safe, neutral) — IP / CIDR"
+
+#: dashboard/templates/dashboard/security.html:77
+msgid "'Güvenli' = yeşil rozet, güvenli sayılır. 'Yoksay' = artık hatırlatmaz ama güvenli de saymaz (nötr). İkisi de şüpheli listesinden + yaptırımdan MUAFTIR. Geri almak için satırı sil."
+msgstr "'Safe' = green badge, counted as safe. 'Ignore' = stops reminding but not counted as safe (neutral). Both are EXEMPT from the suspicious list + enforcement. Delete the line to undo."
 
 #: dashboard/templates/dashboard/servers.html:7
 msgid "DNS yöntemlerini canlı aç/kapat ve portlarını ayarla — aç/kapa ve iç port ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık."
@@ -1922,14 +1942,26 @@ msgstr "Log in"
 msgid "Panele erişmek için giriş yap."
 msgstr "Log in to access the panel."
 
-#: dashboard/views.py:937
+#: dashboard/views.py:960
 #, python-format
 msgid "%(n)s cihaz kaydı silindi."
 msgstr "%(n)s device records deleted."
 
-#: dashboard/views.py:940
+#: dashboard/views.py:963
 msgid "Cihaz silindi."
 msgstr "Device deleted."
+
+#~ msgid "Şüpheli değil — yoksay"
+#~ msgstr "Not suspicious — ignore"
+
+#~ msgid "Şüpheli değil"
+#~ msgstr "Not suspicious"
+
+#~ msgid "Şüpheli sayma (yoksay) — IP / CIDR"
+#~ msgstr "Do not flag (ignore) — IP / CIDR"
+
+#~ msgid "Analiz / DNS Cihazları'nda 'Yoksay' dediğin istemciler burada birikir → artık şüpheli sayılmaz + yaptırımdan muaf. Geri almak için satırı sil."
+#~ msgstr "Clients you 'Ignore' in Analytics / DNS Devices accumulate here → no longer considered suspicious + exempt from enforcement. Delete the line to undo."
 
 #~ msgid "ör. ads.example.com"
 #~ msgstr "e.g. ads.example.com"
