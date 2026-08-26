@@ -76,9 +76,12 @@
 .dsusp.s-threat{ color:var(--err); background:color-mix(in srgb,var(--err) 14%,transparent); border:1px solid color-mix(in srgb,var(--err) 34%,transparent); }
 .dsusp.s-behav{ color:var(--warn); background:color-mix(in srgb,var(--warn) 14%,transparent); border:1px solid color-mix(in srgb,var(--warn) 34%,transparent); }
 .dsusp.s-safe{ color:var(--ok); background:color-mix(in srgb,var(--ok) 12%,transparent); border:1px solid color-mix(in srgb,var(--ok) 30%,transparent); }
-.dsusp-acts{ display:flex; gap:5px; margin-top:6px; }   /* rozetin ALTINDA → sütun genişlemesin */
-.dsusp-acts .xbtn{ padding:3px 9px; font-size:11px; }
+.dsusp-acts{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }   /* rozetin ALTINDA + sarmalı → sütun genişlemesin */
+.dsusp-acts .xbtn{ padding:3px 8px; font-size:10.5px; }
 .dsusp.s-banned{ color:var(--err); background:color-mix(in srgb,var(--err) 16%,transparent); border:1px solid color-mix(in srgb,var(--err) 40%,transparent); }
+.dsusp.s-dismiss{ color:var(--muted-2); background:var(--panel-2); border:1px solid var(--border); }
+.xbtn.safe{ color:var(--ok); border-color:color-mix(in srgb,var(--ok) 35%,transparent); }
+.xbtn.safe:hover{ background:color-mix(in srgb,var(--ok) 12%,transparent); border-color:var(--ok); color:var(--ok); }
 /* DNS Cihazları tablosu — sabit düzen, PTR kırpılır → masaüstünde yatay kaydırma yok */
 table.dnsdev{ table-layout:fixed; width:100%; }
 table.dnsdev th, table.dnsdev td{ padding:9px 10px; overflow:hidden; vertical-align:top; }

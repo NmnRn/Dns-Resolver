@@ -70,9 +70,11 @@
                     <div class="si"><div class="t">{% trans "Tehdit / datacenter IP feed'i" %}</div><div class="d">{% trans "Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abuse IP aralıklarını indirir; bu aralıklardan sorgu yapan istemciler DNS Cihazları'nda ŞÜPHELİ işaretlenir + bildirim düşer. <b>Default KAPALI</b>. Açıksa internete GİDEN istek gerektirir." %}</div></div>
                     <label class="sw"><input type="checkbox" name="threat_feed_enabled" {% if threat_feed_enabled %}checked{% endif %}><span></span></label>
                 </div>
-                <label class="modelbl">{% trans "Şüpheli sayma (yoksay) — IP / CIDR" %}</label>
-                <textarea class="upst" name="susp_ignore" rows="3" spellcheck="false" placeholder="192.168.1.50">{{ susp_ignore }}</textarea>
-                <p class="setnote">{% trans "Analiz / DNS Cihazları'nda 'Yoksay' dediğin istemciler burada birikir → artık şüpheli sayılmaz + yaptırımdan muaf. Geri almak için satırı sil." %}</p>
+                <label class="modelbl">{% trans "Güvenli işaretlenenler (yeşil) — IP / CIDR" %}</label>
+                <textarea class="upst" name="susp_safe" rows="2" spellcheck="false" placeholder="192.168.1.50">{{ susp_safe }}</textarea>
+                <label class="modelbl">{% trans "Yoksayılanlar (güvenli SAYILMAZ, nötr) — IP / CIDR" %}</label>
+                <textarea class="upst" name="susp_ignore" rows="2" spellcheck="false" placeholder="192.168.1.60">{{ susp_ignore }}</textarea>
+                <p class="setnote">{% trans "'Güvenli' = yeşil rozet, güvenli sayılır. 'Yoksay' = artık hatırlatmaz ama güvenli de saymaz (nötr). İkisi de şüpheli listesinden + yaptırımdan MUAFTIR. Geri almak için satırı sil." %}</p>
             </div>
         </div>
 

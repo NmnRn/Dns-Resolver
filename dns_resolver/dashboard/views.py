@@ -792,6 +792,7 @@ async def security(request):
             _rl = request.POST.get('rate_limit', '0').strip()
             await db.set_setting('rate_limit', _rl if _rl.isdigit() else '0')
             await db.set_setting('susp_ignore', request.POST.get('susp_ignore', '').strip())
+            await db.set_setting('susp_safe', request.POST.get('susp_safe', '').strip())
             await db.set_setting('threat_feed_enabled', '1' if request.POST.get('threat_feed_enabled') else '0')
             await db.set_setting('auto_enforce', '1' if request.POST.get('auto_enforce') else '0')
             for k, d in (('auto_ban_pct', '20'), ('auto_soft_pct', '51'), ('auto_enforce_min', '30')):
@@ -812,6 +813,7 @@ async def security(request):
         msg=msg,
         client_allow=s.get('client_allow', ''), client_deny=s.get('client_deny', ''),
         rate_limit=s.get('rate_limit', '0'), susp_ignore=s.get('susp_ignore', ''),
+        susp_safe=s.get('susp_safe', ''),
         threat_feed_enabled=s.get('threat_feed_enabled', '0') == '1',
         auto_enforce=s.get('auto_enforce', '0') == '1',
         auto_ban_pct=s.get('auto_ban_pct', '20'), auto_soft_pct=s.get('auto_soft_pct', '51'),
@@ -841,9 +843,30 @@ async def ban_client(request):
     return redirect('dashboard:dns_devices' if nxt == 'dns_devices' else 'dashboard:analytics')
 
 
+async def mark_safe_client(request):
+    """İstemciyi GÜVENLİ işaretle → susp_safe listesi. Güvenli sayılır (yeşil rozet) +
+    şüpheli/yaptırımdan muaf. (Yoksay'dan farkı: 'güvenli' der; yoksay yalnız hatırlatmaz.)"""
+    gate = _gate(request)
+    if gate:
+        return gate
+    if request.method == 'POST':
+        ip = (request.POST.get('ip', '') or '').strip()
+        if ip:
+            try:
+                s = await db.get_settings()
+                items = [x.strip() for x in (s.get('susp_safe', '') or '').replace(',', '\n').splitlines() if x.strip()]
+                if ip not in items:
+                    items.append(ip)
+                    await db.set_setting('susp_safe', '\n'.join(items))
+            except Exception:  # noqa: BLE001
+                pass
+    nxt = request.POST.get('next', '')
+    return redirect('dashboard:dns_devices' if nxt == 'dns_devices' else 'dashboard:analytics')
+
+
 async def ignore_client(request):
-    """İstemciyi 'şüpheli değil' işaretle: IP'yi susp_ignore listesine ekle → artık
-    şüpheli listesinde/bildirimlerde görünmez (yanlış pozitif). Ayarlar'dan geri alınır."""
+    """İstemciyi YOKSAY → susp_ignore listesi. Artık HATIRLATMAZ (şüpheli listesi/bildirim)
+    ama 'güvenli' de SAYMAZ (nötr). Güvenli için ayrı 'Güvenli' butonu. Ayarlar'dan geri alınır."""
     gate = _gate(request)
     if gate:
         return gate
@@ -1245,17 +1268,20 @@ async def dns_devices(request):
         susp = {c['ip']: c['reasons'] for c in await db.get_suspicious_clients()}
         def _ss(k):
             return {x.strip() for x in (s.get(k, '') or '').replace(',', '\n').splitlines() if x.strip()}
-        ignored = _ss('susp_ignore')
+        safe = _ss('susp_safe')
+        dismissed = _ss('susp_ignore')
         banned = _ss('client_deny') | _ss('auto_banned')
     except Exception:  # noqa: BLE001
-        susp, ignored, banned = {}, set(), set()
+        susp, safe, dismissed, banned = {}, set(), set(), set()
     for d in devices:
         ip = d['client_ip']
         d['host'] = hosts.get(ip, '')
         if ip in banned:
             d['susp'], d['susp_reasons'] = 'banned', []
-        elif ip in ignored:
-            d['susp'], d['susp_reasons'] = 'ignored', []
+        elif ip in safe:
+            d['susp'], d['susp_reasons'] = 'safe', []
+        elif ip in dismissed:
+            d['susp'], d['susp_reasons'] = 'dismissed', []
         elif ip in flagged:
             d['susp'], d['susp_reasons'] = 'threat', ['datacenter/bot']
         elif ip in susp:

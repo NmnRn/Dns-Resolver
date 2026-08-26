@@ -14,6 +14,7 @@ urlpatterns = [
     path('analiz/', views.analytics, name='analytics'),
     path('analiz/yasakla/', views.ban_client, name='ban_client'),
     path('analiz/yoksay/', views.ignore_client, name='ignore_client'),
+    path('analiz/guvenli/', views.mark_safe_client, name='mark_safe_client'),
     path('sertifika/', views.certificate, name='certificate'),
     path('domain/', views.guide, name='guide'),
     path('ayarlar/', views.settings_page, name='settings'),

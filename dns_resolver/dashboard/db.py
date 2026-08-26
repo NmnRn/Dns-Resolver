@@ -457,7 +457,7 @@ async def get_suspicious_clients(hours=6, min_total=3, nx_ratio=0.40, txt_ratio=
     ignore = set()                                    # yoksananlar + zaten yasaklılar → listeden düş
     try:
         s = await get_settings()
-        for _k in ('susp_ignore', 'client_deny', 'auto_banned'):
+        for _k in ('susp_ignore', 'susp_safe', 'client_deny', 'auto_banned'):
             ignore |= {x.strip() for x in (s.get(_k, '') or '').replace(',', '\n').splitlines() if x.strip()}
     except Exception:  # noqa: BLE001
         pass

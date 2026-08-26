@@ -41,5 +41,7 @@
 .susp-flag.f-tunnel{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid color-mix(in srgb,var(--warn) 34%,transparent)}
 .susp-flag.f-flood{color:var(--doq);background:color-mix(in srgb,var(--doq) 14%,transparent);border:1px solid color-mix(in srgb,var(--doq) 34%,transparent)}
 .susp-stat{font-size:11.5px;color:var(--muted)}
-.susp-acts{display:flex;gap:6px;align-items:center}
+.susp-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.susp-acts .xbtn.safe{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+.susp-acts .xbtn.safe:hover{background:color-mix(in srgb,var(--ok) 12%,transparent);border-color:var(--ok);color:var(--ok)}
 @media(max-width:640px){.susp-row{grid-template-columns:1fr auto}.susp-flags,.susp-stat{grid-column:1/-1}}
