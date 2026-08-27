@@ -1611,6 +1611,15 @@ async def query_settings(request):
             await db.set_setting('upstream_strategy',
                                  _strat if _strat in ('sequential', 'parallel', 'fastest') else 'sequential')
             await db.set_setting('conditional_forwards', request.POST.get('conditional_forwards', '').strip())
+            # SRTT prob (yalnız çekirdek modunda etkili): aç/kapa + TLD listesi + aralık(dk)
+            await db.set_setting('srtt_probe', '1' if request.POST.get('srtt_probe') else '0')
+            _ptlds = request.POST.get('srtt_probe_tlds', '').strip()
+            await db.set_setting('srtt_probe_tlds', _ptlds or 'com net org me io')
+            try:
+                _pmin = max(1, min(1440, int(request.POST.get('srtt_probe_min', '20'))))
+            except (ValueError, TypeError):
+                _pmin = 20
+            await db.set_setting('srtt_probe_min', str(_pmin))
             _bs = request.POST.get('bootstrap_dns', '').strip()
             if not _bs:
                 await db.set_setting('bootstrap_dns', '')
@@ -1641,6 +1650,9 @@ async def query_settings(request):
         conditional_forwards=s.get('conditional_forwards', ''),
         bootstrap_dns=s.get('bootstrap_dns', ''),
         upstream_rows=_upstream_rows(s.get('upstreams', '')),
+        srtt_probe=s.get('srtt_probe', '1') != '0',
+        srtt_probe_tlds=s.get('srtt_probe_tlds', 'com net org me io'),
+        srtt_probe_min=s.get('srtt_probe_min', '20'),
     )
     return render(request, 'dashboard/query_settings.html', context)
 

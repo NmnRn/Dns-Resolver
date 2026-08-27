@@ -125,3 +125,55 @@ def test_query_any_explore_shuffles(monkeypatch):
     core._query = lambda d, q, ip, do=False: "R"
     core._query_any("x.", "A", ["a", "b"])
     assert seen.get("shuffled") is True          # keşif dalı → shuffle çağrıldı
+
+
+# --- SRTT arka plan probu (yalnız çekirdek modu) --- #
+def test_srtt_probe_round_recursion_only():
+    """Prob turu: çekirdek modunda root'ları + TLD glue'sunu ölçer; forward modda /
+    kapalıyken HİÇ prob atmaz (dışarı çıkış yok)."""
+    import asyncio
+    from dnslib import DNSRecord, DNSHeader, DNSQuestion, RR, A, QTYPE
+    from app import _srtt_probe_round
+
+    class _DB:
+        def __init__(self, on=True, tlds='com'):
+            self._m = {'srtt_probe': '1' if on else '0', 'srtt_probe_tlds': tlds}
+        async def get_setting(self, k, d=None):
+            return self._m.get(k, d)
+
+    async def _immediate(fn, *args):
+        return fn(*args)
+
+    class _Loop:
+        def run_in_executor(self, ex, fn, *args):
+            return _immediate(fn, *args)
+
+    def make_core():
+        c = DNSCore(db_manager=None)
+        c.root_servers = {'a': ('10.0.0.1',), 'b': ('10.0.0.2',)}
+        return c
+
+    def tld_resp():                              # com. NS → glue A kaydı içeren cevap
+        r = DNSRecord(DNSHeader(qr=1), q=DNSQuestion('com.', QTYPE.NS))
+        r.add_ar(RR('x.gtld.', QTYPE.A, rdata=A('10.9.9.9'), ttl=3600))
+        return r
+
+    # 1) Çekirdek modu → tüm root'lar + TLD glue ölçülür (root'lar önce)
+    core = make_core(); probed = []
+    core._query = lambda d, q, ip, do=False: probed.append(ip)
+    core._query_any = lambda d, q, servers, m=None, do=False: tld_resp()
+    asyncio.run(_srtt_probe_round(core, _Loop(), _DB(on=True, tlds='com')))
+    assert probed == ['10.0.0.1', '10.0.0.2', '10.9.9.9']
+
+    # 2) Forward modu → HİÇ prob yok
+    core2 = make_core(); core2.use_recursion = False; probed2 = []
+    core2._query = lambda d, q, ip, do=False: probed2.append(ip)
+    core2._query_any = lambda *a, **k: tld_resp()
+    asyncio.run(_srtt_probe_round(core2, _Loop(), _DB(on=True)))
+    assert probed2 == []
+
+    # 3) Kapalı (srtt_probe=0) → HİÇ prob yok
+    core3 = make_core(); probed3 = []
+    core3._query = lambda d, q, ip, do=False: probed3.append(ip)
+    asyncio.run(_srtt_probe_round(core3, _Loop(), _DB(on=False)))
+    assert probed3 == []

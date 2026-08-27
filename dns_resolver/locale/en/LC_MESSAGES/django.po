@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: dns-panel\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-26 10:51+0000\n"
+"POT-Creation-Date: 2026-08-27 17:06+0000\n"
 "PO-Revision-Date: 2026-08-18 00:00+0000\n"
 "Last-Translator: NmnRn\n"
 "Language-Team: English\n"
@@ -21,8 +21,12 @@ msgid "Sayfa bulunamadı"
 msgstr "Page not found"
 
 #: dashboard/templates/404.html:40
-msgid "Aradığın kayıt bu sunucuda çözülemedi — yol yanlış girilmiş ya da sayfa taşınmış olabilir."
-msgstr "The record you requested couldn't be resolved on this server — the path may be wrong or the page may have moved."
+msgid ""
+"Aradığın kayıt bu sunucuda çözülemedi — yol yanlış girilmiş ya da sayfa "
+"taşınmış olabilir."
+msgstr ""
+"The record you requested couldn't be resolved on this server — the path may "
+"be wrong or the page may have moved."
 
 #: dashboard/templates/404.html:41
 msgid "Panele dön"
@@ -147,12 +151,18 @@ msgid "DNSSEC korumalı (secure) trafik — %(n)s imzalı/imzasız sorguda"
 msgstr "DNSSEC-protected (secure) traffic — of %(n)s signed/unsigned queries"
 
 #: dashboard/templates/dashboard/analytics.html:50
-msgid "imzasız = alan DNSSEC kullanmıyor (internetin çoğu — <b>normal</b>, düşük oran beklenir). Asıl izlenecek: <b style='color:var(--err)'>bogus</b> = imzalı ama BOZUK; normalde ~0 olmalı, artıyorsa saldırı ya da yanlış yapılandırma. <b>off</b> = DNSSEC kapalıyken loglanmış eski sorgular."
-msgstr ""
+msgid ""
+"imzasız = alan DNSSEC kullanmıyor (internetin çoğu — <b>normal</b>, düşük "
+"oran beklenir). Asıl izlenecek: <b style='color:var(--err)'>bogus</b> = "
+"imzalı ama BOZUK; normalde ~0 olmalı, artıyorsa saldırı ya da yanlış "
+"yapılandırma. <b>off</b> = DNSSEC kapalıyken loglanmış eski sorgular."
+msgstr "unsigned = the domain doesn't use DNSSEC (most of the internet — <b>normal</b>, a low rate is expected). What to watch: <b style='color:var(--err)'>bogus</b> = signed but BROKEN; normally ~0, if it rises it's an attack or misconfiguration. <b>off</b> = older queries logged while DNSSEC was disabled."
 
 #: dashboard/templates/dashboard/analytics.html:52
-msgid "Henüz DNSSEC verisi yok — Sorgu Ayarları'ndan DNSSEC doğrulamayı aç; yeni sorgular için oran burada birikir."
-msgstr ""
+msgid ""
+"Henüz DNSSEC verisi yok — Sorgu Ayarları'ndan DNSSEC doğrulamayı aç; yeni "
+"sorgular için oran burada birikir."
+msgstr "No DNSSEC data yet — enable DNSSEC validation from Query Settings; the rate will accumulate here for new queries."
 
 #: dashboard/templates/dashboard/analytics.html:59
 msgid "Şüpheli İstemciler"
@@ -163,8 +173,16 @@ msgid "davranış-tabanlı · son 6 saat"
 msgstr "behavior-based · last 6 hours"
 
 #: dashboard/templates/dashboard/analytics.html:61
-msgid "Düz-metin meta veriden türetilir (domain OKUNMAZ). <b>nxdomain</b> = DGA/malware C2 beaconing · <b>tunnel</b> = TXT/NULL oranı yüksek (veri sızdırma) · <b>flood</b> = aşırı hacim. Yanlış pozitif olabilir — yasaklamadan önce IP'yi tanı."
-msgstr "Derived from plaintext metadata (domains are NOT read). <b>nxdomain</b> = DGA/malware C2 beaconing · <b>tunnel</b> = high TXT/NULL ratio (data exfiltration) · <b>flood</b> = excessive volume. False positives possible — identify the IP before banning."
+msgid ""
+"Düz-metin meta veriden türetilir (domain OKUNMAZ). <b>nxdomain</b> = DGA/"
+"malware C2 beaconing · <b>tunnel</b> = TXT/NULL oranı yüksek (veri sızdırma) "
+"· <b>flood</b> = aşırı hacim. Yanlış pozitif olabilir — yasaklamadan önce "
+"IP'yi tanı."
+msgstr ""
+"Derived from plaintext metadata (domains are NOT read). <b>nxdomain</b> = "
+"DGA/malware C2 beaconing · <b>tunnel</b> = high TXT/NULL ratio (data "
+"exfiltration) · <b>flood</b> = excessive volume. False positives possible — "
+"identify the IP before banning."
 
 #: dashboard/templates/dashboard/analytics.html:67
 #, python-format
@@ -177,7 +195,6 @@ msgstr "Mark safe (green)"
 
 #: dashboard/templates/dashboard/analytics.html:69
 #: dashboard/templates/dashboard/dns_devices.html:44
-#| msgid "Güvenlik"
 msgid "Güvenli"
 msgstr "Safe"
 
@@ -200,7 +217,7 @@ msgid "Ortalama İşlem Süreleri — kaynağa göre (çekirdek / önbellek / up
 msgstr "Average processing times — by source (core / cache / upstream)"
 
 #: dashboard/templates/dashboard/analytics.html:88
-#: dashboard/templates/dashboard/query_settings.html:71
+#: dashboard/templates/dashboard/query_settings.html:85
 #, python-format
 msgid "%(avg)s ms · %(count)s sorgu"
 msgstr "%(avg)s ms · %(count)s queries"
@@ -252,8 +269,12 @@ msgstr "Most active"
 
 #: dashboard/templates/dashboard/base.html:19
 #, python-format
-msgid "Yeni sürüm mevcut (%(v)s) — güncellemek için sunucuda <span class=\"mono\">sudo ./upgrade.sh</span> çalıştır."
-msgstr "A new version is available (%(v)s) — run <span class=\"mono\">sudo ./upgrade.sh</span> on the server to update."
+msgid ""
+"Yeni sürüm mevcut (%(v)s) — güncellemek için sunucuda <span "
+"class=\"mono\">sudo ./upgrade.sh</span> çalıştır."
+msgstr ""
+"A new version is available (%(v)s) — run <span class=\"mono\">sudo ./"
+"upgrade.sh</span> on the server to update."
 
 #: dashboard/templates/dashboard/base.html:20
 #: dashboard/templates/dashboard/devices.html:68
@@ -371,8 +392,12 @@ msgid "Bildirim yok."
 msgstr "No notifications."
 
 #: dashboard/templates/dashboard/certificate.html:8
-msgid "DoT / DoH / DoQ için TLS sertifikası. Yolu buradan ayarla; değişiklik <b>Sunucular</b>'dan ilgili metodu kapatıp açınca yüklenir."
-msgstr "TLS certificate for DoT / DoH / DoQ. Set the path here; the change is loaded by toggling the relevant method off/on from <b>Servers</b>."
+msgid ""
+"DoT / DoH / DoQ için TLS sertifikası. Yolu buradan ayarla; değişiklik "
+"<b>Sunucular</b>'dan ilgili metodu kapatıp açınca yüklenir."
+msgstr ""
+"TLS certificate for DoT / DoH / DoQ. Set the path here; the change is loaded "
+"by toggling the relevant method off/on from <b>Servers</b>."
 
 #: dashboard/templates/dashboard/certificate.html:17
 msgid "Sertifika Yolları"
@@ -391,13 +416,19 @@ msgid "Özel anahtar (privkey.pem)"
 msgstr "Private key (privkey.pem)"
 
 #: dashboard/templates/dashboard/certificate.html:32
-msgid "Göreli yol <span class='mono'>/app</span> köküne göre çözülür. Sertifikalar <span class='mono'>./certificates</span> ile konteynere salt-okunur mount edilir."
-msgstr "Relative paths resolve against the <span class='mono'>/app</span> root. Certificates are mounted read-only into the container via <span class='mono'>./certificates</span>."
+msgid ""
+"Göreli yol <span class='mono'>/app</span> köküne göre çözülür. Sertifikalar "
+"<span class='mono'>./certificates</span> ile konteynere salt-okunur mount "
+"edilir."
+msgstr ""
+"Relative paths resolve against the <span class='mono'>/app</span> root. "
+"Certificates are mounted read-only into the container via <span "
+"class='mono'>./certificates</span>."
 
 #: dashboard/templates/dashboard/certificate.html:33
 #: dashboard/templates/dashboard/filters.html:113
 #: dashboard/templates/dashboard/filters.html:125
-#: dashboard/templates/dashboard/query_settings.html:107
+#: dashboard/templates/dashboard/query_settings.html:121
 #: dashboard/templates/dashboard/security.html:81
 #: dashboard/templates/dashboard/settings.html:58
 msgid "Kaydet"
@@ -465,8 +496,11 @@ msgid "bulunamadı"
 msgstr "not found"
 
 #: dashboard/templates/dashboard/devices.html:7
-msgid "Panele erişen benzersiz cihazlar — bir cihaza tıkla, tüm özelliklerini gör."
-msgstr "Unique devices that accessed the panel — click a device to see all its properties."
+msgid ""
+"Panele erişen benzersiz cihazlar — bir cihaza tıkla, tüm özelliklerini gör."
+msgstr ""
+"Unique devices that accessed the panel — click a device to see all its "
+"properties."
 
 #: dashboard/templates/dashboard/devices.html:12
 msgid "Cihaz"
@@ -477,8 +511,10 @@ msgid "Benzersiz IP"
 msgstr "Unique IPs"
 
 #: dashboard/templates/dashboard/devices.html:14
-msgid "Tüm cihaz kayıtları silinsin mi? (bir sonraki açılışta yeniden toplanır)"
-msgstr "Delete all device records? (they'll be collected again on the next visit)"
+msgid ""
+"Tüm cihaz kayıtları silinsin mi? (bir sonraki açılışta yeniden toplanır)"
+msgstr ""
+"Delete all device records? (they'll be collected again on the next visit)"
 
 #: dashboard/templates/dashboard/devices.html:14
 msgid "Kayıtları temizle"
@@ -493,8 +529,12 @@ msgid "WHOIS sorgula"
 msgstr "WHOIS lookup"
 
 #: dashboard/templates/dashboard/devices.html:30
-msgid "Fingerprint koruması aktif (Brave/Tor/RFP) — canvas rastgele, tekilleştirme kararlı sinyallerle yapılır"
-msgstr "Fingerprint protection active (Brave/Tor/RFP) — canvas is randomized; deduplication uses stable signals"
+msgid ""
+"Fingerprint koruması aktif (Brave/Tor/RFP) — canvas rastgele, tekilleştirme "
+"kararlı sinyallerle yapılır"
+msgstr ""
+"Fingerprint protection active (Brave/Tor/RFP) — canvas is randomized; "
+"deduplication uses stable signals"
 
 #: dashboard/templates/dashboard/devices.html:30
 msgid "Korumalı"
@@ -611,24 +651,41 @@ msgid "Sil"
 msgstr "Delete"
 
 #: dashboard/templates/dashboard/devices.html:58
-msgid "Henüz cihaz kaydı yok — bir sayfa aç (fingerprint arka planda toplanır)."
-msgstr "No device records yet — open a page (the fingerprint is collected in the background)."
+msgid ""
+"Henüz cihaz kaydı yok — bir sayfa aç (fingerprint arka planda toplanır)."
+msgstr ""
+"No device records yet — open a page (the fingerprint is collected in the "
+"background)."
 
 #: dashboard/templates/dashboard/devices.html:63
-msgid "Fingerprint verileri tarayıcı tarafından <b>bildirilir</b> (JS ile toplanır) ve <b>taklit edilebilir</b>; kesin donanım kimliği değildir. Panel yalnız yönetici erişimlidir."
-msgstr "Fingerprint data is <b>reported by the browser</b> (collected via JS) and <b>can be spoofed</b>; it is not a definitive hardware identity. The panel is admin-only."
+msgid ""
+"Fingerprint verileri tarayıcı tarafından <b>bildirilir</b> (JS ile toplanır) "
+"ve <b>taklit edilebilir</b>; kesin donanım kimliği değildir. Panel yalnız "
+"yönetici erişimlidir."
+msgstr ""
+"Fingerprint data is <b>reported by the browser</b> (collected via JS) and "
+"<b>can be spoofed</b>; it is not a definitive hardware identity. The panel "
+"is admin-only."
 
 #: dashboard/templates/dashboard/devices.html:70
-msgid "RDAP (HTTPS/443) ile sorgulanır → sunucudan GİDEN 443 portu açık olmalı (kapalıysa port 43'e düşer). Yerel/özel IP'lerde dış istek atılmaz."
-msgstr ""
+msgid ""
+"RDAP (HTTPS/443) ile sorgulanır → sunucudan GİDEN 443 portu açık olmalı "
+"(kapalıysa port 43'e düşer). Yerel/özel IP'lerde dış istek atılmaz."
+msgstr "Queried via RDAP (HTTPS/443) → the server's OUTBOUND port 443 must be open (falls back to port 43 if closed). No external request is made for local/private IPs."
 
 #: dashboard/templates/dashboard/devices.html:81
 msgid "Sorgulanıyor…"
 msgstr "Querying…"
 
 #: dashboard/templates/dashboard/dns_devices.html:7
-msgid "DNS <b>sorgusu yapan</b> istemciler, IP'ye göre gruplanır. DNS'te tarayıcı/JS fingerprint YOKTUR — tanı yalnız <b>IP + ters DNS (PTR) adı + kullanılan yöntem</b> ile sınırlıdır."
-msgstr "Clients that <b>make DNS queries</b>, grouped by IP. DNS has NO browser/JS fingerprint — identification is limited to <b>IP + reverse DNS (PTR) name + method used</b>."
+msgid ""
+"DNS <b>sorgusu yapan</b> istemciler, IP'ye göre gruplanır. DNS'te tarayıcı/"
+"JS fingerprint YOKTUR — tanı yalnız <b>IP + ters DNS (PTR) adı + kullanılan "
+"yöntem</b> ile sınırlıdır."
+msgstr ""
+"Clients that <b>make DNS queries</b>, grouped by IP. DNS has NO browser/JS "
+"fingerprint — identification is limited to <b>IP + reverse DNS (PTR) name + "
+"method used</b>."
 
 #: dashboard/templates/dashboard/dns_devices.html:12
 msgid "Cihaz (IP)"
@@ -687,7 +744,6 @@ msgid "şüpheli"
 msgstr "suspicious"
 
 #: dashboard/templates/dashboard/dns_devices.html:44
-#| msgid "Okundu işaretle"
 msgid "Güvenli işaretle"
 msgstr "Mark safe"
 
@@ -700,12 +756,28 @@ msgid "Henüz DNS sorgusu kaydı yok."
 msgstr "No DNS query records yet."
 
 #: dashboard/templates/dashboard/dns_devices.html:60
-msgid "DNS istemcisi HTTP göndermez → User-Agent / JS fingerprint yoktur. Daha fazla tanı için: DoH isteklerinde <b>User-Agent</b> loglama, DoT/DoQ için TLS <b>JA3/JA4</b> parmak izi, LAN'da <b>DHCP/ARP</b> eşleme (IP→MAC→cihaz adı)."
-msgstr "A DNS client sends no HTTP → there is no User-Agent / JS fingerprint. For more: log the <b>User-Agent</b> on DoH requests, TLS <b>JA3/JA4</b> fingerprint for DoT/DoQ, or <b>DHCP/ARP</b> mapping on the LAN (IP→MAC→device name)."
+msgid ""
+"DNS istemcisi HTTP göndermez → User-Agent / JS fingerprint yoktur. Daha "
+"fazla tanı için: DoH isteklerinde <b>User-Agent</b> loglama, DoT/DoQ için "
+"TLS <b>JA3/JA4</b> parmak izi, LAN'da <b>DHCP/ARP</b> eşleme (IP→MAC→cihaz "
+"adı)."
+msgstr ""
+"A DNS client sends no HTTP → there is no User-Agent / JS fingerprint. For "
+"more: log the <b>User-Agent</b> on DoH requests, TLS <b>JA3/JA4</b> "
+"fingerprint for DoT/DoQ, or <b>DHCP/ARP</b> mapping on the LAN "
+"(IP→MAC→device name)."
 
 #: dashboard/templates/dashboard/filters.html:7
-msgid "Engelleme ve izin listelerini yönet — değişiklikleri resolver ~15 sn içinde uygular. İzin listesi engel listesinden önceliklidir; bir alanı engellemek alt alanlarını da engeller (ör. <span class='mono'>doubleclick.net</span> → <span class='mono'>ads.doubleclick.net</span>)."
-msgstr "Manage block and allow lists — the resolver applies changes within ~15 s. The allow list takes priority over the block list; blocking a domain also blocks its subdomains (e.g. <span class='mono'>doubleclick.net</span> → <span class='mono'>ads.doubleclick.net</span>)."
+msgid ""
+"Engelleme ve izin listelerini yönet — değişiklikleri resolver ~15 sn içinde "
+"uygular. İzin listesi engel listesinden önceliklidir; bir alanı engellemek "
+"alt alanlarını da engeller (ör. <span class='mono'>doubleclick.net</span> → "
+"<span class='mono'>ads.doubleclick.net</span>)."
+msgstr ""
+"Manage block and allow lists — the resolver applies changes within ~15 s. "
+"The allow list takes priority over the block list; blocking a domain also "
+"blocks its subdomains (e.g. <span class='mono'>doubleclick.net</span> → "
+"<span class='mono'>ads.doubleclick.net</span>)."
 
 #: dashboard/templates/dashboard/filters.html:16
 msgid "Güvenli Arama — arama motoru seç"
@@ -717,8 +789,12 @@ msgid "%(n)s güvenli arama aç/kapat"
 msgstr "toggle %(n)s safe search"
 
 #: dashboard/templates/dashboard/filters.html:28
-msgid "Seçilen motorlar zorunlu güvenli varyanta yönlendirilir (Google tüm ülke uzantıları dahil)."
-msgstr "Selected engines are forced to their safe variant (Google including all country domains)."
+msgid ""
+"Seçilen motorlar zorunlu güvenli varyanta yönlendirilir (Google tüm ülke "
+"uzantıları dahil)."
+msgstr ""
+"Selected engines are forced to their safe variant (Google including all "
+"country domains)."
 
 #: dashboard/templates/dashboard/filters.html:33
 msgid "Kategori Engelleme"
@@ -731,8 +807,13 @@ msgid "%(n)s engelle/kaldır"
 msgstr "block/unblock %(n)s"
 
 #: dashboard/templates/dashboard/filters.html:45
-msgid "Ebeveyn kontrolü = <b>Güvenli Arama</b> (yukarıda) + <b>Yetişkin İçerik</b>. Kategoriler hazır blocklist olarak eklenir (resolver ~15 sn'de indirir)."
-msgstr "Parental control = <b>Safe Search</b> (above) + <b>Adult Content</b>. Categories are added as ready-made block lists (the resolver downloads them within ~15 s)."
+msgid ""
+"Ebeveyn kontrolü = <b>Güvenli Arama</b> (yukarıda) + <b>Yetişkin İçerik</b>. "
+"Kategoriler hazır blocklist olarak eklenir (resolver ~15 sn'de indirir)."
+msgstr ""
+"Parental control = <b>Safe Search</b> (above) + <b>Adult Content</b>. "
+"Categories are added as ready-made block lists (the resolver downloads them "
+"within ~15 s)."
 
 #: dashboard/templates/dashboard/filters.html:50
 msgid "Ön Tanımlı Servisler — tek tıkla engelle"
@@ -806,12 +887,18 @@ msgid "Engellenenler (%(cnt)s)"
 msgstr "Blocked (%(cnt)s)"
 
 #: dashboard/templates/dashboard/filters.html:110
-msgid "Her satıra bir alan adı — ör.&#10;ads.example.com&#10;*.example.com&#10;*.onion"
-msgstr ""
+msgid ""
+"Her satıra bir alan adı — "
+"ör.&#10;ads.example.com&#10;*.example.com&#10;*.onion"
+msgstr "One domain per line — e.g.&#10;ads.example.com&#10;*.example.com&#10;*.onion"
 
 #: dashboard/templates/dashboard/filters.html:112
-msgid "Satır başına bir alan adı; <span class='mono'>*.example.com</span> alt alanları da kapsar. <span class='mono'>#</span> ile başlayan satırlar yorumdur. <b>Kaydet</b>'e basınca liste bununla eşitlenir (sildiğin satırlar listeden çıkar)."
-msgstr ""
+msgid ""
+"Satır başına bir alan adı; <span class='mono'>*.example.com</span> alt "
+"alanları da kapsar. <span class='mono'>#</span> ile başlayan satırlar "
+"yorumdur. <b>Kaydet</b>'e basınca liste bununla eşitlenir (sildiğin satırlar "
+"listeden çıkar)."
+msgstr "One domain per line; <span class='mono'>*.example.com</span> also covers subdomains. Lines starting with <span class='mono'>#</span> are comments. Pressing <b>Save</b> syncs the list to this (removed lines drop out)."
 
 #: dashboard/templates/dashboard/filters.html:118
 #, python-format
@@ -823,8 +910,11 @@ msgid "Her satıra bir alan adı — ör.&#10;safe.example.com&#10;*.example.com
 msgstr "One domain per line — e.g.&#10;safe.example.com&#10;*.example.com"
 
 #: dashboard/templates/dashboard/filters.html:124
-msgid "İzin listesi engel listesinden önceliklidir. Satır başına bir alan adı; <span class='mono'>#</span> yorum. <b>Kaydet</b>'e basınca liste bununla eşitlenir."
-msgstr ""
+msgid ""
+"İzin listesi engel listesinden önceliklidir. Satır başına bir alan adı; "
+"<span class='mono'>#</span> yorum. <b>Kaydet</b>'e basınca liste bununla "
+"eşitlenir."
+msgstr "The allow list takes priority over the block list. One domain per line; <span class='mono'>#</span> comment. Pressing <b>Save</b> syncs the list to this."
 
 #: dashboard/templates/dashboard/filters.html:131
 #, python-format
@@ -832,8 +922,16 @@ msgid "DNS Rewrites (%(cnt)s)"
 msgstr "DNS Rewrites (%(cnt)s)"
 
 #: dashboard/templates/dashboard/filters.html:132
-msgid "Elle tanımlı kayıt: bir alan adını sabit bir IP'ye ya da başka bir alana yönlendir (yerel <span class='mono'>/etc/hosts</span> gibi). <span class='mono'>0.0.0.0</span> = sinkhole; <span class='mono'>*.reklam.com</span> = tüm alt alanlar. Engel/izin listelerinden önceliklidir."
-msgstr "Manually defined record: point a domain to a fixed IP or another domain (like a local <span class='mono'>/etc/hosts</span>). <span class='mono'>0.0.0.0</span> = sinkhole; <span class='mono'>*.ads.com</span> = all subdomains. Takes priority over block/allow lists."
+msgid ""
+"Elle tanımlı kayıt: bir alan adını sabit bir IP'ye ya da başka bir alana "
+"yönlendir (yerel <span class='mono'>/etc/hosts</span> gibi). <span "
+"class='mono'>0.0.0.0</span> = sinkhole; <span class='mono'>*.reklam.com</"
+"span> = tüm alt alanlar. Engel/izin listelerinden önceliklidir."
+msgstr ""
+"Manually defined record: point a domain to a fixed IP or another domain "
+"(like a local <span class='mono'>/etc/hosts</span>). <span "
+"class='mono'>0.0.0.0</span> = sinkhole; <span class='mono'>*.ads.com</span> "
+"= all subdomains. Takes priority over block/allow lists."
 
 #: dashboard/templates/dashboard/filters.html:136
 msgid "alan adı — ör. nas.ev ya da *.reklam.com"
@@ -864,8 +962,17 @@ msgstr[0] "Scheduled Blocking (%(n)s)"
 msgstr[1] "Scheduled Blocking (%(n)s)"
 
 #: dashboard/templates/dashboard/filters.html:157
-msgid "Bir ön tanımlı servis yalnız seçtiğin gün ve saat aralığında engelli olsun (ör. sosyal medya hafta içi 09:00–17:00). Pencere dışında engel otomatik kalkar. Saatler <b>senin yerel saatine</b> göredir (tarayıcıdan otomatik alınır). İlgili servisin 'Ön Tanımlı Servisler'de de açık olması gerekir."
-msgstr "Have a predefined service blocked only on the days and time window you choose (e.g. social media weekdays 09:00–17:00). Outside the window the block lifts automatically. Times are in <b>your local time</b> (taken from the browser automatically). The service must also be on under 'Predefined Services'."
+msgid ""
+"Bir ön tanımlı servis yalnız seçtiğin gün ve saat aralığında engelli olsun "
+"(ör. sosyal medya hafta içi 09:00–17:00). Pencere dışında engel otomatik "
+"kalkar. Saatler <b>senin yerel saatine</b> göredir (tarayıcıdan otomatik "
+"alınır). İlgili servisin 'Ön Tanımlı Servisler'de de açık olması gerekir."
+msgstr ""
+"Have a predefined service blocked only on the days and time window you "
+"choose (e.g. social media weekdays 09:00–17:00). Outside the window the "
+"block lifts automatically. Times are in <b>your local time</b> (taken from "
+"the browser automatically). The service must also be on under 'Predefined "
+"Services'."
 
 #: dashboard/templates/dashboard/filters.html:171
 msgid "Pzt"
@@ -961,12 +1068,24 @@ msgid "Kurulum &amp; Bağlantı Adresleri"
 msgstr "Setup &amp; Connection Addresses"
 
 #: dashboard/templates/dashboard/guide.html:9
-msgid "Cihazlarını bu çözümleyiciye bağlamak için kullanılabilir adresler (çalıştığın ortama göre taranır) + alan adını (ör. <code>dns.example.com</code>) bağlama ve DNS sağlayıcı (Cloudflare proxy) ayarları."
-msgstr "Addresses you can use to point your devices at this resolver (scanned per your environment) + how to connect a domain (e.g. <code>dns.example.com</code>) and DNS provider (Cloudflare proxy) settings."
+msgid ""
+"Cihazlarını bu çözümleyiciye bağlamak için kullanılabilir adresler "
+"(çalıştığın ortama göre taranır) + alan adını (ör. <code>dns.example.com</"
+"code>) bağlama ve DNS sağlayıcı (Cloudflare proxy) ayarları."
+msgstr ""
+"Addresses you can use to point your devices at this resolver (scanned per "
+"your environment) + how to connect a domain (e.g. <code>dns.example.com</"
+"code>) and DNS provider (Cloudflare proxy) settings."
 
 #: dashboard/templates/dashboard/guide.html:12
-msgid "Sunucunun sıfırdan kurulumu (Docker, MariaDB, <code>install.sh</code>) proje <b>README</b>'sindedir. Bu sayfa <b>bağlantı adresleri + domain</b> tarafını anlatır."
-msgstr "Setting up the server from scratch (Docker, MariaDB, <code>install.sh</code>) is in the project <b>README</b>. This page covers the <b>connection addresses + domain</b> side."
+msgid ""
+"Sunucunun sıfırdan kurulumu (Docker, MariaDB, <code>install.sh</code>) proje "
+"<b>README</b>'sindedir. Bu sayfa <b>bağlantı adresleri + domain</b> tarafını "
+"anlatır."
+msgstr ""
+"Setting up the server from scratch (Docker, MariaDB, <code>install.sh</"
+"code>) is in the project <b>README</b>. This page covers the <b>connection "
+"addresses + domain</b> side."
 
 #: dashboard/templates/dashboard/guide.html:15
 #: dashboard/templates/dashboard/guide.html:35
@@ -984,8 +1103,12 @@ msgid "sunucu IP: <b>%(ips)s</b>"
 msgstr "server IP: <b>%(ips)s</b>"
 
 #: dashboard/templates/dashboard/guide.html:16
-msgid "Açık yöntemlere göre cihaz/uygulamalarda kullanabileceğin uç noktalar (kopyalanabilir):"
-msgstr "Endpoints you can use in devices/apps based on the enabled methods (copyable):"
+msgid ""
+"Açık yöntemlere göre cihaz/uygulamalarda kullanabileceğin uç noktalar "
+"(kopyalanabilir):"
+msgstr ""
+"Endpoints you can use in devices/apps based on the enabled methods "
+"(copyable):"
 
 #: dashboard/templates/dashboard/guide.html:20
 #, python-format
@@ -999,12 +1122,22 @@ msgid "Kopyala"
 msgstr "Copy"
 
 #: dashboard/templates/dashboard/guide.html:26
-msgid "Domain adresleri <b>dış (host) portunu</b> gösterir — standart port (DoH&nbsp;443, DoT/DoQ&nbsp;853, UDP&nbsp;53) <b>gizlenir</b>, farklıysa <code>:port</code> yazılır. Dış portu + yayını <b>Sunucular</b> sayfasından ayarlarsın. <b>dns-net IP</b> konteynerin <b>iç portunu</b> gösterir (Cloudflare Tunnel origin / aynı ağdan doğrudan erişim). Şifreli yöntem sertifikayı <b>domaine</b> doğrular → IP ile bağlanma, domaini kullan."
-msgstr ""
+msgid ""
+"Domain adresleri <b>dış (host) portunu</b> gösterir — standart port "
+"(DoH&nbsp;443, DoT/DoQ&nbsp;853, UDP&nbsp;53) <b>gizlenir</b>, farklıysa "
+"<code>:port</code> yazılır. Dış portu + yayını <b>Sunucular</b> sayfasından "
+"ayarlarsın. <b>dns-net IP</b> konteynerin <b>iç portunu</b> gösterir "
+"(Cloudflare Tunnel origin / aynı ağdan doğrudan erişim). Şifreli yöntem "
+"sertifikayı <b>domaine</b> doğrular → IP ile bağlanma, domaini kullan."
+msgstr "Domain addresses show the <b>external (host) port</b> — the standard port (DoH&nbsp;443, DoT/DoQ&nbsp;853, UDP&nbsp;53) is <b>hidden</b>, otherwise <code>:port</code> is shown. You set the external port + publishing from the <b>Servers</b> page. <b>dns-net IP</b> shows the container's <b>internal port</b> (Cloudflare Tunnel origin / direct access from the same network). Encrypted methods validate the certificate against the <b>domain</b> → don't connect by IP, use the domain."
 
 #: dashboard/templates/dashboard/guide.html:28
-msgid "Şu an açık yöntem yok — <b>Sunucular</b> sayfasından bir yöntem aç, adresler burada belirsin."
-msgstr "No method is on right now — enable one from the <b>Servers</b> page and the addresses will appear here."
+msgid ""
+"Şu an açık yöntem yok — <b>Sunucular</b> sayfasından bir yöntem aç, adresler "
+"burada belirsin."
+msgstr ""
+"No method is on right now — enable one from the <b>Servers</b> page and the "
+"addresses will appear here."
 
 #: dashboard/templates/dashboard/guide.html:34
 msgid "İçindekiler"
@@ -1050,8 +1183,12 @@ msgid "DNS servisi"
 msgstr "DNS service"
 
 #: dashboard/templates/dashboard/guide.html:50
-msgid "dns.example.com → istemcilerin şifreli DNS için bağlandığı ad (DoT/DoH/DoQ). Sertifika bu ada göre."
-msgstr "dns.example.com → the name clients connect to for encrypted DNS (DoT/DoH/DoQ). The certificate is for this name."
+msgid ""
+"dns.example.com → istemcilerin şifreli DNS için bağlandığı ad (DoT/DoH/DoQ). "
+"Sertifika bu ada göre."
+msgstr ""
+"dns.example.com → the name clients connect to for encrypted DNS (DoT/DoH/"
+"DoQ). The certificate is for this name."
 
 #: dashboard/templates/dashboard/guide.html:51
 msgid "Panel (opsiyonel)"
@@ -1062,28 +1199,50 @@ msgid "panel.example.com → bu yönetim arayüzü (HTTP/HTTPS)."
 msgstr "panel.example.com → this management interface (HTTP/HTTPS)."
 
 #: dashboard/templates/dashboard/guide.html:53
-msgid "Aynı domaini ikisi için de kullanabilirsin ama <b>ayrı alt alan</b> daha temiz ve güvenli (paneli DNS'ten bağımsız koruyabilirsin)."
-msgstr "You can use the same domain for both, but a <b>separate subdomain</b> is cleaner and safer (you can protect the panel independently of DNS)."
+msgid ""
+"Aynı domaini ikisi için de kullanabilirsin ama <b>ayrı alt alan</b> daha "
+"temiz ve güvenli (paneli DNS'ten bağımsız koruyabilirsin)."
+msgstr ""
+"You can use the same domain for both, but a <b>separate subdomain</b> is "
+"cleaner and safer (you can protect the panel independently of DNS)."
 
 #: dashboard/templates/dashboard/guide.html:54
-msgid "Bir <b>A kaydı</b> için sunucunun public IP'si gerekir. Public IP/port açmak istemiyorsan <a href='#tunnel' style='color:var(--accent)'>Cloudflare Tunnel</a> bölümüne bak."
-msgstr "An <b>A record</b> needs the server's public IP. If you don't want to expose a public IP/port, see the <a href='#tunnel' style='color:var(--accent)'>Cloudflare Tunnel</a> section."
+msgid ""
+"Bir <b>A kaydı</b> için sunucunun public IP'si gerekir. Public IP/port açmak "
+"istemiyorsan <a href='#tunnel' style='color:var(--accent)'>Cloudflare "
+"Tunnel</a> bölümüne bak."
+msgstr ""
+"An <b>A record</b> needs the server's public IP. If you don't want to expose "
+"a public IP/port, see the <a href='#tunnel' style='color:var(--"
+"accent)'>Cloudflare Tunnel</a> section."
 
 #: dashboard/templates/dashboard/guide.html:58
 msgid "DNS kayıtları &amp; Cloudflare proxy"
 msgstr "DNS records &amp; Cloudflare proxy"
 
 #: dashboard/templates/dashboard/guide.html:59
-msgid "Domain sağlayıcında (ör. Cloudflare) her kaydın <b>proxy</b> durumu kritik: <span class='cloud grey'>DNS only · gri</span> mi yoksa <span class='cloud orange'>Proxied · turuncu</span> mu. Cloudflare proxy'si <b>yalnız HTTP(S)</b> taşır."
-msgstr "At your domain provider (e.g. Cloudflare) each record's <b>proxy</b> status is critical: <span class='cloud grey'>DNS only · grey</span> or <span class='cloud orange'>Proxied · orange</span>. The Cloudflare proxy carries <b>only HTTP(S)</b>."
+msgid ""
+"Domain sağlayıcında (ör. Cloudflare) her kaydın <b>proxy</b> durumu kritik: "
+"<span class='cloud grey'>DNS only · gri</span> mi yoksa <span class='cloud "
+"orange'>Proxied · turuncu</span> mu. Cloudflare proxy'si <b>yalnız HTTP(S)</"
+"b> taşır."
+msgstr ""
+"At your domain provider (e.g. Cloudflare) each record's <b>proxy</b> status "
+"is critical: <span class='cloud grey'>DNS only · grey</span> or <span "
+"class='cloud orange'>Proxied · orange</span>. The Cloudflare proxy carries "
+"<b>only HTTP(S)</b>."
 
 #: dashboard/templates/dashboard/guide.html:61
 msgid "DoT &amp; DoQ (port 853) — proxy KAPALI"
 msgstr "DoT &amp; DoQ (port 853) — proxy OFF"
 
 #: dashboard/templates/dashboard/guide.html:62
-msgid "DoT/DoQ ham TLS/QUIC'tir, HTTP değil → proxy bunları <b>taşıyamaz</b>. Doğrudan A kaydı + açık 853 şart:"
-msgstr "DoT/DoQ are raw TLS/QUIC, not HTTP → the proxy <b>can't carry</b> them. A direct A record + open 853 is required:"
+msgid ""
+"DoT/DoQ ham TLS/QUIC'tir, HTTP değil → proxy bunları <b>taşıyamaz</b>. "
+"Doğrudan A kaydı + açık 853 şart:"
+msgstr ""
+"DoT/DoQ are raw TLS/QUIC, not HTTP → the proxy <b>can't carry</b> them. A "
+"direct A record + open 853 is required:"
 
 #: dashboard/templates/dashboard/guide.html:64
 #: dashboard/templates/dashboard/guide.html:73
@@ -1111,16 +1270,24 @@ msgid "Açık port"
 msgstr "Open port"
 
 #: dashboard/templates/dashboard/guide.html:68
-msgid "Bu kaydı <span class='cloud orange'>turuncu</span> bırakırsan DoT/DoQ istemcileri <b>bağlanamaz</b>. Bulut <b>gri</b> olmalı."
-msgstr "If you leave this record <span class='cloud orange'>orange</span>, DoT/DoQ clients <b>can't connect</b>. The cloud must be <b>grey</b>."
+msgid ""
+"Bu kaydı <span class='cloud orange'>turuncu</span> bırakırsan DoT/DoQ "
+"istemcileri <b>bağlanamaz</b>. Bulut <b>gri</b> olmalı."
+msgstr ""
+"If you leave this record <span class='cloud orange'>orange</span>, DoT/DoQ "
+"clients <b>can't connect</b>. The cloud must be <b>grey</b>."
 
 #: dashboard/templates/dashboard/guide.html:70
 msgid "DoH (port 443) — proxy AÇIK olabilir"
 msgstr "DoH (port 443) — proxy MAY be ON"
 
 #: dashboard/templates/dashboard/guide.html:71
-msgid "DoH, HTTPS üzerindedir; tek istisna budur. Proxy açık ya da tünel ile çalışır:"
-msgstr "DoH runs over HTTPS; that's the only exception. It works with proxy on or via a tunnel:"
+msgid ""
+"DoH, HTTPS üzerindedir; tek istisna budur. Proxy açık ya da tünel ile "
+"çalışır:"
+msgstr ""
+"DoH runs over HTTPS; that's the only exception. It works with proxy on or "
+"via a tunnel:"
 
 #: dashboard/templates/dashboard/guide.html:74
 #: dashboard/templates/dashboard/guide.html:81
@@ -1148,8 +1315,12 @@ msgid "(TLS + IP gizleme)"
 msgstr "(TLS + IP hiding)"
 
 #: dashboard/templates/dashboard/guide.html:83
-msgid "Paneli Cloudflare <b>Access</b> (SSO / e-posta doğrulama) arkasına al — panel login'inin önüne ikinci kapı."
-msgstr "Put the panel behind Cloudflare <b>Access</b> (SSO / email verification) — a second door in front of the panel login."
+msgid ""
+"Paneli Cloudflare <b>Access</b> (SSO / e-posta doğrulama) arkasına al — "
+"panel login'inin önüne ikinci kapı."
+msgstr ""
+"Put the panel behind Cloudflare <b>Access</b> (SSO / email verification) — a "
+"second door in front of the panel login."
 
 #: dashboard/templates/dashboard/guide.html:85
 msgid "Özet"
@@ -1180,12 +1351,21 @@ msgid "✗ (proxy yok)          genelde public açılmaz"
 msgstr "✗ (no proxy)           usually not exposed publicly"
 
 #: dashboard/templates/dashboard/guide.html:92
-msgid "Kısa kural: <b>DoT/DoQ = gri bulut</b>, <b>DoH/panel = turuncu ya da tünel</b>."
-msgstr "Quick rule: <b>DoT/DoQ = grey cloud</b>, <b>DoH/panel = orange or tunnel</b>."
+msgid ""
+"Kısa kural: <b>DoT/DoQ = gri bulut</b>, <b>DoH/panel = turuncu ya da tünel</"
+"b>."
+msgstr ""
+"Quick rule: <b>DoT/DoQ = grey cloud</b>, <b>DoH/panel = orange or tunnel</b>."
 
 #: dashboard/templates/dashboard/guide.html:97
-msgid "Şifreli yöntemler, <b>bağladığın domaine ait</b> geçerli bir TLS sertifikası ister. Sertifikanın adı (CN/SAN) istemcinin bağlandığı adla <b>birebir</b> aynı olmalı — yoksa istemci doğrulaması başarısız olur."
-msgstr "Encrypted methods need a valid TLS certificate <b>for the domain you connect</b>. The certificate name (CN/SAN) must <b>exactly</b> match the name the client connects to — otherwise client verification fails."
+msgid ""
+"Şifreli yöntemler, <b>bağladığın domaine ait</b> geçerli bir TLS sertifikası "
+"ister. Sertifikanın adı (CN/SAN) istemcinin bağlandığı adla <b>birebir</b> "
+"aynı olmalı — yoksa istemci doğrulaması başarısız olur."
+msgstr ""
+"Encrypted methods need a valid TLS certificate <b>for the domain you "
+"connect</b>. The certificate name (CN/SAN) must <b>exactly</b> match the "
+"name the client connects to — otherwise client verification fails."
 
 #: dashboard/templates/dashboard/guide.html:99
 msgid "çıktı:"
@@ -1196,21 +1376,49 @@ msgid "bu dosyaları projedeki certificates/ altına koy"
 msgstr "put these files under the project's certificates/"
 
 #: dashboard/templates/dashboard/guide.html:101
-msgid "Ardından panelden bağla: <b>DNS Ayarları → Sertifika</b> → yolları gir → <b>Doğrulama</b> kartında <b>GEÇERLİ</b> + <b>Özne (CN)</b> = <code>dns.example.com</code> gör."
-msgstr "Then connect it from the panel: <b>DNS Settings → Certificate</b> → enter the paths → see <b>VALID</b> + <b>Subject (CN)</b> = <code>dns.example.com</code> on the <b>Verification</b> card."
+msgid ""
+"Ardından panelden bağla: <b>DNS Ayarları → Sertifika</b> → yolları gir → "
+"<b>Doğrulama</b> kartında <b>GEÇERLİ</b> + <b>Özne (CN)</b> = "
+"<code>dns.example.com</code> gör."
+msgstr ""
+"Then connect it from the panel: <b>DNS Settings → Certificate</b> → enter "
+"the paths → see <b>VALID</b> + <b>Subject (CN)</b> = <code>dns.example.com</"
+"code> on the <b>Verification</b> card."
 
 #: dashboard/templates/dashboard/guide.html:102
-msgid "Sertifika <code>dns.example.com</code> için ama istemci <code>baska.example.com</code>'a bağlanırsa TLS doğrulaması patlar. Cert adı = bağlanılan ad."
-msgstr "If the certificate is for <code>dns.example.com</code> but the client connects to <code>other.example.com</code>, TLS verification breaks. Cert name = connected name."
+msgid ""
+"Sertifika <code>dns.example.com</code> için ama istemci "
+"<code>baska.example.com</code>'a bağlanırsa TLS doğrulaması patlar. Cert adı "
+"= bağlanılan ad."
+msgstr ""
+"If the certificate is for <code>dns.example.com</code> but the client "
+"connects to <code>other.example.com</code>, TLS verification breaks. Cert "
+"name = connected name."
 
 #: dashboard/templates/dashboard/guide.html:107
-msgid "Kaydı + sertifikayı ayarladıktan sonra <b>Sunucular</b>'dan ilgili yöntemi aç, sonra domain üzerinden test et. İstemciler <b>standart portları</b> (DoT/DoQ 853, DoH 443) kullanır:"
-msgstr "After setting the record + certificate, enable the method from <b>Servers</b>, then test over the domain. Clients use the <b>standard ports</b> (DoT/DoQ 853, DoH 443):"
+msgid ""
+"Kaydı + sertifikayı ayarladıktan sonra <b>Sunucular</b>'dan ilgili yöntemi "
+"aç, sonra domain üzerinden test et. İstemciler <b>standart portları</b> (DoT/"
+"DoQ 853, DoH 443) kullanır:"
+msgstr ""
+"After setting the record + certificate, enable the method from <b>Servers</"
+"b>, then test over the domain. Clients use the <b>standard ports</b> (DoT/"
+"DoQ 853, DoH 443):"
 
 #: dashboard/templates/dashboard/guide.html:116
 #, python-format
-msgid "Dış (host) port eşlemen bu standart portları konteynerin <b>iç dinleme portlarına</b> yönlendirmeli: DoT 853→<code>%(dot)s</code>, DoH 443→<code>%(doh)s</code>, DoQ 853→<code>%(doq)s</code>. Eşleme <code>compose.override.yml</code>'dedir; iç portlar <b>Sunucular</b> sayfasından ayarlanır."
-msgstr "Your external (host) port mapping must forward these standard ports to the container's <b>internal listening ports</b>: DoT 853→<code>%(dot)s</code>, DoH 443→<code>%(doh)s</code>, DoQ 853→<code>%(doq)s</code>. The mapping is in <code>compose.override.yml</code>; internal ports are set from the <b>Servers</b> page."
+msgid ""
+"Dış (host) port eşlemen bu standart portları konteynerin <b>iç dinleme "
+"portlarına</b> yönlendirmeli: DoT 853→<code>%(dot)s</code>, DoH "
+"443→<code>%(doh)s</code>, DoQ 853→<code>%(doq)s</code>. Eşleme "
+"<code>compose.override.yml</code>'dedir; iç portlar <b>Sunucular</b> "
+"sayfasından ayarlanır."
+msgstr ""
+"Your external (host) port mapping must forward these standard ports to the "
+"container's <b>internal listening ports</b>: DoT 853→<code>%(dot)s</code>, "
+"DoH 443→<code>%(doh)s</code>, DoQ 853→<code>%(doq)s</code>. The mapping is "
+"in <code>compose.override.yml</code>; internal ports are set from the "
+"<b>Servers</b> page."
 
 #: dashboard/templates/dashboard/guide.html:120
 msgid "İstemciyi domaine yönlendir"
@@ -1234,44 +1442,79 @@ msgstr "DoH/DoT .mobileconfig profile (dns.example.com)"
 
 #: dashboard/templates/dashboard/guide.html:128
 #, python-format
-msgid "Bir engelleyicinin (AdGuard Home / Pi-hole) arkasına recursive upstream olarak koyacaksan, dns-net içinde <code>%(ip)s:%(udp)s</code> de kullanılabilir (domain gerekmez)."
-msgstr "If you'll place it behind a blocker (AdGuard Home / Pi-hole) as the recursive upstream, <code>%(ip)s:%(udp)s</code> on dns-net can also be used (no domain needed)."
+msgid ""
+"Bir engelleyicinin (AdGuard Home / Pi-hole) arkasına recursive upstream "
+"olarak koyacaksan, dns-net içinde <code>%(ip)s:%(udp)s</code> de "
+"kullanılabilir (domain gerekmez)."
+msgstr ""
+"If you'll place it behind a blocker (AdGuard Home / Pi-hole) as the "
+"recursive upstream, <code>%(ip)s:%(udp)s</code> on dns-net can also be used "
+"(no domain needed)."
 
 #: dashboard/templates/dashboard/guide.html:132
 msgid "Cloudflare Tunnel (public IP/port yoksa)"
 msgstr "Cloudflare Tunnel (no public IP/port)"
 
 #: dashboard/templates/dashboard/guide.html:133
-msgid "Sunucuya doğrudan port açamıyorsan <code>cloudflared</code> tüneli DoH ve paneli yayınlayabilir; A kaydı/açık port gerekmez."
-msgstr "If you can't open a port directly to the server, a <code>cloudflared</code> tunnel can publish DoH and the panel; no A record/open port needed."
+msgid ""
+"Sunucuya doğrudan port açamıyorsan <code>cloudflared</code> tüneli DoH ve "
+"paneli yayınlayabilir; A kaydı/açık port gerekmez."
+msgstr ""
+"If you can't open a port directly to the server, a <code>cloudflared</code> "
+"tunnel can publish DoH and the panel; no A record/open port needed."
 
 #: dashboard/templates/dashboard/guide.html:134
-msgid "Tünel <b>HTTP-only</b>'dir → yalnız <b>DoH + panel</b> çalışır. <b>DoT/DoQ tünelden geçmez</b>; onlar için doğrudan A kaydı (<span class='cloud grey'>gri</span>) + açık 853 şarttır."
-msgstr "The tunnel is <b>HTTP-only</b> → only <b>DoH + panel</b> work. <b>DoT/DoQ don't pass through a tunnel</b>; they require a direct A record (<span class='cloud grey'>grey</span>) + open 853."
+msgid ""
+"Tünel <b>HTTP-only</b>'dir → yalnız <b>DoH + panel</b> çalışır. <b>DoT/DoQ "
+"tünelden geçmez</b>; onlar için doğrudan A kaydı (<span class='cloud "
+"grey'>gri</span>) + açık 853 şarttır."
+msgstr ""
+"The tunnel is <b>HTTP-only</b> → only <b>DoH + panel</b> work. <b>DoT/DoQ "
+"don't pass through a tunnel</b>; they require a direct A record (<span "
+"class='cloud grey'>grey</span>) + open 853."
 
 #: dashboard/templates/dashboard/guide.html:138
 msgid "Sık yapılan hatalar"
 msgstr "Common mistakes"
 
 #: dashboard/templates/dashboard/guide.html:140
-msgid "<b>DoT/DoQ kaydı turuncu (proxied):</b> istemci bağlanamaz — <span class='cloud grey'>gri bulut</span> yap."
-msgstr "<b>DoT/DoQ record orange (proxied):</b> the client can't connect — make it a <span class='cloud grey'>grey cloud</span>."
+msgid ""
+"<b>DoT/DoQ kaydı turuncu (proxied):</b> istemci bağlanamaz — <span "
+"class='cloud grey'>gri bulut</span> yap."
+msgstr ""
+"<b>DoT/DoQ record orange (proxied):</b> the client can't connect — make it a "
+"<span class='cloud grey'>grey cloud</span>."
 
 #: dashboard/templates/dashboard/guide.html:141
-msgid "<b>Sertifika adı ≠ bağlanılan ad:</b> TLS doğrulama hatası — cert'i doğru domaine al."
-msgstr "<b>Cert name ≠ connected name:</b> TLS verification error — get the cert for the right domain."
+msgid ""
+"<b>Sertifika adı ≠ bağlanılan ad:</b> TLS doğrulama hatası — cert'i doğru "
+"domaine al."
+msgstr ""
+"<b>Cert name ≠ connected name:</b> TLS verification error — get the cert for "
+"the right domain."
 
 #: dashboard/templates/dashboard/guide.html:142
-msgid "<b>Yalnız tünel + DoT beklemek:</b> tünel DoT/DoQ taşımaz; doğrudan port aç."
-msgstr "<b>Expecting DoT over a tunnel only:</b> a tunnel doesn't carry DoT/DoQ; open a direct port."
+msgid ""
+"<b>Yalnız tünel + DoT beklemek:</b> tünel DoT/DoQ taşımaz; doğrudan port aç."
+msgstr ""
+"<b>Expecting DoT over a tunnel only:</b> a tunnel doesn't carry DoT/DoQ; "
+"open a direct port."
 
 #: dashboard/templates/dashboard/guide.html:143
-msgid "<b>853 güvenlik duvarında kapalı:</b> DoT/DoQ dışarıdan erişilemez — 853/tcp+udp aç."
-msgstr "<b>853 blocked by the firewall:</b> DoT/DoQ unreachable from outside — open 853/tcp+udp."
+msgid ""
+"<b>853 güvenlik duvarında kapalı:</b> DoT/DoQ dışarıdan erişilemez — 853/"
+"tcp+udp aç."
+msgstr ""
+"<b>853 blocked by the firewall:</b> DoT/DoQ unreachable from outside — open "
+"853/tcp+udp."
 
 #: dashboard/templates/dashboard/guide.html:144
-msgid "<b>Panel public + auth'suz:</b> paneli tünel/proxy + Access ile koru, yalnız domain arkasına al."
-msgstr "<b>Panel public + no auth:</b> protect the panel with tunnel/proxy + Access, keep it behind a domain only."
+msgid ""
+"<b>Panel public + auth'suz:</b> paneli tünel/proxy + Access ile koru, yalnız "
+"domain arkasına al."
+msgstr ""
+"<b>Panel public + no auth:</b> protect the panel with tunnel/proxy + Access, "
+"keep it behind a domain only."
 
 #: dashboard/templates/dashboard/guide.html:157
 msgid "Kopyalandı ✓"
@@ -1343,8 +1586,11 @@ msgid "En Çok Sorgulananlar"
 msgstr "Most Queried"
 
 #: dashboard/templates/dashboard/notifications.html:9
-msgid "Güvenlik, sağlık ve istemci olayları — yalnız bu panelde tutulur, dışarı hiçbir şey gitmez."
-msgstr "Security, health and client events — kept only in this panel, nothing leaves."
+msgid ""
+"Güvenlik, sağlık ve istemci olayları — yalnız bu panelde tutulur, dışarı "
+"hiçbir şey gitmez."
+msgstr ""
+"Security, health and client events — kept only in this panel, nothing leaves."
 
 #: dashboard/templates/dashboard/notifications.html:12
 msgid "Tümünü okundu"
@@ -1365,8 +1611,12 @@ msgid "Henüz bildirim yok."
 msgstr "No notifications yet."
 
 #: dashboard/templates/dashboard/queries.html:9
-msgid "Canlı log akışı · en yeni üstte · zamanlar yerel · aşağı kaydırdıkça otomatik yüklenir"
-msgstr "Live log stream · newest on top · times local · loads automatically as you scroll down"
+msgid ""
+"Canlı log akışı · en yeni üstte · zamanlar yerel · aşağı kaydırdıkça "
+"otomatik yüklenir"
+msgstr ""
+"Live log stream · newest on top · times local · loads automatically as you "
+"scroll down"
 
 #: dashboard/templates/dashboard/queries.html:12
 msgid "CSV indir"
@@ -1424,157 +1674,259 @@ msgid "Hata — tekrar dene"
 msgstr "Error — try again"
 
 #: dashboard/templates/dashboard/query_settings.html:8
-msgid "Çözümleme davranışı: kendi çekirdek mi çözsün yoksa upstream'e mi iletsin, strateji, koşullu yönlendirme ve bootstrap DNS. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok)."
-msgstr "Resolution behavior: resolve with our own core or forward to an upstream, strategy, conditional forwarding and bootstrap DNS. Changes reach the resolver within ~10 s (no restart)."
+msgid ""
+"Çözümleme davranışı: kendi çekirdek mi çözsün yoksa upstream'e mi iletsin, "
+"strateji, koşullu yönlendirme ve bootstrap DNS. Değişiklikler resolver'a ~10 "
+"sn içinde yansır (yeniden başlatma yok)."
+msgstr ""
+"Resolution behavior: resolve with our own core or forward to an upstream, "
+"strategy, conditional forwarding and bootstrap DNS. Changes reach the "
+"resolver within ~10 s (no restart)."
 
 #: dashboard/templates/dashboard/query_settings.html:22
 msgid "Kendi çekirdeğimizi kullan"
 msgstr "Use our own core"
 
 #: dashboard/templates/dashboard/query_settings.html:23
-msgid "Açık: recursive çözümleyici (root→TLD→yetkili sunucuları kendi yürür). Kapalı: sorguları aşağıdaki upstream sunuculara iletir (forwarding)."
-msgstr "On: recursive resolver (walks root→TLD→authoritative itself). Off: forwards queries to the upstream servers below (forwarding)."
+msgid ""
+"Açık: recursive çözümleyici (root→TLD→yetkili sunucuları kendi yürür). "
+"Kapalı: sorguları aşağıdaki upstream sunuculara iletir (forwarding)."
+msgstr ""
+"On: recursive resolver (walks root→TLD→authoritative itself). Off: forwards "
+"queries to the upstream servers below (forwarding)."
 
 #: dashboard/templates/dashboard/query_settings.html:29
 msgid "DNSSEC doğrulama"
 msgstr "DNSSEC validation"
 
 #: dashboard/templates/dashboard/query_settings.html:30
-msgid "Açık: cevapların DNSSEC imza zincirini kökten doğrular (secure→AD biti, bogus→SERVFAIL). Ekstra sorgu → biraz yavaşlar; sorun olursa kapat. Analiz sayfasında doğrulama oranı görünür."
-msgstr ""
+msgid ""
+"Açık: cevapların DNSSEC imza zincirini kökten doğrular (secure→AD biti, "
+"bogus→SERVFAIL). Ekstra sorgu → biraz yavaşlar; sorun olursa kapat. Analiz "
+"sayfasında doğrulama oranı görünür."
+msgstr "On: validates the DNSSEC signature chain of answers from the root (secure→AD bit, bogus→SERVFAIL). Extra queries → slightly slower; turn off if it causes issues. The validation rate is shown on the Analytics page."
 
-#: dashboard/templates/dashboard/query_settings.html:35
+#: dashboard/templates/dashboard/query_settings.html:36
+msgid "Hızlı sunucu probu (arka plan)"
+msgstr "Fast server probe (background)"
+
+#: dashboard/templates/dashboard/query_settings.html:36
+msgid "yalnız çekirdek"
+msgstr "core only"
+
+#: dashboard/templates/dashboard/query_settings.html:37
+msgid ""
+"Açık: arka planda periyodik olarak root ve TLD (.com/.net/.me…) sunucularına "
+"küçük deneme sorguları atar, gecikmeyi ölçer → boşta bile <b>en-hızlı sunucu "
+"listesi</b> taze kalır (soğuk başlangıçta bile ilk sorgu en hızlıya gider). "
+"<b>Yalnız 'Kendi çekirdeğimizi kullan' AÇIKKEN</b> çalışır; forward modda "
+"hiç prob atılmaz."
+msgstr "On: periodically sends small probe queries to root and TLD (.com/.net/.me…) servers in the background and measures latency → the <b>fastest-server list</b> stays fresh even while idle (so even on a cold start the first query goes to the fastest). Runs <b>only while 'Use our own core' is ON</b>; no probes are sent in forward mode."
+
+#: dashboard/templates/dashboard/query_settings.html:42
+msgid "Prob aralığı (dakika)"
+msgstr "Probe interval (minutes)"
+
+#: dashboard/templates/dashboard/query_settings.html:42
+msgid "Kaç dakikada bir ölçüm turu yapılsın (1–1440)."
+msgstr "How often a measurement round runs (1–1440)."
+
+#: dashboard/templates/dashboard/query_settings.html:45
+msgid "Prob edilecek TLD'ler (boşlukla ayır)"
+msgstr "TLDs to probe (space-separated)"
+
+#: dashboard/templates/dashboard/query_settings.html:47
+msgid ""
+"Bu TLD'lerin yetkili sunucuları ölçülür (root delegasyonundaki glue "
+"IP'leri). Boş bırakılırsa <span class='mono'>com net org me io</span> "
+"kullanılır. En fazla 20 TLD."
+msgstr "The authoritative servers of these TLDs are measured (glue IPs from the root delegation). If left empty, <span class='mono'>com net org me io</span> is used. Up to 20 TLDs."
+
+#: dashboard/templates/dashboard/query_settings.html:49
 msgid "Upstream sunucular (satır başına bir tane)"
 msgstr "Upstream servers (one per line)"
 
-#: dashboard/templates/dashboard/query_settings.html:37
-msgid "Her satırın başına <b>yöntem</b> (protokol) yaz — AdGuard gibi. Ön ek yoksa satır <b>düz UDP/53 (şifresiz)</b> sayılır:"
-msgstr ""
+#: dashboard/templates/dashboard/query_settings.html:51
+msgid ""
+"Her satırın başına <b>yöntem</b> (protokol) yaz — AdGuard gibi. Ön ek yoksa "
+"satır <b>düz UDP/53 (şifresiz)</b> sayılır:"
+msgstr "Put the <b>method</b> (protocol) at the start of each line — like AdGuard. With no prefix, the line counts as <b>plain UDP/53 (unencrypted)</b>:"
 
-#: dashboard/templates/dashboard/query_settings.html:39
-#: dashboard/templates/dashboard/query_settings.html:40
-#: dashboard/templates/dashboard/query_settings.html:41
-#: dashboard/templates/dashboard/query_settings.html:42
-#: dashboard/templates/dashboard/query_settings.html:43
+#: dashboard/templates/dashboard/query_settings.html:53
+#: dashboard/templates/dashboard/query_settings.html:54
+#: dashboard/templates/dashboard/query_settings.html:55
+#: dashboard/templates/dashboard/query_settings.html:56
+#: dashboard/templates/dashboard/query_settings.html:57
 msgid "port"
 msgstr "port"
 
-#: dashboard/templates/dashboard/query_settings.html:39
-#: dashboard/templates/dashboard/query_settings.html:40
+#: dashboard/templates/dashboard/query_settings.html:53
+#: dashboard/templates/dashboard/query_settings.html:54
 msgid "şifresiz"
 msgstr "unencrypted"
 
-#: dashboard/templates/dashboard/query_settings.html:41
+#: dashboard/templates/dashboard/query_settings.html:55
 msgid "TLS şifreli"
 msgstr "TLS encrypted"
 
-#: dashboard/templates/dashboard/query_settings.html:42
+#: dashboard/templates/dashboard/query_settings.html:56
 msgid "HTTPS şifreli"
 msgstr "HTTPS encrypted"
 
-#: dashboard/templates/dashboard/query_settings.html:43
+#: dashboard/templates/dashboard/query_settings.html:57
 msgid "QUIC şifreli"
 msgstr "QUIC encrypted"
 
-#: dashboard/templates/dashboard/query_settings.html:43
+#: dashboard/templates/dashboard/query_settings.html:57
 msgid "deneysel — henüz desteklenmiyor, girilirse atlanır"
 msgstr "experimental — not yet supported, skipped if entered"
 
-#: dashboard/templates/dashboard/query_settings.html:45
-msgid "Farklı port için <span class='mono'>host:port</span> yaz (varsayılan: UDP/TCP <b>53</b>, DoT/DoQ <b>853</b>, DoH <b>443</b>). Bu liste <b>yalnızca</b> yukarıdaki <b>'Kendi çekirdeğimizi kullan' KAPALIYKEN</b> devreye girer — açıkken sorgular kendi özyineli çözümleyicimizle çözülür."
-msgstr "Write <span class='mono'>host:port</span> for a different port (default: UDP/TCP <b>53</b>, DoT/DoQ <b>853</b>, DoH <b>443</b>). This list applies <b>only</b> when <b>'Use our own core' is OFF</b> above — when ON, queries are resolved by our own recursive resolver."
+#: dashboard/templates/dashboard/query_settings.html:59
+msgid ""
+"Farklı port için <span class='mono'>host:port</span> yaz (varsayılan: UDP/"
+"TCP <b>53</b>, DoT/DoQ <b>853</b>, DoH <b>443</b>). Bu liste <b>yalnızca</b> "
+"yukarıdaki <b>'Kendi çekirdeğimizi kullan' KAPALIYKEN</b> devreye girer — "
+"açıkken sorgular kendi özyineli çözümleyicimizle çözülür."
+msgstr ""
+"Write <span class='mono'>host:port</span> for a different port (default: UDP/"
+"TCP <b>53</b>, DoT/DoQ <b>853</b>, DoH <b>443</b>). This list applies "
+"<b>only</b> when <b>'Use our own core' is OFF</b> above — when ON, queries "
+"are resolved by our own recursive resolver."
 
-#: dashboard/templates/dashboard/query_settings.html:46
+#: dashboard/templates/dashboard/query_settings.html:60
 msgid "Kendi adresini upstream yazma."
 msgstr "Don't put your own address as an upstream."
 
-#: dashboard/templates/dashboard/query_settings.html:46
-msgid "ve bu sunucunun kendi IP'si (Docker container adresi) resolver'ın <b>KENDİSİDİR</b> → sorgu kendine iletilip <b>sonsuz döngüye</b> girer (tek sorgu defalarca loglanır). Upstream, 'çözemezsem soracağım <b>başka</b> bir sunucu' olmalıdır."
-msgstr "and this server's own IP (the Docker container address) IS the resolver <b>ITSELF</b> → the query is forwarded to itself and enters an <b>infinite loop</b> (a single query is logged many times). An upstream must be 'another server I ask when I can't resolve'."
+#: dashboard/templates/dashboard/query_settings.html:60
+msgid ""
+"ve bu sunucunun kendi IP'si (Docker container adresi) resolver'ın "
+"<b>KENDİSİDİR</b> → sorgu kendine iletilip <b>sonsuz döngüye</b> girer (tek "
+"sorgu defalarca loglanır). Upstream, 'çözemezsem soracağım <b>başka</b> bir "
+"sunucu' olmalıdır."
+msgstr ""
+"and this server's own IP (the Docker container address) IS the resolver "
+"<b>ITSELF</b> → the query is forwarded to itself and enters an <b>infinite "
+"loop</b> (a single query is logged many times). An upstream must be 'another "
+"server I ask when I can't resolve'."
 
-#: dashboard/templates/dashboard/query_settings.html:48
+#: dashboard/templates/dashboard/query_settings.html:62
 msgid "İkincil (yedek) upstream'ler"
 msgstr "Secondary (fallback) upstreams"
 
-#: dashboard/templates/dashboard/query_settings.html:50
-msgid "Birincil upstream'lerin <b>hiçbiri</b> yanıt vermezse bu liste denenir (yedek). Aynı format; <span class='mono'>#</span> ile başlayan satırlar <b>yorumdur</b> (her iki listede de)."
-msgstr ""
+#: dashboard/templates/dashboard/query_settings.html:64
+msgid ""
+"Birincil upstream'lerin <b>hiçbiri</b> yanıt vermezse bu liste denenir "
+"(yedek). Aynı format; <span class='mono'>#</span> ile başlayan satırlar "
+"<b>yorumdur</b> (her iki listede de)."
+msgstr "If <b>none</b> of the primary upstreams respond, this list is tried (fallback). Same format; lines starting with <span class='mono'>#</span> are <b>comments</b> (in both lists)."
 
-#: dashboard/templates/dashboard/query_settings.html:52
+#: dashboard/templates/dashboard/query_settings.html:66
 msgid "Sorgu stratejisi (forwarding)"
 msgstr "Query strategy (forwarding)"
 
-#: dashboard/templates/dashboard/query_settings.html:54
+#: dashboard/templates/dashboard/query_settings.html:68
 msgid "<b>Sıra sıra</b> — listedeki ilk yanıtlayanı kullan (en az trafik)"
-msgstr "<b>Sequential</b> — use the first in the list that answers (least traffic)"
+msgstr ""
+"<b>Sequential</b> — use the first in the list that answers (least traffic)"
 
-#: dashboard/templates/dashboard/query_settings.html:55
-msgid "<b>Paralel</b> — hepsine aynı anda sor, ilk gelen cevabı al (en düşük gecikme)"
-msgstr "<b>Parallel</b> — ask all at once, take the first answer (lowest latency)"
+#: dashboard/templates/dashboard/query_settings.html:69
+msgid ""
+"<b>Paralel</b> — hepsine aynı anda sor, ilk gelen cevabı al (en düşük "
+"gecikme)"
+msgstr ""
+"<b>Parallel</b> — ask all at once, take the first answer (lowest latency)"
 
-#: dashboard/templates/dashboard/query_settings.html:56
+#: dashboard/templates/dashboard/query_settings.html:70
 msgid "<b>En hızlı</b> — ölçülen ortalamaya göre en hızlı upstream'i önce dene"
 msgstr "<b>Fastest</b> — try the fastest upstream first by measured average"
 
-#: dashboard/templates/dashboard/query_settings.html:59
+#: dashboard/templates/dashboard/query_settings.html:73
 msgid "Koşullu yönlendirme (son-ek → upstream)"
 msgstr "Conditional forwarding (suffix → upstream)"
 
-#: dashboard/templates/dashboard/query_settings.html:61
-msgid "Satır başına <span class='mono'>son-ek&nbsp;upstream</span>. Eşleşen domain (ve tüm alt alanları) <b>her zaman</b> o upstream'e çözdürülür — 'Kendi çekirdeğimizi kullan' açık olsa bile. Yerel/özel alanlar için (ör. <span class='mono'>*.home.arpa → 192.168.1.1</span>). En uzun eşleşen son-ek kazanır."
-msgstr "One <span class='mono'>suffix&nbsp;upstream</span> per line. The matching domain (and all its subdomains) is <b>always</b> resolved via that upstream — even when 'Use our own core' is on. For local/private zones (e.g. <span class='mono'>*.home.arpa → 192.168.1.1</span>). The longest matching suffix wins."
+#: dashboard/templates/dashboard/query_settings.html:75
+msgid ""
+"Satır başına <span class='mono'>son-ek&nbsp;upstream</span>. Eşleşen domain "
+"(ve tüm alt alanları) <b>her zaman</b> o upstream'e çözdürülür — 'Kendi "
+"çekirdeğimizi kullan' açık olsa bile. Yerel/özel alanlar için (ör. <span "
+"class='mono'>*.home.arpa → 192.168.1.1</span>). En uzun eşleşen son-ek "
+"kazanır."
+msgstr ""
+"One <span class='mono'>suffix&nbsp;upstream</span> per line. The matching "
+"domain (and all its subdomains) is <b>always</b> resolved via that upstream "
+"— even when 'Use our own core' is on. For local/private zones (e.g. <span "
+"class='mono'>*.home.arpa → 192.168.1.1</span>). The longest matching suffix "
+"wins."
 
-#: dashboard/templates/dashboard/query_settings.html:63
+#: dashboard/templates/dashboard/query_settings.html:77
 msgid "Bootstrap DNS (isimli şifreli upstream'ler için)"
 msgstr "Bootstrap DNS (for named encrypted upstreams)"
 
-#: dashboard/templates/dashboard/query_settings.html:64
+#: dashboard/templates/dashboard/query_settings.html:78
 msgid "ör. 9.9.9.9  (boş = sistem çözümleyicisi)"
 msgstr "e.g. 9.9.9.9  (empty = system resolver)"
 
-#: dashboard/templates/dashboard/query_settings.html:65
-msgid "<span class='mono'>tls://dns.google</span> / <span class='mono'>https://cloudflare-dns.com/…</span> gibi <b>isimli</b> şifreli upstream'lerin host adını bu düz-DNS IP'siyle çözer (IP'ye bağlanır; TLS doğrulaması yine host adına yapılır). Boşsa sistem DNS'i kullanılır. Düz-IP upstream'leri etkilemez."
-msgstr "Resolves the host name of <b>named</b> encrypted upstreams like <span class='mono'>tls://dns.google</span> / <span class='mono'>https://cloudflare-dns.com/…</span> using this plain-DNS IP (connects to the IP; TLS is still verified against the host name). If empty, the system DNS is used. Doesn't affect plain-IP upstreams."
+#: dashboard/templates/dashboard/query_settings.html:79
+msgid ""
+"<span class='mono'>tls://dns.google</span> / <span class='mono'>https://"
+"cloudflare-dns.com/…</span> gibi <b>isimli</b> şifreli upstream'lerin host "
+"adını bu düz-DNS IP'siyle çözer (IP'ye bağlanır; TLS doğrulaması yine host "
+"adına yapılır). Boşsa sistem DNS'i kullanılır. Düz-IP upstream'leri "
+"etkilemez."
+msgstr ""
+"Resolves the host name of <b>named</b> encrypted upstreams like <span "
+"class='mono'>tls://dns.google</span> / <span class='mono'>https://cloudflare-"
+"dns.com/…</span> using this plain-DNS IP (connects to the IP; TLS is still "
+"verified against the host name). If empty, the system DNS is used. Doesn't "
+"affect plain-IP upstreams."
 
-#: dashboard/templates/dashboard/query_settings.html:68
+#: dashboard/templates/dashboard/query_settings.html:82
 msgid "Upstream tepki süreleri (ort.)"
 msgstr "Upstream response times (avg.)"
 
-#: dashboard/templates/dashboard/query_settings.html:71
+#: dashboard/templates/dashboard/query_settings.html:85
 msgid "— ölçüm yok"
 msgstr "— no measurement"
 
-#: dashboard/templates/dashboard/query_settings.html:76
+#: dashboard/templates/dashboard/query_settings.html:90
 msgid "Sunucuları test et"
 msgstr "Test servers"
 
-#: dashboard/templates/dashboard/query_settings.html:86
+#: dashboard/templates/dashboard/query_settings.html:100
 msgid "Test ediliyor…"
 msgstr "Testing…"
 
-#: dashboard/templates/dashboard/query_settings.html:96
+#: dashboard/templates/dashboard/query_settings.html:110
 msgid "Test sonuçları"
 msgstr "Test results"
 
-#: dashboard/templates/dashboard/query_settings.html:97
+#: dashboard/templates/dashboard/query_settings.html:111
 msgid "Test edilecek upstream yok — önce ekle."
 msgstr "No upstream to test — add one first."
 
-#: dashboard/templates/dashboard/query_settings.html:99
+#: dashboard/templates/dashboard/query_settings.html:113
 msgid "Test başarısız."
 msgstr "Test failed."
 
 #: dashboard/templates/dashboard/security.html:7
-msgid "İstemci erişimi, şüpheli/tehdit tespiti ve kademeli otomatik yaptırım. Değişiklikler resolver'a ~10 sn içinde yansır."
-msgstr "Client access, suspicious/threat detection and tiered auto-enforcement. Changes apply to the resolver within ~10 s."
+msgid ""
+"İstemci erişimi, şüpheli/tehdit tespiti ve kademeli otomatik yaptırım. "
+"Değişiklikler resolver'a ~10 sn içinde yansır."
+msgstr ""
+"Client access, suspicious/threat detection and tiered auto-enforcement. "
+"Changes apply to the resolver within ~10 s."
 
 #: dashboard/templates/dashboard/security.html:19
 msgid "Kademeli Otomatik Yaptırım"
 msgstr "Tiered Auto-Enforcement"
 
 #: dashboard/templates/dashboard/security.html:20
-msgid "Davranışa göre istemciye OTOMATİK aksiyon. Yanlış pozitif riski var — dikkatli aç. Default KAPALI."
-msgstr "AUTOMATIC action on clients based on behavior. False-positive risk — enable carefully. OFF by default."
+msgid ""
+"Davranışa göre istemciye OTOMATİK aksiyon. Yanlış pozitif riski var — "
+"dikkatli aç. Default KAPALI."
+msgstr ""
+"AUTOMATIC action on clients based on behavior. False-positive risk — enable "
+"carefully. OFF by default."
 
 #: dashboard/templates/dashboard/security.html:27
 msgid "SINKHOLE"
@@ -1585,8 +1937,12 @@ msgid "dön"
 msgstr "return"
 
 #: dashboard/templates/dashboard/security.html:28
-msgid "Engellenen / TXT / SERVFAIL oranı eşiği aşarsa istemciye NXDOMAIN döndürülür (yumuşak)."
-msgstr "If the blocked / TXT / SERVFAIL ratio exceeds the threshold, NXDOMAIN is returned to the client (soft)."
+msgid ""
+"Engellenen / TXT / SERVFAIL oranı eşiği aşarsa istemciye NXDOMAIN döndürülür "
+"(yumuşak)."
+msgstr ""
+"If the blocked / TXT / SERVFAIL ratio exceeds the threshold, NXDOMAIN is "
+"returned to the client (soft)."
 
 #: dashboard/templates/dashboard/security.html:29
 msgid "Eşik"
@@ -1597,16 +1953,24 @@ msgid "YASAKLA"
 msgstr "BAN"
 
 #: dashboard/templates/dashboard/security.html:33
-msgid "NXDOMAIN oranı eşiği aşarsa (DGA/malware beaconing) istemci tamamen reddedilir."
-msgstr "If the NXDOMAIN ratio exceeds the threshold (DGA/malware beaconing), the client is fully refused."
+msgid ""
+"NXDOMAIN oranı eşiği aşarsa (DGA/malware beaconing) istemci tamamen "
+"reddedilir."
+msgstr ""
+"If the NXDOMAIN ratio exceeds the threshold (DGA/malware beaconing), the "
+"client is fully refused."
 
 #: dashboard/templates/dashboard/security.html:38
 msgid "En az sorgu (eşik altında dokunma)"
 msgstr "Min queries (skip below this)"
 
 #: dashboard/templates/dashboard/security.html:38
-msgid "Bir istemci bu sayıdan az sorgu yaptıysa yaptırım uygulanmaz (düşük hacimde yanlış pozitif önler)."
-msgstr "If a client made fewer queries than this, no enforcement is applied (avoids false positives at low volume)."
+msgid ""
+"Bir istemci bu sayıdan az sorgu yaptıysa yaptırım uygulanmaz (düşük hacimde "
+"yanlış pozitif önler)."
+msgstr ""
+"If a client made fewer queries than this, no enforcement is applied (avoids "
+"false positives at low volume)."
 
 #: dashboard/templates/dashboard/security.html:42
 msgid "Otomatik yasaklananlar (client_deny'a eklenenler) — düzenlenebilir"
@@ -1622,8 +1986,12 @@ msgid "Otomatik sinkhole (NXDOMAIN dönenler) — düzenlenebilir"
 msgstr "Auto-sinkhole (returning NXDOMAIN) — editable"
 
 #: dashboard/templates/dashboard/security.html:46
-msgid "Bu listeler açıkken OTOMATİK dolar; bir istemciyi elle çıkarmak için satırı sil. susp_ignore'daki istemciler yaptırımdan MUAF."
-msgstr "These lists fill AUTOMATICALLY when enabled; delete a line to remove a client manually. Clients in susp_ignore are EXEMPT from enforcement."
+msgid ""
+"Bu listeler açıkken OTOMATİK dolar; bir istemciyi elle çıkarmak için satırı "
+"sil. susp_ignore'daki istemciler yaptırımdan MUAF."
+msgstr ""
+"These lists fill AUTOMATICALLY when enabled; delete a line to remove a "
+"client manually. Clients in susp_ignore are EXEMPT from enforcement."
 
 #: dashboard/templates/dashboard/security.html:51
 msgid "İstemci Erişimi (ACL)"
@@ -1634,8 +2002,12 @@ msgid "Rate limit — istemci başına / sn"
 msgstr "Rate limit — per client / s"
 
 #: dashboard/templates/dashboard/security.html:54
-msgid "Bir istemci saniyede bu sayıdan fazla sorarsa fazlası reddedilir (REFUSED). 0 = kapalı."
-msgstr "If a client asks more than this per second, the excess is refused (REFUSED). 0 = off."
+msgid ""
+"Bir istemci saniyede bu sayıdan fazla sorarsa fazlası reddedilir (REFUSED). "
+"0 = kapalı."
+msgstr ""
+"If a client asks more than this per second, the excess is refused (REFUSED). "
+"0 = off."
 
 #: dashboard/templates/dashboard/security.html:57
 msgid "İzinli istemciler (boş = herkes) — IP / CIDR, satır başına bir tane"
@@ -1646,8 +2018,12 @@ msgid "Reddedilen istemciler — IP / CIDR"
 msgstr "Denied clients — IP / CIDR"
 
 #: dashboard/templates/dashboard/security.html:61
-msgid "İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman engellenir (izinliden önce)."
-msgstr "If the allow list is non-empty, ONLY those may query. Denied clients are always blocked (before the allow list)."
+msgid ""
+"İzinli liste doluysa YALNIZ oradakiler sorabilir. Reddedilenler her zaman "
+"engellenir (izinliden önce)."
+msgstr ""
+"If the allow list is non-empty, ONLY those may query. Denied clients are "
+"always blocked (before the allow list)."
 
 #: dashboard/templates/dashboard/security.html:67
 msgid "Şüpheli / Tehdit Tespiti"
@@ -1658,10 +2034,12 @@ msgid "Tehdit / datacenter IP feed'i"
 msgstr "Threat / datacenter IP feed"
 
 #: dashboard/templates/dashboard/security.html:70
-#, fuzzy
-#| msgid "Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abuse IP aralıklarını indirir; bu aralıklardan sorgu yapan istemciler DNS Cihazları'nda ŞÜPHELİ işaretlenir + bildirim düşer. <b>Default KAPALI</b>. Açıksa internete GİDEN istek gerektirir (~6 saatte bir günceller)."
-msgid "Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abuse IP aralıklarını indirir; bu aralıklardan sorgu yapan istemciler DNS Cihazları'nda ŞÜPHELİ işaretlenir + bildirim düşer. <b>Default KAPALI</b>. Açıksa internete GİDEN istek gerektirir."
-msgstr "Downloads known bot/datacenter/abuse IP ranges from open sources (Spamhaus DROP + FireHOL); clients querying from these ranges are marked SUSPICIOUS on DNS Devices + a notification is raised. <b>OFF by default</b>. When on, requires OUTBOUND internet requests (updates every ~6 hours)."
+msgid ""
+"Açık kaynaklardan (Spamhaus DROP + FireHOL) bilinen bot/datacenter/abuse IP "
+"aralıklarını indirir; bu aralıklardan sorgu yapan istemciler DNS "
+"Cihazları'nda ŞÜPHELİ işaretlenir + bildirim düşer. <b>Default KAPALI</b>. "
+"Açıksa internete GİDEN istek gerektirir."
+msgstr "Downloads known bot/datacenter/abuse IP ranges from open sources (Spamhaus DROP + FireHOL); clients querying from these ranges are flagged SUSPICIOUS on the DNS Devices page + a notification is raised. <b>Default OFF</b>. When on, it requires OUTBOUND internet requests."
 
 #: dashboard/templates/dashboard/security.html:73
 msgid "Güvenli işaretlenenler (yeşil) — IP / CIDR"
@@ -1672,12 +2050,23 @@ msgid "Yoksayılanlar (güvenli SAYILMAZ, nötr) — IP / CIDR"
 msgstr "Dismissed (NOT marked safe, neutral) — IP / CIDR"
 
 #: dashboard/templates/dashboard/security.html:77
-msgid "'Güvenli' = yeşil rozet, güvenli sayılır. 'Yoksay' = artık hatırlatmaz ama güvenli de saymaz (nötr). İkisi de şüpheli listesinden + yaptırımdan MUAFTIR. Geri almak için satırı sil."
-msgstr "'Safe' = green badge, counted as safe. 'Ignore' = stops reminding but not counted as safe (neutral). Both are EXEMPT from the suspicious list + enforcement. Delete the line to undo."
+msgid ""
+"'Güvenli' = yeşil rozet, güvenli sayılır. 'Yoksay' = artık hatırlatmaz ama "
+"güvenli de saymaz (nötr). İkisi de şüpheli listesinden + yaptırımdan "
+"MUAFTIR. Geri almak için satırı sil."
+msgstr ""
+"'Safe' = green badge, counted as safe. 'Ignore' = stops reminding but not "
+"counted as safe (neutral). Both are EXEMPT from the suspicious list + "
+"enforcement. Delete the line to undo."
 
 #: dashboard/templates/dashboard/servers.html:7
-msgid "DNS yöntemlerini canlı aç/kapat ve portlarını ayarla — aç/kapa ve iç port ~5 sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız UDP açık."
-msgstr "Toggle DNS methods live and set their ports — on/off and internal port apply within ~5 s (resolver does not restart). Safe default: only UDP on."
+msgid ""
+"DNS yöntemlerini canlı aç/kapat ve portlarını ayarla — aç/kapa ve iç port ~5 "
+"sn içinde uygulanır (resolver yeniden başlamaz). Güvenli varsayılan: yalnız "
+"UDP açık."
+msgstr ""
+"Toggle DNS methods live and set their ports — on/off and internal port apply "
+"within ~5 s (resolver does not restart). Safe default: only UDP on."
 
 #: dashboard/templates/dashboard/servers.html:22
 #, python-format
@@ -1719,8 +2108,12 @@ msgid "Portları kaydet"
 msgstr "Save ports"
 
 #: dashboard/templates/dashboard/servers.html:47
-msgid "DoT/DoH/DoQ için geçerli sertifika yoksa açık istenip başlatılamaz (resolver güvenli şekilde atlar)."
-msgstr "Without a valid certificate, DoT/DoH/DoQ can't be started even if requested (the resolver skips safely)."
+msgid ""
+"DoT/DoH/DoQ için geçerli sertifika yoksa açık istenip başlatılamaz (resolver "
+"güvenli şekilde atlar)."
+msgstr ""
+"Without a valid certificate, DoT/DoH/DoQ can't be started even if requested "
+"(the resolver skips safely)."
 
 #: dashboard/templates/dashboard/servers.html:49
 msgid "İç port (Container) ~5 sn içinde canlı uygulanır."
@@ -1748,20 +2141,34 @@ msgid "Genel Ayarlar"
 msgstr "General Settings"
 
 #: dashboard/templates/dashboard/settings.html:8
-msgid "Geçmiş, önbellek ve erişim davranışı. Çözümleme (upstream / recursion / strateji) artık ayrı <b>Sorgu Ayarları</b> sayfasında. Değişiklikler resolver'a ~10 sn içinde yansır (yeniden başlatma yok)."
-msgstr "History, cache and access behavior. Resolution (upstream / recursion / strategy) is now on the separate <b>Query Settings</b> page. Changes reach the resolver within ~10 s (no restart)."
+msgid ""
+"Geçmiş, önbellek ve erişim davranışı. Çözümleme (upstream / recursion / "
+"strateji) artık ayrı <b>Sorgu Ayarları</b> sayfasında. Değişiklikler "
+"resolver'a ~10 sn içinde yansır (yeniden başlatma yok)."
+msgstr ""
+"History, cache and access behavior. Resolution (upstream / recursion / "
+"strategy) is now on the separate <b>Query Settings</b> page. Changes reach "
+"the resolver within ~10 s (no restart)."
 
 #: dashboard/templates/dashboard/settings.html:23
-msgid "Kapalıyken sorgular veritabanına yazılmaz — Genel Bakış / Sorgu Geçmişi / Analiz beslenmez (çözümleme çalışmaya devam eder)."
-msgstr "When off, queries aren't written to the database — Overview / Query History / Analytics aren't fed (resolution keeps working)."
+msgid ""
+"Kapalıyken sorgular veritabanına yazılmaz — Genel Bakış / Sorgu Geçmişi / "
+"Analiz beslenmez (çözümleme çalışmaya devam eder)."
+msgstr ""
+"When off, queries aren't written to the database — Overview / Query "
+"History / Analytics aren't fed (resolution keeps working)."
 
 #: dashboard/templates/dashboard/settings.html:29
 msgid "Önbellek"
 msgstr "Cache"
 
 #: dashboard/templates/dashboard/settings.html:30
-msgid "Kapalıyken her sorgu baştan çözülür (yavaş ama taze). Açıkken cevaplar TTL süresince bellekte tutulur."
-msgstr "When off, every query is resolved from scratch (slow but fresh). When on, answers are kept in memory for their TTL."
+msgid ""
+"Kapalıyken her sorgu baştan çözülür (yavaş ama taze). Açıkken cevaplar TTL "
+"süresince bellekte tutulur."
+msgstr ""
+"When off, every query is resolved from scratch (slow but fresh). When on, "
+"answers are kept in memory for their TTL."
 
 #: dashboard/templates/dashboard/settings.html:35
 msgid "Min TTL (sn)"
@@ -1772,16 +2179,24 @@ msgid "Max TTL (sn)"
 msgstr "Max TTL (s)"
 
 #: dashboard/templates/dashboard/settings.html:38
-msgid "Min TTL kısa süreli kayıtları en az bu kadar bellekte tutar (0 = dokunma); Max TTL üst sınırdır."
-msgstr "Min TTL keeps short-lived records in memory at least this long (0 = leave alone); Max TTL is the upper cap."
+msgid ""
+"Min TTL kısa süreli kayıtları en az bu kadar bellekte tutar (0 = dokunma); "
+"Max TTL üst sınırdır."
+msgstr ""
+"Min TTL keeps short-lived records in memory at least this long (0 = leave "
+"alone); Max TTL is the upper cap."
 
 #: dashboard/templates/dashboard/settings.html:45
 msgid "Geçmiş saklama süresi"
 msgstr "History retention"
 
 #: dashboard/templates/dashboard/settings.html:46
-msgid "Bu süreden eski sorgu geçmişi otomatik silinir (saatlik kontrol). 'Kapalı' = sonsuz."
-msgstr "Query history older than this is deleted automatically (checked hourly). 'Off' = forever."
+msgid ""
+"Bu süreden eski sorgu geçmişi otomatik silinir (saatlik kontrol). 'Kapalı' = "
+"sonsuz."
+msgstr ""
+"Query history older than this is deleted automatically (checked hourly). "
+"'Off' = forever."
 
 #: dashboard/templates/dashboard/settings.html:49
 msgid "Kapalı"
@@ -1804,8 +2219,12 @@ msgid "Önbelleği temizle"
 msgstr "Clear cache"
 
 #: dashboard/templates/dashboard/settings.html:66
-msgid "Bellekteki tüm çözümleme önbelleğini boşaltır (sonraki sorgular baştan çözülür)."
-msgstr "Empties the entire in-memory resolution cache (subsequent queries resolve from scratch)."
+msgid ""
+"Bellekteki tüm çözümleme önbelleğini boşaltır (sonraki sorgular baştan "
+"çözülür)."
+msgstr ""
+"Empties the entire in-memory resolution cache (subsequent queries resolve "
+"from scratch)."
 
 #: dashboard/templates/dashboard/settings.html:72
 msgid "Geçmişi temizle"
@@ -1828,8 +2247,14 @@ msgid "Ayarları yedekle"
 msgstr "Back up settings"
 
 #: dashboard/templates/dashboard/settings.html:83
-msgid "Tüm ayarlar + engel/izin listeleri + hazır listeler + rewrite + zamanlama'yı tek JSON olarak indir. <b>Şifreleme anahtarı (DNS_LOG_KEY) yedeğe DAHİL DEĞİL.</b>"
-msgstr "Download all settings + block/allow lists + ready lists + rewrites + schedules as one JSON. <b>The encryption key (DNS_LOG_KEY) is NOT included in the backup.</b>"
+msgid ""
+"Tüm ayarlar + engel/izin listeleri + hazır listeler + rewrite + zamanlama'yı "
+"tek JSON olarak indir. <b>Şifreleme anahtarı (DNS_LOG_KEY) yedeğe DAHİL "
+"DEĞİL.</b>"
+msgstr ""
+"Download all settings + block/allow lists + ready lists + rewrites + "
+"schedules as one JSON. <b>The encryption key (DNS_LOG_KEY) is NOT included "
+"in the backup.</b>"
 
 #: dashboard/templates/dashboard/settings.html:85
 msgid "JSON indir"
@@ -1840,8 +2265,12 @@ msgid "Yedekten geri yükle"
 msgstr "Restore from backup"
 
 #: dashboard/templates/dashboard/settings.html:92
-msgid "Bir yedek JSON'u seç; içindekiler mevcut ayarlarla <b>birleştirilir</b> (mevcutları silmez)."
-msgstr "Pick a backup JSON; its contents are <b>merged</b> with current settings (doesn't delete existing)."
+msgid ""
+"Bir yedek JSON'u seç; içindekiler mevcut ayarlarla <b>birleştirilir</b> "
+"(mevcutları silmez)."
+msgstr ""
+"Pick a backup JSON; its contents are <b>merged</b> with current settings "
+"(doesn't delete existing)."
 
 #: dashboard/templates/dashboard/settings.html:96
 msgid "Yedekteki ayarlar mevcutlarla birleştirilecek. Devam edilsin mi?"
@@ -1852,8 +2281,12 @@ msgid "Geri yükle"
 msgstr "Restore"
 
 #: dashboard/templates/dashboard/users.html:7
-msgid "Panele giriş yapabilen yönetici hesapları. Panel yalnızca yöneticilere açıktır — eklenen her hesap tam yetkilidir."
-msgstr "Admin accounts that can log into the panel. The panel is admin-only — every account added has full privileges."
+msgid ""
+"Panele giriş yapabilen yönetici hesapları. Panel yalnızca yöneticilere "
+"açıktır — eklenen her hesap tam yetkilidir."
+msgstr ""
+"Admin accounts that can log into the panel. The panel is admin-only — every "
+"account added has full privileges."
 
 #: dashboard/templates/dashboard/users.html:13
 #, python-format
@@ -1899,7 +2332,8 @@ msgid "en az 8 karakter"
 msgstr "at least 8 characters"
 
 #: dashboard/templates/dashboard/users.html:50
-msgid "Eklenen her hesap <b>yönetici</b> olur (panel yalnız yöneticilere açıktır)."
+msgid ""
+"Eklenen her hesap <b>yönetici</b> olur (panel yalnız yöneticilere açıktır)."
 msgstr "Every account added becomes an <b>admin</b> (the panel is admin-only)."
 
 #: dashboard/templates/dashboard/users.html:51
@@ -1960,8 +2394,13 @@ msgstr "Device deleted."
 #~ msgid "Şüpheli sayma (yoksay) — IP / CIDR"
 #~ msgstr "Do not flag (ignore) — IP / CIDR"
 
-#~ msgid "Analiz / DNS Cihazları'nda 'Yoksay' dediğin istemciler burada birikir → artık şüpheli sayılmaz + yaptırımdan muaf. Geri almak için satırı sil."
-#~ msgstr "Clients you 'Ignore' in Analytics / DNS Devices accumulate here → no longer considered suspicious + exempt from enforcement. Delete the line to undo."
+#~ msgid ""
+#~ "Analiz / DNS Cihazları'nda 'Yoksay' dediğin istemciler burada birikir → "
+#~ "artık şüpheli sayılmaz + yaptırımdan muaf. Geri almak için satırı sil."
+#~ msgstr ""
+#~ "Clients you 'Ignore' in Analytics / DNS Devices accumulate here → no "
+#~ "longer considered suspicious + exempt from enforcement. Delete the line "
+#~ "to undo."
 
 #~ msgid "ör. ads.example.com"
 #~ msgstr "e.g. ads.example.com"
@@ -1978,8 +2417,19 @@ msgstr "Device deleted."
 #~ msgid "İzin ver"
 #~ msgstr "Allow"
 
-#~ msgid "Domain adresleri <b>standart portu</b> varsayar (DoH&nbsp;443, DoT/DoQ&nbsp;853) — host'ta bu portları konteynerin iç portuna eşlemelisin. <b>dns-net IP</b>'leri konteynerin <b>iç portunu</b> gösterir (doğrudan erişim; iç port <b>Sunucular</b>'dan ayarlanır). Şifreli yöntemde IP ile bağlanırsan sertifika adı uyuşmayabilir — mümkünse domaini kullan."
-#~ msgstr "Domain addresses assume the <b>standard port</b> (DoH&nbsp;443, DoT/DoQ&nbsp;853) — on the host you must map these to the container's internal port. <b>dns-net IPs</b> point to the container's <b>internal port</b> (direct access; the internal port is set from <b>Servers</b>). If you connect by IP with an encrypted method the certificate name may not match — use the domain when possible."
+#~ msgid ""
+#~ "Domain adresleri <b>standart portu</b> varsayar (DoH&nbsp;443, DoT/"
+#~ "DoQ&nbsp;853) — host'ta bu portları konteynerin iç portuna eşlemelisin. "
+#~ "<b>dns-net IP</b>'leri konteynerin <b>iç portunu</b> gösterir (doğrudan "
+#~ "erişim; iç port <b>Sunucular</b>'dan ayarlanır). Şifreli yöntemde IP ile "
+#~ "bağlanırsan sertifika adı uyuşmayabilir — mümkünse domaini kullan."
+#~ msgstr ""
+#~ "Domain addresses assume the <b>standard port</b> (DoH&nbsp;443, DoT/"
+#~ "DoQ&nbsp;853) — on the host you must map these to the container's "
+#~ "internal port. <b>dns-net IPs</b> point to the container's <b>internal "
+#~ "port</b> (direct access; the internal port is set from <b>Servers</b>). "
+#~ "If you connect by IP with an encrypted method the certificate name may "
+#~ "not match — use the domain when possible."
 
 #~ msgid "Her satırın başına <b>yöntem</b> yazabilirsin (AdGuard gibi):"
 #~ msgstr "You can prefix each line with a <b>method</b> (like AdGuard):"
@@ -1998,17 +2448,41 @@ msgstr "Device deleted."
 #~ msgstr "= the listening port inside the container;"
 
 #~ msgid "= dışarı yayınlanan port. Değiştirmek için sunucu klasöründe"
-#~ msgstr "= the externally published port. To change, in the server folder run"
+#~ msgstr ""
+#~ "= the externally published port. To change, in the server folder run"
 
 #~ msgid "çalıştır (her iki portu da sorar), sonra"
 #~ msgstr "(it asks for both ports), then"
 
-#~ msgid "Panele erişen <b>benzersiz cihazlar</b> — kimlik tarayıcının kalıcı <b>localStorage</b> id'si (yenileme/geçiş aynı cihaz kalır, ikiz olmaz). <b>IP/ağ değişimi</b> (VPN) o cihazın <b>Görülen IP'ler</b>'ine eklenir (~5 dk arka plan kontrolüyle de); tarayıcının rastgelediği alanlar <b>Oynak</b> işaretlenir. Bir cihaza <b>tıkla</b> → tüm özelliklerini gör."
-#~ msgstr "<b>Unique devices</b> that accessed the panel — identity is the browser's persistent <b>localStorage</b> id (refresh/navigation stays the same device, no duplicates). An <b>IP/network change</b> (VPN) is added to that device's <b>Seen IPs</b> (also via a ~5-min background check); fields the browser randomizes are flagged <b>Volatile</b>. <b>Click</b> a device → see all its properties."
+#~ msgid ""
+#~ "Panele erişen <b>benzersiz cihazlar</b> — kimlik tarayıcının kalıcı "
+#~ "<b>localStorage</b> id'si (yenileme/geçiş aynı cihaz kalır, ikiz olmaz). "
+#~ "<b>IP/ağ değişimi</b> (VPN) o cihazın <b>Görülen IP'ler</b>'ine eklenir "
+#~ "(~5 dk arka plan kontrolüyle de); tarayıcının rastgelediği alanlar "
+#~ "<b>Oynak</b> işaretlenir. Bir cihaza <b>tıkla</b> → tüm özelliklerini gör."
+#~ msgstr ""
+#~ "<b>Unique devices</b> that accessed the panel — identity is the browser's "
+#~ "persistent <b>localStorage</b> id (refresh/navigation stays the same "
+#~ "device, no duplicates). An <b>IP/network change</b> (VPN) is added to "
+#~ "that device's <b>Seen IPs</b> (also via a ~5-min background check); "
+#~ "fields the browser randomizes are flagged <b>Volatile</b>. <b>Click</b> a "
+#~ "device → see all its properties."
 
-#~| msgid "Panele erişen <b>benzersiz cihazlar</b> — her yeni girişte (oturum başına bir kez) tarayıcı fingerprint'i toplanıp <b>tekilleştirilir</b>. Bir cihaza <b>tıkla</b> → tüm özelliklerini (ekran/GPU/canvas...) gör. Son görülene göre sıralı = son giriş."
-#~ msgid "Panele erişen <b>benzersiz cihazlar</b> — fingerprint oturum başına, <b>değiştikçe</b> kaydedilir (aynı cihaz+IP tekrar yazılmaz; <b>VPN/IP değişince</b> yeni cihaz görünür). Bir cihaza <b>tıkla</b> → tüm özelliklerini gör."
-#~ msgstr "<b>Unique devices</b> that accessed the panel — the fingerprint is recorded once per session, <b>whenever it changes</b> (the same device+IP isn't re-written; a <b>new device appears when the IP changes</b>, e.g. VPN). <b>Click</b> a device → see all its properties."
+#~| msgid ""
+#~| "Panele erişen <b>benzersiz cihazlar</b> — her yeni girişte (oturum "
+#~| "başına bir kez) tarayıcı fingerprint'i toplanıp <b>tekilleştirilir</b>. "
+#~| "Bir cihaza <b>tıkla</b> → tüm özelliklerini (ekran/GPU/canvas...) gör. "
+#~| "Son görülene göre sıralı = son giriş."
+#~ msgid ""
+#~ "Panele erişen <b>benzersiz cihazlar</b> — fingerprint oturum başına, "
+#~ "<b>değiştikçe</b> kaydedilir (aynı cihaz+IP tekrar yazılmaz; <b>VPN/IP "
+#~ "değişince</b> yeni cihaz görünür). Bir cihaza <b>tıkla</b> → tüm "
+#~ "özelliklerini gör."
+#~ msgstr ""
+#~ "<b>Unique devices</b> that accessed the panel — the fingerprint is "
+#~ "recorded once per session, <b>whenever it changes</b> (the same device+IP "
+#~ "isn't re-written; a <b>new device appears when the IP changes</b>, e.g. "
+#~ "VPN). <b>Click</b> a device → see all its properties."
 
 #~ msgid "Cihaz Özellikleri"
 #~ msgstr "Device Properties"
@@ -2017,10 +2491,22 @@ msgstr "Device deleted."
 #~ msgstr "Times seen"
 
 #, python-format
-#~ msgid "Web <b>panele giriş yapan</b> cihazların denetim kaydı — başarılı her girişte IP, tarayıcı ve işletim sistemi kaydedilir (en yeni %(n)s kayıt gösterilir)."
-#~ msgid_plural "Web <b>panele giriş yapan</b> cihazların denetim kaydı — başarılı her girişte IP, tarayıcı ve işletim sistemi kaydedilir (en yeni %(n)s kayıt gösterilir)."
-#~ msgstr[0] "Audit log of devices that <b>logged into the panel</b> — on each successful login the IP, browser and OS are recorded (showing the %(n)s most recent record)."
-#~ msgstr[1] "Audit log of devices that <b>logged into the panel</b> — on each successful login the IP, browser and OS are recorded (showing the %(n)s most recent records)."
+#~ msgid ""
+#~ "Web <b>panele giriş yapan</b> cihazların denetim kaydı — başarılı her "
+#~ "girişte IP, tarayıcı ve işletim sistemi kaydedilir (en yeni %(n)s kayıt "
+#~ "gösterilir)."
+#~ msgid_plural ""
+#~ "Web <b>panele giriş yapan</b> cihazların denetim kaydı — başarılı her "
+#~ "girişte IP, tarayıcı ve işletim sistemi kaydedilir (en yeni %(n)s kayıt "
+#~ "gösterilir)."
+#~ msgstr[0] ""
+#~ "Audit log of devices that <b>logged into the panel</b> — on each "
+#~ "successful login the IP, browser and OS are recorded (showing the %(n)s "
+#~ "most recent record)."
+#~ msgstr[1] ""
+#~ "Audit log of devices that <b>logged into the panel</b> — on each "
+#~ "successful login the IP, browser and OS are recorded (showing the %(n)s "
+#~ "most recent records)."
 
 #~ msgid "Zaman"
 #~ msgstr "Time"
@@ -2034,5 +2520,12 @@ msgstr "Device deleted."
 #~ msgid "Ne kadarını görebiliriz?"
 #~ msgstr "How much can we see?"
 
-#~ msgid "HTTP yalnızca <b>IP adresi</b> + <b>User-Agent</b> verir; tarayıcı/OS/cihaz bu metinden çıkarılır ve <b>istemci tarafından bildirilir</b> (taklit edilebilir). Gerçek bir donanım fingerprint'i sunucu tarafında mümkün değildir."
-#~ msgstr "HTTP only provides the <b>IP address</b> + <b>User-Agent</b>; browser/OS/device are inferred from that text and <b>reported by the client</b> (can be spoofed). A true hardware fingerprint is not possible server-side."
+#~ msgid ""
+#~ "HTTP yalnızca <b>IP adresi</b> + <b>User-Agent</b> verir; tarayıcı/OS/"
+#~ "cihaz bu metinden çıkarılır ve <b>istemci tarafından bildirilir</b> "
+#~ "(taklit edilebilir). Gerçek bir donanım fingerprint'i sunucu tarafında "
+#~ "mümkün değildir."
+#~ msgstr ""
+#~ "HTTP only provides the <b>IP address</b> + <b>User-Agent</b>; browser/OS/"
+#~ "device are inferred from that text and <b>reported by the client</b> (can "
+#~ "be spoofed). A true hardware fingerprint is not possible server-side."

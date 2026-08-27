@@ -31,6 +31,20 @@
                     </div>
                     <label class="sw"><input type="checkbox" name="dnssec" {% if dnssec %}checked{% endif %}><span></span></label>
                 </div>
+                <div class="setrow">
+                    <div class="si">
+                        <div class="t">{% trans "Hızlı sunucu probu (arka plan)" %} <span class="mono" style="font-size:11px;color:var(--muted);">{% trans "yalnız çekirdek" %}</span></div>
+                        <div class="d">{% trans "Açık: arka planda periyodik olarak root ve TLD (.com/.net/.me…) sunucularına küçük deneme sorguları atar, gecikmeyi ölçer → boşta bile <b>en-hızlı sunucu listesi</b> taze kalır (soğuk başlangıçta bile ilk sorgu en hızlıya gider). <b>Yalnız 'Kendi çekirdeğimizi kullan' AÇIKKEN</b> çalışır; forward modda hiç prob atılmaz." %}</div>
+                    </div>
+                    <label class="sw"><input type="checkbox" name="srtt_probe" {% if srtt_probe %}checked{% endif %}><span></span></label>
+                </div>
+                <div class="setrow">
+                    <div class="si"><div class="t">{% trans "Prob aralığı (dakika)" %}</div><div class="d">{% trans "Kaç dakikada bir ölçüm turu yapılsın (1–1440)." %}</div></div>
+                    <input type="number" name="srtt_probe_min" value="{{ srtt_probe_min }}" min="1" max="1440" class="numin">
+                </div>
+                <label class="modelbl">{% trans "Prob edilecek TLD'ler (boşlukla ayır)" %}</label>
+                <input type="text" name="srtt_probe_tlds" value="{{ srtt_probe_tlds }}" placeholder="com net org me io" style="width:100%;max-width:360px;" spellcheck="false" autocomplete="off">
+                <p class="setnote">{% trans "Bu TLD'lerin yetkili sunucuları ölçülür (root delegasyonundaki glue IP'leri). Boş bırakılırsa <span class='mono'>com net org me io</span> kullanılır. En fazla 20 TLD." %}</p>
 
                 <label class="modelbl">{% trans "Upstream sunucular (satır başına bir tane)" %}</label>
                 <textarea class="upst" name="upstreams" rows="5" spellcheck="false" placeholder="1.1.1.1&#10;udp://8.8.8.8&#10;tcp://9.9.9.9&#10;tls://dns.google&#10;https://dns.quad9.net/dns-query&#10;quic://dns.adguard.com">{{ upstreams }}</textarea>

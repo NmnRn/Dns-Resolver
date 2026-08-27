@@ -210,6 +210,38 @@ def make_starters(core, loop):
     return {"udp": start_udp, "doh": start_doh, "dot": start_dot, "doq": start_doq}
 
 
+async def _srtt_probe_round(core, loop, db_manager):
+    """Tek SRTT prob turu (yalnız çekirdek modunda): root sunucularını + prob edilecek
+    TLD'lerin (.com/.net/.me…) yetkili sunucularını (root delegasyon glue'sundan) ölçer.
+    Ölçüm _query içindeki _record_server_rtt ile SRTT tablosuna yazılır. Forward modda
+    (use_recursion=False) ya da kapalıysa HİÇBİR prob atmaz (dışarı çıkış yok)."""
+    from dnslib import QTYPE
+    try:
+        enabled = str(await db_manager.get_setting('srtt_probe', '1')) != '0'
+        tlds = (await db_manager.get_setting('srtt_probe_tlds', 'com net org me io')).split()
+    except Exception:
+        enabled, tlds = True, ['com', 'net', 'org', 'me', 'io']
+    if not (enabled and core.use_recursion):          # YALNIZ çekirdek modu
+        return
+    roots = [v[0] for v in core.root_servers.values()]
+    if not roots:
+        return
+    # tüm root'ları ölç (yalnız en-hızlı 2'yi değil → hepsinin SRTT'si tazelensin)
+    await asyncio.gather(*(
+        loop.run_in_executor(None, core._query, "com.", "NS", ip) for ip in roots
+    ))
+    # her TLD'nin yetkili sunucularını ölç (root referral glue'sundan, IPv4)
+    for tld in tlds[:20]:
+        resp = await loop.run_in_executor(None, core._query_any, tld + ".", "NS", roots, 2)
+        if resp is None:
+            continue
+        glue = [str(rr.rdata) for rr in resp.ar if QTYPE[rr.rtype] == "A"]
+        if glue:
+            await asyncio.gather(*(
+                loop.run_in_executor(None, core._query, tld + ".", "NS", ip) for ip in glue
+            ))
+
+
 def main():
     db_manager = db_ops.DBManager()
     core = udp_server.DNSCore(db_manager=db_manager)
@@ -250,6 +282,24 @@ def main():
                 logger.debug("pending snapshot hatasi: %r", e)
     snapshot_task = loop.create_task(_pending_snapshot())
     snapshot_task.add_done_callback(_log_task_error)
+
+    # SRTT prob: ÇEKİRDEK modunda root + TLD (.com/.net/.me…) sunucularının gecikmesini
+    # periyodik ölç → boşta bile taze "en-hızlı" listesi. FORWARD modda ATLA (root'a
+    # gitmiyoruz → sızıntı yok, anlamsız). Tur mantığı _srtt_probe_round'da (test edilebilir).
+    async def _srtt_probe_loop(default_min=20):
+        await asyncio.sleep(15)                       # sunucular ayağa kalksın + ayarlar yüklensin
+        while True:
+            try:
+                await _srtt_probe_round(core, loop, db_manager)
+            except Exception as e:
+                logger.debug("srtt prob turu basarisiz: %r", e)
+            try:
+                mins = max(1, int(await db_manager.get_setting('srtt_probe_min', str(default_min))))
+            except Exception:
+                mins = default_min
+            await asyncio.sleep(mins * 60)
+    srtt_task = loop.create_task(_srtt_probe_loop())
+    srtt_task.add_done_callback(_log_task_error)
 
     # DNS sunucuları config_store'daki (config/servers.json) istenen duruma göre
     # ÇALIŞIRKEN yönetilir: panelden bir metodu açıp kapatmak (ya da iç portunu
