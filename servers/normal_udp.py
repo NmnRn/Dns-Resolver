@@ -973,10 +973,17 @@ class DNSCore:
  
             rcode = resp.header.rcode
  
-            # NXDOMAIN ara adımda gelse bile orijinal isim için de geçerlidir
-            # (RFC 8020): bir üst isim yoksa altındaki hiçbir isim de var
-            # olamaz.
+            # NXDOMAIN işleme: SON adımın (tam ad) ya da upstream'in NXDOMAIN'i KESİNDİR
+            # (RFC 8020: üst isim yoksa alt da yok). AMA minimize edilmiş ARA adımın
+            # NXDOMAIN'ine GÜVENME: empty-non-terminal (ör. 'dualstack.awsglobalaccelerator.com'
+            # -> grpc.chat.signal.org zinciri; birçok CDN/accelerator) için bazı yetkili
+            # sunucular YANLIŞ NXDOMAIN döner → tüm ad yok sanılıp negatif cache'lenirdi
+            # ("çok fazla NXDOMAIN"in ana nedeni). RFC 9156: minimizasyonu bırak, TAM adı
+            # aynı sunuculara sor — gerçekten yoksa son adımda yine NXDOMAIN gelir (o kesin).
             if rcode == RCODE.NXDOMAIN:
+                if not (is_final_step or via_upstream):
+                    label_count = total_labels          # minimizasyonu bırak → sonraki tur tam adı sorar
+                    continue
                 self._cache_put(domain, qtype, RCODE.NXDOMAIN, [], self._soa_ttl(resp.auth))
                 return RCODE.NXDOMAIN, []
  
