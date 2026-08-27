@@ -479,3 +479,60 @@ def test_dnssec_verdict_cache_bogus_negative():
     ds2 = ["off"]; rc2, r2 = core.resolve("bad.com.", "A", 0, ["—"], ds2)
     assert calls == [1]                                   # bogus da önbelleklenir (tekrar timeout/kripto yok)
     assert rc1 == RCODE.SERVFAIL and rc2 == RCODE.SERVFAIL and ds2[0] == "bogus" and r2 == []
+
+
+# --- Forward modda DNSSEC: kökten yürüme yerine upstream (sunucu IP'si sızmaz) --- #
+def test_dnssec_forward_uses_upstream_with_do_bit():
+    """Forward modda (use_recursion=False + upstreams) DNSSEC çekmesi KÖKTEN yürümez;
+    upstream'e DO=1 ile gider → yetkiliyi upstream görür, sunucu IP'si DNS-leak'e sızmaz."""
+    from servers.normal_udp import DNSCore
+    core = DNSCore(db_manager=None)
+    core.use_recursion = False
+    core.upstreams = ["1.1.1.1"]
+    calls = []
+    sentinel = object()
+
+    def fake_forward_one(domain, qtype, upstream, do=False):
+        calls.append((domain, qtype, upstream, do))
+        return sentinel
+
+    core._query_forward_one = fake_forward_one
+
+    def no_root(*a, **k):                                  # kök sorgusu ASLA çağrılmamalı
+        raise AssertionError("forward modda DNSSEC kökten yürümemeli")
+    core._query_any = no_root
+
+    out = core._dnssec_walk("x.tld.", "A")
+    assert out is sentinel
+    assert calls == [("x.tld.", "A", "1.1.1.1", True)]    # DO=1 ile upstream'e
+
+
+def test_dnssec_forward_falls_back_to_secondary():
+    """Birincil upstream'ler yanıt vermezse ikincil (yedek) upstream denenir."""
+    from servers.normal_udp import DNSCore
+    core = DNSCore(db_manager=None)
+    core.use_recursion = False
+    core.upstreams = ["1.1.1.1"]
+    core.upstreams_secondary = ["9.9.9.9"]
+    sentinel = object()
+    core._query_forward_one = lambda d, t, up, do=False: sentinel if up == "9.9.9.9" else None
+    assert core._dnssec_walk("x.tld.", "A") is sentinel
+
+
+def test_dnssec_recursion_mode_still_walks_root():
+    """Çekirdek (recursion) modda DNSSEC yine KÖKTEN yürür; upstream'e gitmez."""
+    from servers.normal_udp import DNSCore
+    from dnslib import DNSRecord, DNSHeader, DNSQuestion
+    core = DNSCore(db_manager=None)
+    core.use_recursion = True
+    core.upstreams = ["1.1.1.1"]                          # dolu olsa da forward'a düşmemeli
+
+    ans = DNSRecord(DNSHeader(qr=1, aa=1), q=DNSQuestion("x.tld.", QTYPE.A))
+    ans.add_answer(RR("x.tld.", QTYPE.A, rdata=A("1.2.3.4"), ttl=60))
+    core._query_any = lambda name, rtype, servers, **k: ans
+
+    def no_upstream(*a, **k):
+        raise AssertionError("recursion modda DNSSEC upstream'e gitmemeli")
+    core._query_forward_one = no_upstream
+
+    assert core._dnssec_walk("x.tld.", "A") is ans

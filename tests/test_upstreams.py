@@ -50,11 +50,11 @@ def test_forward_ipv6_routing():
     core = DNSCore(db_manager=None)
     seen = {}
 
-    def fake_query(domain, qtype, server_ip, tcp=False, timeout=1.0, port=53):
+    def fake_query(domain, qtype, server_ip, tcp=False, timeout=1.0, port=53, do=False):
         seen["q"] = (server_ip, port, tcp)
         return "R"
 
-    def fake_dot(domain, qtype, host, port=853, timeout=1.0):
+    def fake_dot(domain, qtype, host, port=853, timeout=1.0, do=False):
         seen["dot"] = (host, port)
         return "R"
 

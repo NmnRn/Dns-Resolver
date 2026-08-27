@@ -505,9 +505,12 @@ class DNSCore:
                 return resp
         return None
 
-    def _query_doh(self, domain, qtype, endpoint, timeout=QUERY_TIMEOUT):
-        """RFC 8484 DoH — önce HTTP/2, olmazsa HTTP/1.1 (doh_client, ALPN)."""
+    def _query_doh(self, domain, qtype, endpoint, timeout=QUERY_TIMEOUT, do=False):
+        """RFC 8484 DoH — önce HTTP/2, olmazsa HTTP/1.1 (doh_client, ALPN).
+        do=True → EDNS DO biti (forward modda DNSSEC kayıtlarını upstream'den iste)."""
         q = _new_question(domain, qtype)
+        if do:
+            q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE, flags="do"))
         qid = q.header.id
         try:
             resp = DNSRecord.parse(doh_client.doh_query(endpoint, q.pack(), timeout, bootstrap=self.bootstrap_dns))
@@ -530,10 +533,11 @@ class DNSCore:
         return None
 
     # --- Forwarding (upstream'e iletme) --------------------------------------
-    def _query_dot(self, domain, qtype, host, port=853, timeout=QUERY_TIMEOUT):
-        """DoT istemci: host:port'a TLS ile bağlan, uzunluk-önekli DNS gönder/al."""
+    def _query_dot(self, domain, qtype, host, port=853, timeout=QUERY_TIMEOUT, do=False):
+        """DoT istemci: host:port'a TLS ile bağlan, uzunluk-önekli DNS gönder/al.
+        do=True → EDNS DO biti (forward modda DNSSEC kayıtlarını upstream'den iste)."""
         q = _new_question(domain, qtype)
-        q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE))
+        q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE, flags="do" if do else ""))
         qid = q.header.id
         sock = None
         try:
@@ -558,28 +562,30 @@ class DNSCore:
                 except Exception:
                     pass
 
-    def _query_forward_one(self, domain, qtype, upstream):
-        """Tek bir upstream'e ilet — protokolü ön eke göre seç (https/tls/udp/düz IP)."""
+    def _query_forward_one(self, domain, qtype, upstream, do=False):
+        """Tek bir upstream'e ilet — protokolü ön eke göre seç (https/tls/udp/düz IP).
+        do=True → EDNS DO biti (forward modda bağımsız DNSSEC doğrulaması için upstream'den
+        RRSIG/DNSKEY/DS iste; yetkiliye upstream gider, sunucu IP'si sızmaz)."""
         u = upstream.strip()
         if not u:
             return None
         low = u.lower()
         try:
             if low.startswith("https://"):
-                return self._query_doh(domain, qtype, u)
+                return self._query_doh(domain, qtype, u, do=do)
             if low.startswith("tls://"):
                 host, port = _split_host_port(u[6:], 853)
-                return self._query_dot(domain, qtype, host, port)
+                return self._query_dot(domain, qtype, host, port, do=do)
             if low.startswith("quic://"):
                 logger.warning("DoQ upstream henuz desteklenmiyor, atlaniyor.")
                 return None
             if low.startswith("tcp://"):
                 host, port = _split_host_port(u[6:], 53)
-                return self._query(domain, qtype, host, tcp=True, port=port)
+                return self._query(domain, qtype, host, tcp=True, port=port, do=do)
             if low.startswith("udp://"):
                 u = u[6:]
             host, port = _split_host_port(u, 53)     # düz IP[:port] (IPv6 farkındalıklı)
-            return self._query(domain, qtype, host, port=port)
+            return self._query(domain, qtype, host, port=port, do=do)
         except Exception:
             return None
 
@@ -689,11 +695,28 @@ class DNSCore:
                 self._dnssec_fetch_cache[(name, rtype)] = (now() + ttl, answers, sigs)
         return answers, sigs
 
+    def _dnssec_upstream_query(self, name, rtype):
+        """Forward modda DNSSEC kaydını (DO=1) upstream'lerden çek → DNSRecord | None.
+        Yetkili sunucuya UPSTREAM gider (kökten kendimiz yürümeyiz) → sunucu IP'si DNS-leak
+        testlerine sızmaz; RRSIG/DNSKEY/DS/NSEC yine cevapta gelir, KENDİMİZ doğrularız.
+        Sıra: birincil upstream'ler, hiçbiri yanıt vermezse ikincil (yedek)."""
+        for pool in (self.upstreams, self.upstreams_secondary):
+            for up in list(pool or []):
+                resp = self._query_forward_one(name, rtype, up, do=True)
+                if resp is not None:
+                    return resp
+        return None
+
     def _dnssec_walk(self, name, rtype):
         """DO'lu iteratif çekme; YETKİLİ nihai yanıtı (DNSRecord, auth bölümü dahil) döner.
         Kökten delegasyonu izler. DNSKEY child'da, DS parent'ta YETKİLİ yanıtlanır →
         aynı döngü ikisini de doğru getirir. Bulunamazsa None."""
         name = name if name.endswith(".") else name + "."
+        # Forward modu: kökten yürümek yetkiliye SUNUCU IP'siyle gider (DNS-leak
+        # testinde çekirdek-dışı olsak bile sunucu IP'si görünürdü). Bunun yerine
+        # DNSSEC kayıtlarını da upstream'e DO=1 ile sordur — yetkiliyi upstream görür.
+        if not self.use_recursion and self.upstreams:
+            return self._dnssec_upstream_query(name, rtype)
         servers = [v[0] for v in self.root_servers.values()]
         for _ in range(MAX_HOPS):
             resp = self._query_any(name, rtype, servers, max_attempts=3, do=True)
