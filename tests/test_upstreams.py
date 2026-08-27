@@ -82,3 +82,46 @@ def test_no_secondary_when_primary_ok():
     core._query_forward_one = fake
     resp, up = core._forward("x.com", "A")
     assert up == "1.1.1.1" and calls == ["1.1.1.1"]   # ikincil'e hiç gidilmez
+
+
+# --- RTT-tabanlı sunucu seçimi (çekirdek modu: root/TLD/yetkili sıralaması) --- #
+def test_server_srtt_ewma_and_default():
+    core = DNSCore(db_manager=None)
+    from servers.normal_udp import SRTT_DEFAULT, SRTT_ALPHA
+    assert core._server_srtt_get("1.2.3.4") == SRTT_DEFAULT      # ölçülmemiş → orta değer
+    core._record_server_rtt("1.2.3.4", 100.0)                    # ilk ölçüm → aynen
+    assert core._server_srtt_get("1.2.3.4") == 100.0
+    core._record_server_rtt("1.2.3.4", 20.0)                     # EWMA: 0.3*20 + 0.7*100 = 76
+    assert abs(core._server_srtt_get("1.2.3.4") - (SRTT_ALPHA * 20 + (1 - SRTT_ALPHA) * 100)) < 1e-9
+
+
+def test_query_any_prefers_fastest(monkeypatch):
+    """SRTT en düşük (en hızlı) sunucu ilk denenir; keşif kapalıyken sıralı."""
+    core = DNSCore(db_manager=None)
+    core._record_server_rtt("slow", 300.0)
+    core._record_server_rtt("fast", 10.0)
+    core._record_server_rtt("mid", 80.0)
+    monkeypatch.setattr("servers.normal_udp.random.random", lambda: 1.0)  # keşif YOK → sırala
+
+    order = []
+    def fake_query(domain, qtype, ip, do=False):
+        order.append(ip)
+        return "R" if ip == "fast" else None     # en hızlı yanıtlar → ilk denemede döner
+    core._query = fake_query
+
+    resp = core._query_any("x.", "A", ["slow", "mid", "fast"])
+    assert resp == "R"
+    assert order[0] == "fast"                    # en düşük SRTT ilk
+
+
+def test_query_any_explore_shuffles(monkeypatch):
+    """Keşif olasılığı tetiklenirse rastgele sıralanır (tek IP'ye kilitlenme önlenir)."""
+    core = DNSCore(db_manager=None)
+    core._record_server_rtt("a", 10.0); core._record_server_rtt("b", 20.0)
+    monkeypatch.setattr("servers.normal_udp.random.random", lambda: 0.0)   # < SRTT_EXPLORE → keşif
+    seen = {}
+    monkeypatch.setattr("servers.normal_udp.random.shuffle",
+                        lambda lst: seen.__setitem__("shuffled", True))
+    core._query = lambda d, q, ip, do=False: "R"
+    core._query_any("x.", "A", ["a", "b"])
+    assert seen.get("shuffled") is True          # keşif dalı → shuffle çağrıldı

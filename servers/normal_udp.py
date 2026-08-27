@@ -28,6 +28,10 @@ QUERY_TIMEOUT = 1.0     # tek sunucuya saniye cinsinden bekleme
 MAX_HOPS = 16            # bir sorguda kaç delegation adımı izlenir
 MAX_DEPTH = 16           # CNAME / NS-çözme özyineleme derinliği
 EDNS_UDP_SIZE = 4096     # EDNS0 ile ilan ettiğimiz UDP tampon boyutu
+# --- Sunucu seçimi (RTT-tabanlı; çekirdek modunda root/TLD/yetkili sıralaması) ---
+SRTT_ALPHA = 0.3        # EWMA katsayısı: yeni ölçüm ağırlığı (BIND/Unbound tarzı)
+SRTT_DEFAULT = 50.0     # ölçülmemiş sunucuya atanan orta (optimist) süre (ms)
+SRTT_EXPLORE = 0.10     # keşif olasılığı: ara sıra rastgele sırala → yavaş/iyileşeni yeniden ölç
 
 
 def status_for(rcode, blocked):
@@ -237,6 +241,10 @@ class DNSCore:
         # Kaynak bazında işlem süresi: 'DNS çekirdeği' / 'Önbellek' / upstream -> (sayı, toplam_ms)
         self.source_stats = {}
         self._stat_lock = threading.Lock()
+        # Sunucu IP -> SRTT (ms, EWMA): root/TLD/yetkili sunucular arasında en-hızlıyı
+        # tercih etmek için (_query ölçer, _query_any sıralar). Anycast zaten en yakın
+        # kopyaya yönlendirir; bu, kalan IP'ler arasında ÖLÇÜLEN en hızlıyı seçer.
+        self._server_srtt = {}
 
     # --- Cache ---------------------------------------------------------------
     def _cache_get(self, domain, qtype):
@@ -453,6 +461,7 @@ class DNSCore:
         q.add_ar(EDNS0(udp_len=EDNS_UDP_SIZE, flags="do" if do else ""))  # DO → DNSSEC iste
         qid = q.header.id
         sock = None
+        t0 = now()
         try:
             if tcp:
                 sock = socket.socket(_af_for(server_ip), socket.SOCK_STREAM)
@@ -467,19 +476,22 @@ class DNSCore:
                 sock.settimeout(timeout)
                 sock.sendto(q.pack(), (server_ip, port))
                 resp_data, _ = sock.recvfrom(EDNS_UDP_SIZE)
- 
+
             resp = DNSRecord.parse(resp_data)
 
             # ID + SORU eşleşmiyorsa eski/sahte pakettir, güvenme
             if not self._resp_ok(resp, q):
                 return None
 
+            self._record_server_rtt(server_ip, (now() - t0) * 1000.0)  # başarılı → SRTT güncelle
+
             # UDP'de kesik geldiyse TCP ile tekrar dene
             if resp.header.tc and not tcp:
                 return self._query(domain, qtype, server_ip, tcp=True, timeout=timeout, port=port)
- 
+
             return resp
         except Exception:
+            self._record_server_rtt(server_ip, timeout * 1000.0)       # timeout/hata → ceza (sıralamada dibe)
             return None
         finally:
             if sock is not None:
@@ -488,15 +500,31 @@ class DNSCore:
                 except Exception:
                     pass
  
+    def _record_server_rtt(self, ip, ms):
+        """Sunucu IP'sinin cevap süresini EWMA (SRTT) ile güncelle → sunucu seçimi."""
+        with self._stat_lock:
+            old = self._server_srtt.get(ip)
+            self._server_srtt[ip] = ms if old is None else (SRTT_ALPHA * ms + (1 - SRTT_ALPHA) * old)
+
+    def _server_srtt_get(self, ip):
+        """Sunucunun ölçülen SRTT'si (ms); ölçülmemişse orta (optimist) değer → ilk turda denensin."""
+        with self._stat_lock:
+            return self._server_srtt.get(ip, SRTT_DEFAULT)
+
     def _query_any(self, domain, qtype, server_ips, max_attempts=None, do=False):
         """
-        Verilen sunucu listesini sırayla dene, ilk cevabı dön.
-        max_attempts verilirse, o kadar timeout'tan sonra (listenin tamamını
-        denemeden) pes edip None döner -> çağıran upstream'e düşebilir.
+        Verilen sunucu listesini ÖLÇÜLEN en-hızlıdan (SRTT) başlayarak dene, ilk cevabı
+        dön. Anycast zaten en yakın kopyaya yönlendirir; bu, kalan IP'ler arasında gerçek
+        gecikmesi en düşük olanı seçer (geo-tahmini değil, ölçüm). SRTT_EXPLORE olasılıkla
+        rastgele sıralar → yavaşlayan/iyileşen sunucu yeniden ölçülsün, tek IP'ye kilitlenme
+        olmasın. max_attempts verilirse o kadar denemeden sonra pes eder -> upstream'e düşülebilir.
         do=True → EDNS DO biti (DNSSEC).
         """
         servers = list(server_ips)
-        random.shuffle(servers)
+        if len(servers) > 1 and random.random() < SRTT_EXPLORE:
+            random.shuffle(servers)                              # keşif: ara sıra rastgele
+        else:
+            servers.sort(key=self._server_srtt_get)              # en-hızlı (düşük SRTT) önce
         if max_attempts is not None:
             servers = servers[:max_attempts]
         for ip in servers:
